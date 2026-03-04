@@ -8,6 +8,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Index from '@/pages/index.vue'
 import Menu from '@/pages/menu.vue'
+import Footer from '@/layouts/components/Footer.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,6 +20,10 @@ const router = createRouter({
     {
       path: '/menu',
       component: Menu,
+    },
+    {
+      path: '/footer',
+      component: Footer,
     },
   ],
 })
