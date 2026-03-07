@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <v-container class="fill-height" max-width="900">
     <div>
       <v-img
@@ -87,4 +87,4 @@
       title: 'Community',
     },
   ]
-</script>
+</script> -->
