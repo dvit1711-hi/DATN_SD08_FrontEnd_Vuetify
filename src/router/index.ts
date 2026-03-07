@@ -17,12 +17,8 @@ import AccountSetting from '@/pages/accountSetting.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    {
-      path: '/',  component: Index,
-    },
-    {
-      path: '/menu',  component: Menu,
-    },
+    {path: '/',  component: Index},
+    {path: '/menu',  component: Menu},
     
     {
       path: '/list',  component: ProductList,
