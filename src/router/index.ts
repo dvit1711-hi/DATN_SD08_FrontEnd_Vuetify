@@ -16,6 +16,7 @@ import AccountSecurity from '@/pages/AccountSecurity.vue'
 import AccountSetting from '@/pages/accountSetting.vue'
 import Login from '@/pages/Login.vue'
 import Register from '@/pages/Register.vue'
+import AccountList from '@/pages/admin/AccountList.vue'
 
 
 const router = createRouter({
@@ -34,6 +35,7 @@ const router = createRouter({
     {path: '/account', component: AccountSetting},
     {path: '/login', component: Login},
     {path: '/register', component: Register},
+    {path: '/accountList', component: AccountList},
     {path: '/footer',     component: Footer},
   ],
 })
