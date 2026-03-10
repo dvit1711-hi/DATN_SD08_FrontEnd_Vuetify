@@ -21,7 +21,7 @@
         <td>{{ p.status }}</td>
         <td>{{ p.brand.name }}</td>
         <td>
-            <button class="btn btn-warning btn-sm" @click="editProduct(p)">Sửa</button>
+            <button class="btn btn-warning btn-sm" @click="editProduct(p)">Detail</button>
           </td>
       </tr>
     </tbody>

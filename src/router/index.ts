@@ -25,12 +25,12 @@ const router = createRouter({
     {path: '/',  component: Index},
     {path: '/menu',  component: Menu},
     
-    {path: '/list',  component: ProductList,},
+    {path: '/porducts',  component: ProductList,},
     {path: '/footer',  component: Footer,},
     
     {path: '/products/:id',  component: ProductDetail},
     {path: '/products/list', component: AdminProduct},
-
+    
     {path: '/accountSecurity', component: AccountSecurity},
     {path: '/account', component: AccountSetting},
     {path: '/login', component: Login},
