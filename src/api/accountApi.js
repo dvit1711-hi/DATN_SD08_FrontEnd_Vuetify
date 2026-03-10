@@ -7,8 +7,9 @@ export default {
     return axios.get(API)
   },
 
+  // Sửa đúng API backend
   getById(id) {
-    return axios.get(`${API}/${id}`)
+    return axios.get(`${API}/getById/${id}`)
   },
 
   create(data) {
@@ -22,4 +23,12 @@ export default {
   delete(id) {
     return axios.delete(`${API}/${id}`)
   },
+
+  // API update-full
+  updateAccountFull(data) {
+    return axios.put(`${API}/update-full`, data, {
+      withCredentials: true   // BẮT BUỘC
+    })
+  }
+
 }

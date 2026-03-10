@@ -2,170 +2,152 @@
   <div class="product-detail" v-if="product">
 
     <div class="left">
-      <!-- ảnh lớn -->
-      <img class="main-img" :src="product.mainImage" />
 
-      <!-- thumbnail -->
+      <!-- thumbnails -->
       <div class="thumbs">
-        <img v-for="i in images" :key="i" :src="i" @click="product.mainImage = i" />
+        <img v-for="img in images" :key="img" :src="img" class="thumb" @click="mainImage = img" />
       </div>
+
+      <!-- main image -->
+      <div class="main-image">
+        <img :src="mainImage" />
+      </div>
+
     </div>
 
     <div class="right">
-      <h1>{{ product.productName }}</h1>
+
+      <h2>{{ product.productName }}</h2>
 
       <p class="price">{{ formatPrice(product.price) }}đ</p>
 
-      <!-- color -->
+      <h3>Màu sắc</h3>
+
       <div class="colors">
-        <span class="color" :style="{ background: product.colorCode }"></span>
-        {{ product.colorName }}
+        <button v-for="c in product.colors" :key="c.productColorID" class="color-btn"
+          :style="{ background: c.colorCode }" @click="changeColor(c)"></button>
       </div>
 
-      <!-- size -->
-      <div class="sizes">
-        <button class="size">F</button>
-      </div>
+      <button class="add-cart">
+        Thêm vào giỏ hàng
+      </button>
 
-      <!-- button -->
-      <div class="buttons">
-        <button class="cart" @click="addToCart">THÊM VÀO GIỎ</button>
-        <button class="buy">MUA NGAY</button>
-      </div>
-
-      <div class="info">
-        <h3>Ưu đãi</h3>
-        <p>Nhập mã MLBWELCOME giảm 10%</p>
-      </div>
     </div>
 
   </div>
 </template>
 
-<script>
-import productApi from "../api/productApi"
+<script setup>
 
-export default {
-  data() {
-    return {
-      product: null,
-      images: []
-    }
-  },
+import { ref, onMounted } from "vue"
+import { useRoute } from "vue-router"
+import axios from "axios"
 
-  methods: {
+const route = useRoute()
 
-    formatPrice(price) {
-      return new Intl.NumberFormat('vi-VN').format(price)
-    },
+const product = ref(null)
+const images = ref([])
+const mainImage = ref("")
+const selectedColor = ref(null)
 
-    addToCart() {
-      let cart = JSON.parse(localStorage.getItem("cart") || "[]")
 
-      let item = cart.find(x => x.productID === this.product.productID)
+onMounted(async () => {
 
-      if (item) item.qty++
-      else cart.push({ ...this.product, qty: 1 })
+  const productID = route.params.id
 
-      localStorage.setItem("cart", JSON.stringify(cart))
-      alert("Đã thêm vào giỏ hàng")
-    }
+  const res = await axios.get(
+    `http://localhost:8080/api/product/detail/${productID}`
+  )
 
-  },
+  product.value = res.data
 
-  mounted() {
-    const id = this.$route.params.id
+  selectedColor.value = product.value.colors[0]
 
-    productApi.getById(id).then(res => {
-      this.product = res.data
+  images.value = selectedColor.value.images
 
-      this.images = [
-        res.data.mainImage,
-        res.data.mainImage,
-        res.data.mainImage
-      ]
-    })
-  }
+  mainImage.value = images.value[0]
+
+})
+
+function changeColor(color) {
+
+  selectedColor.value = color
+
+  images.value = color.images
+
+  mainImage.value = images.value[0]
+
 }
+
+function formatPrice(price) {
+  return new Intl.NumberFormat("vi-VN").format(price)
+}
+
 </script>
 
 <style scoped>
 .product-detail {
   display: flex;
-  gap: 50px;
+  gap: 40px;
   padding: 40px;
 }
 
 .left {
-  width: 50%;
-}
-
-.main-img {
-  width: 100%;
-  border-radius: 10px;
+  display: flex;
+  gap: 20px;
 }
 
 .thumbs {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  margin-top: 10px;
 }
 
-.thumbs img {
+.thumb {
   width: 70px;
+  height: 70px;
+  object-fit: cover;
   cursor: pointer;
+  border: 1px solid #ddd;
+}
+
+.main-image img {
+  width: 400px;
 }
 
 .right {
-  width: 50%;
+  max-width: 400px;
 }
 
 .price {
-  font-size: 28px;
-  font-weight: bold;
-  margin: 20px 0;
+  color: red;
+  font-size: 22px;
+  margin: 15px 0;
 }
 
 .colors {
-  margin: 20px 0;
-}
-
-.color {
-  display: inline-block;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  margin-right: 10px;
-}
-
-.sizes {
-  margin: 20px 0;
-}
-
-.size {
-  padding: 10px 20px;
-  border: 1px solid black;
-  background: white;
-}
-
-.buttons {
   display: flex;
-  margin-top: 30px;
+  gap: 10px;
+  margin: 10px 0 20px;
 }
 
-.cart {
-  flex: 1;
+.color-btn {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  cursor: pointer;
+}
+
+.add-cart {
+  padding: 12px 25px;
   background: black;
   color: white;
-  padding: 15px;
   border: none;
+  cursor: pointer;
 }
 
-.buy {
-  flex: 1;
-  background: #c8102e;
-  color: white;
-  padding: 15px;
-  border: none;
+.add-cart:hover {
+  background: #333;
 }
 </style>
