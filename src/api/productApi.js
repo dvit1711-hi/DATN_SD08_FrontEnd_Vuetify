@@ -6,6 +6,9 @@ export default {
   getAll() {
     return axios.get(API)
   },
+  getAllCart() {
+    return axios.get(`${API}/card`)
+  },
 
   getById(id) {
     return axios.get(`${API}/${id}`)
@@ -19,7 +22,7 @@ export default {
     return axios.put(`${API}/${id}`, data)
   },
 
-  delete(id) {
-    return axios.delete(`${API}/${id}`)
-  },
+  // delete(id) {
+  //   return axios.delete(`${API}/${id}`)
+  // },
 }

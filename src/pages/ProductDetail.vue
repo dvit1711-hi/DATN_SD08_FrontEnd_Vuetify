@@ -42,7 +42,9 @@
       <button class="add-cart">
         Thêm vào giỏ hàng
       </button>
-
+      <div class="details__promotion2">
+        <h2>{{ product.productName }}</h2>
+      </div>
     </div>
 
   </div>
@@ -161,6 +163,15 @@ function formatPrice(price){
 
 .add-cart:hover{
   background:#333;
+}
+.details__promotion2 {
+    background-color: #fafafa;
+    border: 1px solid #dfdfdf;
+    padding: 12px 10px;
+    position: relative;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
 }
 
 </style>
