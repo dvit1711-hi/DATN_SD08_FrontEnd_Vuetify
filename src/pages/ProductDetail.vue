@@ -5,13 +5,7 @@
 
       <!-- thumbnails -->
       <div class="thumbs">
-        <img
-          v-for="img in images"
-          :key="img"
-          :src="img"
-          class="thumb"
-          @click="mainImage = img"
-        />
+        <img v-for="img in images" :key="img" :src="img" class="thumb" @click="mainImage = img" />
       </div>
 
       <!-- main image -->
@@ -30,13 +24,8 @@
       <h3>Màu sắc</h3>
 
       <div class="colors">
-        <button
-          v-for="c in product.colors"
-          :key="c.productColorID"
-          class="color-btn"
-          :style="{ background: c.colorCode }"
-          @click="changeColor(c)"
-        ></button>
+        <button v-for="c in product.colors" :key="c.productColorID" class="color-btn"
+          :style="{ background: c.colorCode }" @click="changeColor(c)"></button>
       </div>
 
       <button class="add-cart">
@@ -82,7 +71,7 @@ onMounted(async () => {
 
 })
 
-function changeColor(color){
+function changeColor(color) {
 
   selectedColor.value = color
 
@@ -92,77 +81,76 @@ function changeColor(color){
 
 }
 
-function formatPrice(price){
+function formatPrice(price) {
   return new Intl.NumberFormat("vi-VN").format(price)
 }
 
 </script>
 
 <style scoped>
-
-.product-detail{
-  display:flex;
-  gap:40px;
-  padding:40px;
+.product-detail {
+  display: flex;
+  gap: 40px;
+  padding: 40px;
 }
 
-.left{
-  display:flex;
-  gap:20px;
+.left {
+  display: flex;
+  gap: 20px;
 }
 
-.thumbs{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
+.thumbs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.thumb{
-  width:70px;
-  height:70px;
-  object-fit:cover;
-  cursor:pointer;
-  border:1px solid #ddd;
+.thumb {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 1px solid #ddd;
 }
 
-.main-image img{
-  width:400px;
+.main-image img {
+  width: 400px;
 }
 
-.right{
-  max-width:400px;
+.right {
+  max-width: 400px;
 }
 
-.price{
-  color:red;
-  font-size:22px;
-  margin:15px 0;
+.price {
+  color: red;
+  font-size: 22px;
+  margin: 15px 0;
 }
 
-.colors{
-  display:flex;
-  gap:10px;
-  margin:10px 0 20px;
+.colors {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 20px;
 }
 
-.color-btn{
-  width:35px;
-  height:35px;
-  border-radius:50%;
-  border:2px solid #ddd;
-  cursor:pointer;
+.color-btn {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  cursor: pointer;
 }
 
-.add-cart{
-  padding:12px 25px;
-  background:black;
-  color:white;
-  border:none;
-  cursor:pointer;
+.add-cart {
+  padding: 12px 25px;
+  background: black;
+  color: white;
+  border: none;
+  cursor: pointer;
 }
 
-.add-cart:hover{
-  background:#333;
+.add-cart:hover {
+  background: #333;
 }
 .details__promotion2 {
     background-color: #fafafa;

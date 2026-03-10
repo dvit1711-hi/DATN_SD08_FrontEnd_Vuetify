@@ -8,7 +8,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Index from '@/pages/index.vue'
 import Menu from '@/pages/menu.vue'
-
 import ProductList from '@/pages/ProductList.vue'
 import Footer from '@/layouts/components/Footer.vue'
 import ProductDetail from '@/pages/ProductDetail.vue'
@@ -21,12 +20,17 @@ const router = createRouter({
     {path: '/',  component: Index},
     {path: '/menu',  component: Menu},
     
-    {path: '/products',  component: ProductList},
+    {
+      path: '/list',  component: ProductList,
+    },
+    {
+      path: '/footer',
+      component: Footer,
+    },
     {path: '/products/:id',  component: ProductDetail},
     {path: '/products/list', component: AdminProduct},
     
     {path: '/footer',     component: Footer},
   ],
 })
-
 export default router
