@@ -4,14 +4,36 @@
       <!-- Sidebar -->
       <v-navigation-drawer v-model="drawer">
         <v-list density="compact" nav>
-          <v-list-item
-            v-for="item in items"
-            :key="item.title"
-            :to="item.to"
-            :prepend-icon="item.icon"
-            :title="item.title"
-            link
-          />
+          <template v-for="item in items" :key="item.title">
+            <!-- Item thường -->
+            <v-list-item
+              v-if="!item.children"
+              :to="item.to"
+              :prepend-icon="item.icon"
+              :title="item.title"
+              link
+            />
+
+            <!-- Item có menu con -->
+            <v-list-group v-else value="Admin">
+              <template #activator="{ props }">
+                <v-list-item
+                  v-bind="props"
+                  :title="item.title"
+                  prepend-icon="mdi-shield-account"
+                />
+              </template>
+
+              <v-list-item
+                v-for="child in item.children"
+                :key="child.title"
+                :to="child.to"
+                :prepend-icon="child.icon"
+                :title="child.title"
+                link
+              />
+            </v-list-group>
+          </template>
         </v-list>
       </v-navigation-drawer>
 
@@ -61,38 +83,37 @@ const items = [
   {
     title: 'Home',
     icon: 'mdi-home',
-    to: '/'
+    to: '/porducts',
   },
   {
     title: 'Products',
     icon: 'mdi-hanger',
-    to: '/products'
+    to: '/porducts',
   },
   {
     title: 'Admin',
-    children:[
+    children: [
       {
-      title: 'Admin Products',
-      icon: 'mdi-database',
-      to: '/products/list',
+        title: 'Admin Products',
+        icon: 'mdi-database',
+        to: '/products/list',
       },
       {
-      title: 'Admin Account',
-      icon: 'mdi-database',
-      to: '/accountList',
+        title: 'Admin Account',
+        icon: 'mdi-account-cog',
+        to: '/accountList',
       },
-    ]
-
+    ],
   },
   {
     title: 'Login',
     icon: 'mdi-login',
-    to: '/login'
+    to: '/login',
   },
   {
     title: 'Register',
     icon: 'mdi-account-plus',
-    to: '/register'
-  }
+    to: '/register',
+  },
 ]
 </script>

@@ -1,9 +1,13 @@
 <template>
   <v-container>
-    <h2>Danh sách sản phẩm</h2>
-
     <v-row>
-      <v-col v-for="p in products" :key="p.productID" cols="12" md="4" lg="3">
+      <v-col
+        v-for="p in products"
+        :key="p.productID"
+        cols="12"
+        sm="6"
+        md="4"
+      >
         <v-sheet class="pa-4" color="grey-lighten-4">
           <v-sheet elevation="3" class="text-center pa-4">
             <router-link :to="'/products/' + p.productID">
@@ -15,18 +19,19 @@
             </router-link>
 
             <p class="text-red">{{ formatPrice(p.price) }}đ</p>
+
             <div class="colors">
-              <div class="colors">
-                <button
-                  v-for="c in p.colors"
-                  :key="c.colorName"
-                  class="color-btn"
-                  :style="{ background: c.colorCode }"
-                ></button>
-              </div>
+              <button
+                v-for="c in p.colors"
+                :key="c.colorName"
+                class="color-btn"
+                :style="{ background: c.colorCode }"
+              ></button>
             </div>
 
-            <v-btn color="primary" @click="addToCart(p)"> Thêm vào giỏ </v-btn>
+            <v-btn color="primary" @click="addToCart(p)">
+              Thêm vào giỏ
+            </v-btn>
           </v-sheet>
         </v-sheet>
       </v-col>
@@ -53,16 +58,17 @@ function addToCart(product) {
   alert("Đã thêm vào giỏ: " + product.productName);
 }
 </script>
+
 <style scoped>
-.colors{
-  margin-top:10px;
+.colors {
+  margin-top: 10px;
 }
 
-.color-btn{
-  width:18px;
-  height:18px;
-  border-radius:50%;
-  border:1px solid #ccc;
-  margin:3px;
+.color-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  margin: 3px;
 }
 </style>
