@@ -29,6 +29,12 @@ export default {
     return axios.put(`${API}/update-full`, data, {
       withCredentials: true   // BẮT BUỘC
     })
+  },
+
+  changePassword(data) {
+    return axios.put(`${API}/change-password`, data, {
+      withCredentials: true
+    })
   }
 
 }

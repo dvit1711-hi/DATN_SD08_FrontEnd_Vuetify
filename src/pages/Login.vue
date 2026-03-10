@@ -21,7 +21,7 @@
                             <VCol cols="12">
                                 <VTextField v-model="form.password" label="Password"
                                     :type="isPasswordVisible ? 'text' : 'password'" placeholder="••••••••"
-                                    :append-inner-icon="isPasswordVisible ? 'bx-hide' : 'bx-show'"
+                                    :append-inner-icon="isPasswordVisible ? 'mdi-eye-off' : 'mdi-eye'"
                                     @click:append-inner="isPasswordVisible = !isPasswordVisible" />
 
                                 <div class="d-flex align-center justify-space-between flex-wrap my-6">

@@ -8,7 +8,7 @@
                 </VCardItem>
 
                 <VCardText>
-                    <p>Create your account to continue</p>
+                    <p>Tạo tài khoản để tiếp tục</p>
                 </VCardText>
 
                 <VCardText>
@@ -23,15 +23,15 @@
 
                             <!-- Email -->
                             <VCol cols="12">
-                                <VTextField v-model="form.email" label="Email" type="email" required
-                                    placeholder="email@example.com" />
+                                <VTextField v-model="form.email" label="Email" type="email"
+                                    placeholder="email@example.com" required />
                             </VCol>
 
                             <!-- Password -->
                             <VCol cols="12">
                                 <VTextField v-model="form.password" label="Password"
                                     :type="visible1 ? 'text' : 'password'"
-                                    :append-inner-icon="visible1 ? 'bx-hide' : 'bx-show'"
+                                    :append-inner-icon="visible1 ? 'mdi-eye-off' : 'mdi-eye'"
                                     @click:append-inner="visible1 = !visible1" required />
                             </VCol>
 
@@ -39,7 +39,7 @@
                             <VCol cols="12">
                                 <VTextField v-model="form.confirmPassword" label="Confirm Password"
                                     :type="visible2 ? 'text' : 'password'"
-                                    :append-inner-icon="visible2 ? 'bx-hide' : 'bx-show'"
+                                    :append-inner-icon="visible2 ? 'mdi-eye-off' : 'mdi-eye'"
                                     @click:append-inner="visible2 = !visible2" :error="passwordError"
                                     :error-messages="passwordError ? 'Passwords do not match' : ''" required />
                             </VCol>
@@ -47,7 +47,7 @@
                             <!-- Privacy -->
                             <VCol cols="12" class="d-flex align-center">
                                 <VCheckbox v-model="form.privacyPolicies" />
-                                <span>I agree to the <b>privacy policy & terms</b></span>
+                                <span>Tôi đồng ý với <b>chính sách & điều khoản</b></span>
                             </VCol>
 
                             <!-- Button -->
@@ -59,7 +59,7 @@
 
                             <!-- Link Login -->
                             <VCol cols="12" class="text-center">
-                                Bạn đã có tài khoản!
+                                Bạn đã có tài khoản?
                                 <RouterLink to="/login" class="text-primary">Đăng nhập</RouterLink>
                             </VCol>
 
@@ -67,6 +67,7 @@
                     </VForm>
                 </VCardText>
             </VCard>
+
         </div>
     </div>
 </template>

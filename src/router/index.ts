@@ -13,6 +13,9 @@ import Footer from '@/layouts/components/Footer.vue'
 import ProductDetail from '@/pages/ProductDetail.vue'
 import AdminProduct from '@/pages/admin/AdminProduct.vue'
 import AccountSecurity from '@/pages/AccountSecurity.vue'
+import AccountSetting from '@/pages/accountSetting.vue'
+import Login from '@/pages/Login.vue'
+import Register from '@/pages/Register.vue'
 
 
 const router = createRouter({
@@ -28,7 +31,9 @@ const router = createRouter({
     {path: '/products/list', component: AdminProduct},
 
     {path: '/accountSecurity', component: AccountSecurity},
-    
+    {path: '/account', component: AccountSetting},
+    {path: '/login', component: Login},
+    {path: '/register', component: Register},
     {path: '/footer',     component: Footer},
   ],
 })

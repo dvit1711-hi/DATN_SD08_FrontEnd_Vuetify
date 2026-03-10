@@ -1,17 +1,17 @@
 <template>
     <VRow>
-        <!-- SECTION: Change Password -->
         <VCol cols="12">
-            <VCard title="Change Password">
+            <VCard title="Đổi mật khẩu">
                 <VForm>
                     <VCardText>
+
                         <!-- 👉 Current Password -->
                         <VRow>
                             <VCol cols="12" md="6">
                                 <VTextField v-model="currentPassword"
                                     :type="isCurrentPasswordVisible ? 'text' : 'password'"
-                                    :append-inner-icon="isCurrentPasswordVisible ? 'bx-hide' : 'bx-show'"
-                                    label="Current Password" placeholder="············"
+                                    :append-inner-icon="isCurrentPasswordVisible ? 'mdi-eye-off' : 'mdi-eye'"
+                                    label="Mật khẩu hiện tại" placeholder="············"
                                     @click:append-inner="isCurrentPasswordVisible = !isCurrentPasswordVisible" />
                             </VCol>
                         </VRow>
@@ -20,30 +20,29 @@
                         <VRow>
                             <VCol cols="12" md="6">
                                 <VTextField v-model="newPassword" :type="isNewPasswordVisible ? 'text' : 'password'"
-                                    :append-inner-icon="isNewPasswordVisible ? 'bx-hide' : 'bx-show'"
-                                    label="New Password" autocomplete="on" placeholder="············"
+                                    :append-inner-icon="isNewPasswordVisible ? 'mdi-eye-off' : 'mdi-eye'"
+                                    label="Mật khẩu mới" autocomplete="on" placeholder="············"
                                     @click:append-inner="isNewPasswordVisible = !isNewPasswordVisible" />
                             </VCol>
 
                             <VCol cols="12" md="6">
                                 <VTextField v-model="confirmPassword"
                                     :type="isConfirmPasswordVisible ? 'text' : 'password'"
-                                    :append-inner-icon="isConfirmPasswordVisible ? 'bx-hide' : 'bx-show'"
-                                    label="Confirm New Password" placeholder="············"
+                                    :append-inner-icon="isConfirmPasswordVisible ? 'mdi-eye-off' : 'mdi-eye'"
+                                    label="Xác nhận mật khẩu mới" placeholder="············"
                                     @click:append-inner="isConfirmPasswordVisible = !isConfirmPasswordVisible" />
                             </VCol>
                         </VRow>
+
                     </VCardText>
 
                     <!-- 👉 Password Requirements -->
                     <VCardText>
-                        <p class="text-base font-weight-medium mt-2">Password Requirements:</p>
+                        <p class="text-base font-weight-medium mt-2">Yêu cầu mật khẩu:</p>
 
                         <ul class="d-flex flex-column gap-y-3">
-                            <li v-for="item in passwordRequirements" :key="item" class="d-flex">
-                                <div>
-                                    <VIcon size="7" icon="bxs-circle" class="me-3" />
-                                </div>
+                            <li v-for="item in passwordRequirements" :key="item" class="d-flex align-center">
+                                <VIcon size="14" icon="mdi-circle-small" class="me-3" />
                                 <span class="font-weight-medium">{{ item }}</span>
                             </li>
                         </ul>
@@ -51,16 +50,16 @@
 
                     <!-- 👉 Action Buttons -->
                     <VCardText class="d-flex flex-wrap gap-4">
-                        <VBtn @click="handleChangePassword">Save changes</VBtn>
-
-                        <VBtn type="reset" color="secondary" variant="tonal">Reset</VBtn>
+                        <VBtn @click="handleChangePassword">Lưu thay đổi</VBtn>
+                        <VBtn type="reset" color="secondary" variant="tonal">Làm mới</VBtn>
                     </VCardText>
+
                 </VForm>
             </VCard>
         </VCol>
     </VRow>
 
-    <!-- 👉 Snackbar thông báo -->
+    <!-- 👉 Snackbar -->
     <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
         {{ snackbar.message }}
     </VSnackbar>
@@ -96,17 +95,25 @@ function showSnackbar(message, color = 'success') {
 
 // Password requirement list
 const passwordRequirements = [
-    'At least 8 characters',
-    'Contains uppercase and lowercase letters',
-    'Contains at least one number',
+    'Ít nhất 8 ký tự',
+    'Bao gồm chữ hoa và chữ thường',
+    'Có ít nhất một số',
 ]
 
 // Validate password before send
 function validatePassword() {
-    if (!currentPassword.value) return 'Please enter your current password.'
-    if (!newPassword.value) return 'Please enter a new password.'
-    if (newPassword.value.length < 8) return 'Password must be at least 8 characters.'
-    if (newPassword.value !== confirmPassword.value) return 'Confirm password does not match.'
+    if (!currentPassword.value)
+        return 'Vui lòng nhập mật khẩu hiện tại.'
+
+    if (!newPassword.value)
+        return 'Vui lòng nhập mật khẩu mới.'
+
+    if (newPassword.value.length < 8)
+        return 'Mật khẩu phải có ít nhất 8 ký tự.'
+
+    if (newPassword.value !== confirmPassword.value)
+        return 'Xác nhận mật khẩu không khớp.'
+
     return null
 }
 
@@ -125,14 +132,14 @@ const handleChangePassword = async () => {
             newPassword: newPassword.value,
         })
 
-        showSnackbar('Password changed successfully!', 'success')
+        showSnackbar('Đổi mật khẩu thành công!', 'success')
 
         // Reset form
         currentPassword.value = ''
         newPassword.value = ''
         confirmPassword.value = ''
     } catch (err) {
-        showSnackbar(err?.response?.data?.message || 'Failed to change password.', 'error')
+        showSnackbar(err?.response?.data?.message || 'Đổi mật khẩu thất bại.', 'error')
     }
 }
 </script>

@@ -1,7 +1,6 @@
 <template>
     <VRow>
         <VCard title="Thông tin tài khoản">
-
             <!-- Avatar -->
             <VCardText class="d-flex">
                 <VAvatar rounded="lg" size="100" class="me-6" :image="getImage(account.images)" />
