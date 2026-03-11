@@ -72,10 +72,12 @@
       </v-main>
     </v-layout>
   </v-app>
+  <Footer></Footer>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import Footer from './layouts/components/Footer.vue';
 
 const drawer = ref(true)
 
@@ -83,12 +85,12 @@ const items = [
   {
     title: 'Home',
     icon: 'mdi-home',
-    to: '/porducts',
+    to: '/',
   },
   {
     title: 'Products',
     icon: 'mdi-hanger',
-    to: '/porducts',
+    to: '/',
   },
   {
     title: 'Admin',

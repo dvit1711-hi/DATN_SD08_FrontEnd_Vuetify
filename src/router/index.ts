@@ -17,19 +17,22 @@ import AccountSetting from '@/pages/accountSetting.vue'
 import Login from '@/pages/Login.vue'
 import Register from '@/pages/Register.vue'
 import AccountList from '@/pages/admin/AccountList.vue'
+import AdminProductDetail from '@/pages/admin/AdminProductDetail.vue'
 
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    {path: '/',  component: Index},
+    // {path: '/',  component: Index},
     {path: '/menu',  component: Menu},
     
-    {path: '/porducts',  component: ProductList,},
+    {path: '/',  component: ProductList,},
     {path: '/footer',  component: Footer,},
     
     {path: '/products/:id',  component: ProductDetail},
     {path: '/products/list', component: AdminProduct},
+    {path: '/products/list/:id', name: 'AdminProductDetail', component: AdminProductDetail, props: true },
+
     
     {path: '/accountSecurity', component: AccountSecurity},
     {path: '/account', component: AccountSetting},
