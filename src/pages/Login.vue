@@ -56,7 +56,6 @@ import { useRouter } from "vue-router"
 
 const router = useRouter()
 
-// Form data
 const form = ref({
     username: "",
     password: "",
@@ -65,7 +64,6 @@ const form = ref({
 
 const isPasswordVisible = ref(false)
 
-// LOGIN FUNCTION
 const login = async () => {
     try {
         const res = await axios.post("http://localhost:8080/auth/login", {
@@ -73,8 +71,15 @@ const login = async () => {
             password: form.value.password,
         })
 
+        // Lưu token + accountId
+        localStorage.setItem("token", res.data.token)
+        localStorage.setItem("accountId", res.data.accountId)
+        localStorage.setItem("username", res.data.username)
+
+        window.dispatchEvent(new Event('auth-changed'))
+
         alert("Đăng nhập thành công!")
-        router.push("/")
+        router.push("/account") // hoặc "/"
     } catch (error) {
         console.error(error)
         alert("Sai tài khoản hoặc mật khẩu!")

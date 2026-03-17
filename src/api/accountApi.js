@@ -1,40 +1,55 @@
 import axios from 'axios'
 
-const API = 'http://localhost:8080/api/account'
+const api = axios.create({
+  baseURL: 'http://localhost:8080',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+})
+
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 export default {
   getAll() {
-    return axios.get(API)
+    return api.get('/api/account')
   },
 
-  // Sửa đúng API backend
   getById(id) {
-    return axios.get(`${API}/getById/${id}`)
+    return api.get(`/api/account/getById/${id}`)
+  },
+
+  getStatuses() {
+    return api.get('/api/status')
+  },
+
+  updateStatus(id, data) {
+    return api.put(`/api/account/${id}/status`, data)
   },
 
   create(data) {
-    return axios.post(API, data)
+    return api.post('/api/account', data)
   },
 
   update(id, data) {
-    return axios.put(`${API}/${id}`, data)
+    return api.put(`/api/account/${id}`, data)
   },
 
   delete(id) {
-    return axios.delete(`${API}/${id}`)
+    return api.delete(`/api/account/${id}`)
   },
 
-  // API update-full
   updateAccountFull(data) {
-    return axios.put(`${API}/update-full`, data, {
-      withCredentials: true   // BẮT BUỘC
-    })
+    return api.put('/api/account/update-full', data)
   },
 
   changePassword(data) {
-    return axios.put(`${API}/change-password`, data, {
-      withCredentials: true
-    })
-  }
-
+    return api.put('/api/account/change-password', data)
+  },
 }
