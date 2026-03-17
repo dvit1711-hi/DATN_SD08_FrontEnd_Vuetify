@@ -50,10 +50,12 @@
       </v-main>
     </v-layout>
   </v-app>
+  <Footer></Footer>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import Footer from './layouts/components/Footer.vue';
 
 const drawer = ref(true)
 
