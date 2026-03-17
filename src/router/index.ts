@@ -8,10 +8,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Index from '@/pages/index.vue'
 import Menu from '@/pages/menu.vue'
+import Login from '@/pages/Login.vue'
 
 import ProductList from '@/pages/ProductList.vue'
 import Footer from '@/layouts/components/Footer.vue'
 import ProductDetail from '@/pages/ProductDetail.vue'
+
 
 
 const router = createRouter({
@@ -19,6 +21,7 @@ const router = createRouter({
   routes: [
     {path: '/',  component: Index},
     {path: '/menu',  component: Menu},
+    {path: '/login', component: Login},
     
     {path: '/products',  component: ProductList},
     {path: '/products/:id',  component: ProductDetail},
