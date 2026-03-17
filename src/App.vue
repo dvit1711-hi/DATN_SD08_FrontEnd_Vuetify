@@ -6,32 +6,16 @@
         <v-list density="compact" nav>
           <template v-for="item in items" :key="item.title">
             <!-- Item thường -->
-            <v-list-item
-              v-if="!item.children"
-              :to="item.to"
-              :prepend-icon="item.icon"
-              :title="item.title"
-              link
-            />
+            <v-list-item v-if="!item.children" :to="item.to" :prepend-icon="item.icon" :title="item.title" link />
 
             <!-- Item có menu con -->
             <v-list-group v-else value="Admin">
               <template #activator="{ props }">
-                <v-list-item
-                  v-bind="props"
-                  :title="item.title"
-                  prepend-icon="mdi-shield-account"
-                />
+                <v-list-item v-bind="props" :title="item.title" prepend-icon="mdi-shield-account" />
               </template>
 
-              <v-list-item
-                v-for="child in item.children"
-                :key="child.title"
-                :to="child.to"
-                :prepend-icon="child.icon"
-                :title="child.title"
-                link
-              />
+              <v-list-item v-for="child in item.children" :key="child.title" :to="child.to" :prepend-icon="child.icon"
+                :title="child.title" link />
             </v-list-group>
           </template>
         </v-list>
@@ -39,19 +23,13 @@
 
       <!-- Header -->
       <v-app-bar flat border="b">
-        <v-app-bar-nav-icon
-          v-if="$vuetify.display.smAndDown"
-          @click="drawer = !drawer"
-        />
+        <v-app-bar-nav-icon v-if="$vuetify.display.smAndDown" @click="drawer = !drawer" />
 
         <v-app-bar-title>Baseball Cap Shop</v-app-bar-title>
 
         <template #append>
           <v-btn icon>
-            <v-avatar
-              image="https://cdn.vuetifyjs.com/images/john.png"
-              size="32"
-            />
+            <v-avatar image="https://cdn.vuetifyjs.com/images/john.png" size="32" />
 
             <v-menu activator="parent">
               <v-list density="compact">
@@ -83,12 +61,12 @@ const items = [
   {
     title: 'Home',
     icon: 'mdi-home',
-    to: '/porducts',
+    to: '/',
   },
   {
     title: 'Products',
     icon: 'mdi-hanger',
-    to: '/porducts',
+    to: '/',
   },
   {
     title: 'Admin',
