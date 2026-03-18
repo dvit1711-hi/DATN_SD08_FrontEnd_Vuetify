@@ -1,5 +1,5 @@
 <template>
-  <v-app>
+    <v-app>
     <v-layout>
       <!-- Sidebar -->
       <v-navigation-drawer v-model="drawer">
@@ -60,15 +60,13 @@
       </v-main>
     </v-layout>
   </v-app>
-
-  <Footer />
+  <Footer></Footer>
 </template>
-
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import Footer from './layouts/components/Footer.vue'
 import accountApi from '@/api/accountApi'
+import Footer from './layouts/components/Footer.vue'
 
 const router = useRouter()
 const drawer = ref(true)
