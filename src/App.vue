@@ -20,10 +20,12 @@
       </v-navigation-drawer>
 
       <!-- Header -->
-      <v-app-bar flat border="b">
+      <v-app-bar flat color="background" border="b" class="navbar">
         <v-app-bar-nav-icon v-if="$vuetify.display.smAndDown" @click="drawer = !drawer" />
 
-        <v-app-bar-title>Baseball Cap Shop</v-app-bar-title>
+        <v-app-bar-title class="font-weight-bold text-h6">
+          <span class="text-primary">Baseball Cap</span> Shop
+        </v-app-bar-title>
 
         <template #append>
           <!-- Nếu đã đăng nhập -->
@@ -33,21 +35,22 @@
 
               <v-menu activator="parent">
                 <v-list density="compact">
-                  <v-list-item :title="currentUser.username || 'Account'" subtitle="Đang đăng nhập" />
+                  <v-list-item :title="currentUser.username || 'Tài khoản'" subtitle="Đang đăng nhập" />
                   <v-divider />
 
-                  <v-list-item title="Account" to="/account" />
-                  <v-list-item title="Settings" to="/accountSecurity" />
-                  <v-list-item title="Logout" @click="logout" />
+                  <v-list-item title="Hồ sơ" to="/account" />
+                  <v-list-item title="Bảo mật" to="/accountSecurity" />
+                  <v-divider />
+                  <v-list-item title="Đăng xuất" @click="logout" />
                 </v-list>
               </v-menu>
             </v-btn>
           </div>
 
           <!-- Nếu chưa đăng nhập -->
-          <div v-else class="d-flex ga-2 me-2">
-            <v-btn variant="text" to="/login">Login</v-btn>
-            <v-btn color="primary" to="/register">Register</v-btn>
+          <div v-else class="d-flex gap-2 me-2">
+            <v-btn variant="text" to="/login">Đăng nhập</v-btn>
+            <v-btn color="primary" to="/register">Đăng ký</v-btn>
           </div>
         </template>
       </v-app-bar>
@@ -102,6 +105,11 @@ const items = [
         title: 'Admin Account',
         icon: 'mdi-account-cog',
         to: '/accountList',
+      },
+      {
+        title: 'Discount Manager',
+        icon: 'mdi-account-cog',
+        to: '/discount',
       },
     ],
   },
@@ -181,3 +189,25 @@ onBeforeUnmount(() => {
   window.removeEventListener('storage', syncAuthState)
 })
 </script>
+
+<style scoped>
+:deep(.background) {
+  background-color: #F5DEB3 !important;
+}
+
+:deep(.text-primary) {
+  color: #CDBA96 !important;
+}
+
+.navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+:deep(.v-navigation-drawer) {
+  border-right: 1px solid rgba(205, 186, 150, 0.1);
+}
+
+:deep(.v-app-bar) {
+  border-bottom: 1px solid rgba(205, 186, 150, 0.1);
+}
+</style>

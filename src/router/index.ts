@@ -7,18 +7,19 @@
 // Composables
 import { createRouter, createWebHistory } from 'vue-router'
 import Menu from '@/pages/menu.vue'
+import Login from '@/pages/Login.vue'
 import ProductList from '@/pages/ProductList.vue'
 import Footer from '@/layouts/components/Footer.vue'
 import ProductDetail from '@/pages/ProductDetail.vue'
 import AdminProduct from '@/pages/admin/AdminProduct.vue'
 import AccountSecurity from '@/pages/AccountSecurity.vue'
 import AccountSetting from '@/pages/accountSetting.vue'
-import Login from '@/pages/Login.vue'
 import Register from '@/pages/Register.vue'
 import AccountList from '@/pages/admin/AccountList.vue'
 import AdminProductDetail from '@/pages/admin/AdminProductDetail.vue'
 import AccountEdit from '@/pages/admin/accountEdit.vue'
 import AccountDetail from '@/pages/admin/accountDetail.vue'
+import DiscountManager from '@/pages/admin/discountManager.vue'
 
 
 const router = createRouter({
@@ -26,6 +27,8 @@ const router = createRouter({
   routes: [
     // {path: '/',  component: Index},
     {path: '/menu',  component: Menu},
+    {path: '/login', component: Login},
+    {path: '/discount',  component: DiscountManager},
     
     {path: '/',  component: ProductList,},
     {path: '/footer',  component: Footer,},

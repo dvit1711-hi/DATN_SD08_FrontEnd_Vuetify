@@ -8,3 +8,115 @@
 // @use 'vuetify/settings' with (
 //   $color-pack: false
 // );
+
+/* Custom Color Palette */
+:root {
+  --color-primary: #CDBA96;        // Burlywood
+  --color-secondary: #FFE7BA;      // Light Wheat
+  --color-accent: #EED8AE;        // Tan
+  --color-background: #F5DEB3;    // Wheat
+  --color-error: #C41E3A;
+  --color-warning: #FB8500;
+  --color-info: #6C63FF;
+  --color-success: #06A77D;
+}
+
+/* Global Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary) #f1f1f1;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #b8a680;
+}
+
+/* Text Selection */
+::selection {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+/* Body Background */
+body {
+  background-color: #fafafa;
+}
+
+/* Link Styles */
+a {
+  color: var(--color-primary);
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #b8a680;
+  }
+}
+
+/* Card Border Radius */
+.rounded-lg {
+  border-radius: 8px !important;
+}
+
+/* Utility Classes */
+.text-primary {
+  color: var(--color-primary) !important;
+}
+
+.text-secondary {
+  color: var(--color-secondary) !important;
+}
+
+.bg-background {
+  background-color: var(--color-background) !important;
+}
+
+/* Focus Styles */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Smooth Transitions */
+.transition-all {
+  transition: all 0.3s ease;
+}
+
+/* Button Improvements */
+button, [role="button"] {
+  transition: all 0.2s ease;
+}
+
+/* Table Hover Effects */
+:deep(.v-table tbody tr) {
+  transition: background-color 0.2s ease;
+}
+
+/* Dialog/Card Shadows */
+:deep(.v-card),
+:deep(.v-dialog) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+:deep(.v-card:hover),
+:deep(.v-card.elevation-8) {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
