@@ -17,6 +17,8 @@ import AccountSetting from '@/pages/accountSetting.vue'
 import Register from '@/pages/Register.vue'
 import AccountList from '@/pages/admin/AccountList.vue'
 import AdminProductDetail from '@/pages/admin/AdminProductDetail.vue'
+import AccountEdit from '@/pages/admin/accountEdit.vue'
+import AccountDetail from '@/pages/admin/accountDetail.vue'
 
 
 
@@ -34,7 +36,8 @@ const router = createRouter({
     {path: '/products/list', component: AdminProduct},
     {path: '/products/list/:id', name: 'AdminProductDetail', component: AdminProductDetail, props: true },
 
-    
+    {path: "/accountList/detail/:id", component: AccountDetail},
+    {path: "/accountList/status/:id", component: AccountEdit},
     {path: '/accountSecurity', component: AccountSecurity},
     {path: '/account', component: AccountSetting},
     {path: '/login', component: Login},
