@@ -15,8 +15,8 @@
       :items="colors"
       item-title="colorName"
       item-value="colorId"
-      label="Chọn màu"
-      placeholder="Chọn màu"
+      label="Select color"
+      placeholder="Select color"
       variant="outlined"
       density="comfortable"
       hide-details="auto"
@@ -28,8 +28,8 @@
     <v-text-field
       v-model="newColor.stockQuantity"
       type="number"
-      label="Số lượng"
-      placeholder="Nhập số lượng"
+      label="Stock quantity"
+      placeholder="Stock quantity"
       variant="outlined"
       density="comfortable"
       hide-details="auto"
@@ -45,7 +45,7 @@
       class="text-none"
       @click="addProductColor"
     >
-      Thêm màu
+      Add color
     </v-btn>
   </v-col>
 </v-row>
@@ -65,6 +65,7 @@
           ></div>
           <span class="color-name">{{ color.colorName }}</span>
         </div>
+        <p class="stock-text">Stock quantity: {{ color.stockQuantity }}</p>
         <p>Images:</p>
 
         <!-- Hiển thị ảnh hiện có -->
@@ -305,5 +306,11 @@ export default {
 
 .color-select {
   margin-top: 4px;
+}
+.stock-text {
+  margin: 6px 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
 }
 </style>
