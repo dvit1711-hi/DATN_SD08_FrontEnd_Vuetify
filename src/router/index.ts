@@ -19,7 +19,7 @@ import AccountList from '@/pages/admin/AccountList.vue'
 import AdminProductDetail from '@/pages/admin/AdminProductDetail.vue'
 import AccountEdit from '@/pages/admin/accountEdit.vue'
 import AccountDetail from '@/pages/admin/accountDetail.vue'
-
+import DiscountManager from '@/pages/admin/discountManager.vue'
 
 
 const router = createRouter({
@@ -28,6 +28,7 @@ const router = createRouter({
     // {path: '/',  component: Index},
     {path: '/menu',  component: Menu},
     {path: '/login', component: Login},
+    {path: '/discount',  component: DiscountManager},
     
     {path: '/',  component: ProductList,},
     {path: '/footer',  component: Footer,},

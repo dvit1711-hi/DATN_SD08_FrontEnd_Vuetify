@@ -1,5 +1,12 @@
 <template>
-  <v-container>
+  <v-container class="py-8" fluid>
+    <!-- Header Section -->
+    <div class="mb-8">
+      <h1 class="text-h4 font-weight-bold mb-2">Danh sách sản phẩm</h1>
+      <p class="text-subtitle-1 text-grey">Khám phá bộ sưu tập các sản phẩm chất lượng cao</p>
+    </div>
+
+    <!-- Products Grid -->
     <v-row>
       <v-col
         v-for="p in products"
@@ -7,35 +14,79 @@
         cols="12"
         sm="6"
         md="4"
+        lg="3"
+        class="d-flex"
       >
-        <v-sheet class="pa-4" color="grey-lighten-4">
-          <v-sheet elevation="3" class="text-center pa-4">
-            <router-link :to="'/products/' + p.productID">
-              <img
-                :src="p.mainImage"
-                style="width: 100%; height: 200px; object-fit: cover"
-              />
-              <h3>{{ p.productName }}</h3>
-            </router-link>
+        <v-card
+          class="w-100 d-flex flex-column product-card"
+          :to="`/products/${p.productID}`"
+          variant="elevated"
+        >
+          <!-- Product Image -->
+          <v-img
+            :src="p.mainImage"
+            :alt="p.productName"
+            height="240"
+            cover
+            class="product-image"
+          />
 
-            <p class="text-red">{{ formatPrice(p.price) }}đ</p>
+          <!-- Card Content -->
+          <v-card-text class="pa-4 flex-grow-1 d-flex flex-column">
+            <h3 class="text-subtitle-1 font-weight-bold mb-1 line-clamp-2">
+              {{ p.productName }}
+            </h3>
+            <p class="text-caption text-grey mb-3">
+              {{ p.description?.substring(0, 50) }}...
+            </p>
 
-            <div class="colors">
-              <button
-                v-for="c in p.colors"
-                :key="c.colorName"
-                class="color-btn"
-                :style="{ background: c.colorCode }"
-              ></button>
+            <!-- Colors -->
+            <div class="mb-3 flex-grow-1">
+              <div class="text-caption text-grey mb-2">Màu sắc:</div>
+              <div class="d-flex gap-2">
+                <button
+                  v-for="c in p.colors"
+                  :key="c.colorName"
+                  class="color-btn"
+                  :style="{ background: c.colorCode }"
+                  :title="c.colorName"
+                />
+              </div>
             </div>
 
-            <v-btn color="primary" @click="addToCart(p)">
-              Thêm vào giỏ
+            <!-- Price -->
+            <div class="mb-4">
+              <span class="text-h6 font-weight-bold text-primary">
+                {{ formatPrice(p.price) }}đ
+              </span>
+            </div>
+          </v-card-text>
+
+          <!-- Actions -->
+          <v-divider />
+          <v-card-actions class="pa-3">
+            <v-btn
+              color="primary"
+              size="small"
+              variant="flat"
+              block
+              @click.prevent="addToCart(p)"
+            >
+              <v-icon left>mdi-shopping-cart</v-icon>
+              Thêm giỏ
             </v-btn>
-          </v-sheet>
-        </v-sheet>
+          </v-card-actions>
+        </v-card>
       </v-col>
     </v-row>
+
+    <!-- Empty State -->
+    <v-empty-state
+      v-if="products.length === 0"
+      title="Không có sản phẩm"
+      text="Vui lòng quay lại sau"
+      icon="mdi-inbox"
+    />
   </v-container>
 </template>
 
@@ -46,8 +97,12 @@ import productApi from "@/api/productApi";
 const products = ref([]);
 
 onMounted(async () => {
-  const res = await productApi.getAllCart();
-  products.value = res.data;
+  try {
+    const res = await productApi.getAllCart();
+    products.value = res.data || [];
+  } catch (error) {
+    console.error("Lỗi tải sản phẩm:", error);
+  }
 });
 
 const formatPrice = (price) => {
@@ -60,15 +115,44 @@ function addToCart(product) {
 </script>
 
 <style scoped>
-.colors {
-  margin-top: 10px;
+.product-card {
+  transition: all 0.3s ease;
+  border: 1px solid rgba(205, 186, 150, 0.1);
+  border-radius: 12px;
+}
+
+.product-card:hover {
+  box-shadow: 0 8px 24px rgba(205, 186, 150, 0.2);
+  transform: translateY(-4px);
+}
+
+.product-image {
+  border-radius: 12px 12px 0 0;
 }
 
 .color-btn {
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  border: 1px solid #ccc;
-  margin: 3px;
+  border: 2px solid rgba(205, 186, 150, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.color-btn:hover {
+  border-color: #CDBA96;
+  box-shadow: 0 0 8px rgba(205, 186, 150, 0.4);
+  transform: scale(1.1);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+:deep(.w-100) {
+  width: 100%;
 }
 </style>
