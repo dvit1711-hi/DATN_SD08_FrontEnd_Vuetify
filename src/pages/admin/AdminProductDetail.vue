@@ -9,34 +9,46 @@
       <h3>Add Product Color</h3>
 
       <v-row dense align="center" class="mb-2">
-        <!-- Chọn màu -->
-        <v-col cols="6">
-          <select v-model="newColor.colorId">
-            <option disabled value="">Select Color</option>
-            <option v-for="c in colors" :key="c.colorID" :value="c.colorID">
-              {{ c.colorName }}
-            </option>
-          </select>
-        </v-col>
+  <v-col cols="12" md="6">
+    <v-select
+      v-model="newColor.colorId"
+      :items="colors"
+      item-title="colorName"
+      item-value="colorId"
+      label="Chọn màu"
+      placeholder="Chọn màu"
+      variant="outlined"
+      density="comfortable"
+      hide-details="auto"
+      class="input-field"
+    />
+  </v-col>
 
-        <!-- Nhập stock -->
-        <v-col cols="3">
-          <v-text-field
-            type="number"
-            v-model="newColor.stockQuantity"
-            label="Stock Quantity"
-            dense
-            outlined
-          ></v-text-field>
-        </v-col>
+  <v-col cols="12" md="3">
+    <v-text-field
+      v-model="newColor.stockQuantity"
+      type="number"
+      label="Số lượng"
+      placeholder="Nhập số lượng"
+      variant="outlined"
+      density="comfortable"
+      hide-details="auto"
+      class="input-field"
+    />
+  </v-col>
 
-        <!-- Nút Add -->
-        <v-col cols="3">
-          <v-btn color="primary" class="ma-0" @click="addProductColor"
-            >Add Color</v-btn
-          >
-        </v-col>
-      </v-row>
+  <v-col cols="12" md="3">
+    <v-btn
+      color="primary"
+      block
+      height="48"
+      class="text-none"
+      @click="addProductColor"
+    >
+      Thêm màu
+    </v-btn>
+  </v-col>
+</v-row>
     </div>
 
     <!-- ==== Danh sách màu và ảnh ==== -->
@@ -127,6 +139,8 @@ export default {
       });
     },
     addProductColor() {
+      console.log("Product ID:", this.id);
+      console.log("New Color:", this.newColor);
       if (!this.newColor.colorId) return;
       axios
         .post(
@@ -136,7 +150,8 @@ export default {
         .then(() => {
           this.newColor = { colorId: null, stockQuantity: 0 };
           this.loadProductDetail();
-        });
+        })
+        .catch((err) => console.error(err));
     },
 
     onFileSelected(event, colorId) {
@@ -160,13 +175,10 @@ export default {
 
       // API giả lập: lưu ảnh trong /public/images
       axios
-        .post(
-          `http://localhost:8080/api/image/color/${colorId}/image`,
-          {
-            imageUrl: `/images/${file.name}`, // lưu tên file, frontend sẽ load từ /images/
-            isMain: false,
-          },
-        )
+        .post(`http://localhost:8080/api/image/color/${colorId}/image`, {
+          imageUrl: `/images/${file.name}`, // lưu tên file, frontend sẽ load từ /images/
+          isMain: false,
+        })
         .then(() => {
           this.selectedFiles[colorId] = null;
           this.loadProductDetail();
@@ -232,5 +244,66 @@ export default {
   border: 1px solid #ccc;
   border-radius: 4px;
   margin-right: 8px;
+}
+.product-detail {
+  max-width: 900px;
+  margin: auto;
+  font-family: Arial, sans-serif;
+}
+
+.add-color,
+.color-card {
+  padding: 16px;
+  border-radius: 8px;
+  background: #f9f9f9;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.color-name {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.image-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.product-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.add-image {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.limit-text {
+  color: red;
+  font-size: 0.9em;
+}
+
+.color-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.color-box {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.color-select {
+  margin-top: 4px;
 }
 </style>
