@@ -27,7 +27,7 @@
         <v-app-bar-nav-icon v-if="$vuetify.display.smAndDown" @click="drawer = !drawer" />
 
         <div class="d-flex align-center gap-2">
-          <img src="/images/logo2.png" alt="Logo" class="logo-img"/>
+          <img src="/images/logo2.png" alt="Logo" class="logo-img" />
           <v-app-bar-title class="font-weight-bold brand-title">
             <span class="brand-text">Baseball Cap Shop</span>
           </v-app-bar-title>
@@ -118,6 +118,11 @@ const items = [
         title: 'Discount Manager',
         icon: 'mdi-account-cog',
         to: '/discount',
+      },
+      {
+        title: 'Thống kê',
+        icon: 'mdi-account-cog',
+        to: '/admin/statistics',
       },
     ],
   },

@@ -107,10 +107,8 @@ const loadAccount = async () => {
 }
 
 const getImage = img => {
-  if (!img) return "/default-avatar.png"
-  if (img.startsWith("data:image")) return img
-  if (img.startsWith("http://") || img.startsWith("https://")) return img
-  return `http://localhost:8080${img}`
+  if (!img) return '/images/default.jpg'
+  return img
 }
 
 const formatDate = date => {
