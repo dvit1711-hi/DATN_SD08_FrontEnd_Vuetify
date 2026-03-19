@@ -116,4 +116,5 @@ const login = async () => {
 :deep(.auth-card) {
   border-radius: 8px !important;
 }
+
 </style>

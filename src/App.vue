@@ -3,6 +3,9 @@
     <v-layout>
       <!-- Sidebar -->
       <v-navigation-drawer v-model="drawer">
+        <div class="sidebar-logo-container pa-4 d-flex justify-center border-b">
+          <img src="/images/logo1.jpg" alt="DTVD Logo" class="sidebar-logo" />
+        </div>
         <v-list density="compact" nav>
           <template v-for="item in items" :key="item.title">
             <v-list-item v-if="!item.children" :to="item.to" :prepend-icon="item.icon" :title="item.title" link />
@@ -23,9 +26,12 @@
       <v-app-bar flat color="background" border="b" class="navbar">
         <v-app-bar-nav-icon v-if="$vuetify.display.smAndDown" @click="drawer = !drawer" />
 
-        <v-app-bar-title class="font-weight-bold text-h6">
-          <span class="text-primary">Baseball Cap</span> Shop
-        </v-app-bar-title>
+        <div class="d-flex align-center gap-2">
+          <img src="/images/logo2.png" alt="Logo" class="logo-img"/>
+          <v-app-bar-title class="font-weight-bold brand-title">
+            <span class="brand-text">Baseball Cap Shop</span>
+          </v-app-bar-title>
+        </div>
 
         <template #append>
           <!-- Nếu đã đăng nhập -->
@@ -197,8 +203,33 @@ onBeforeUnmount(() => {
   background-color: #F5DEB3 !important;
 }
 
-:deep(.text-primary) {
-  color: #CDBA96 !important;
+.logo-img {
+  width: 200px;
+  height: 150px;
+  object-fit: contain;
+}
+
+.sidebar-logo-container {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  padding: 12px !important;
+}
+
+.sidebar-logo {
+  width: 200px;
+  height: 100px;
+  object-fit: contain;
+}
+
+.brand-title {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.brand-text {
+  color: #000000 !important;
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
 }
 
 .navbar {
@@ -211,5 +242,27 @@ onBeforeUnmount(() => {
 
 :deep(.v-app-bar) {
   border-bottom: 1px solid rgba(205, 186, 150, 0.1);
+}
+
+:deep(.v-list-item__title),
+:deep(.v-list-item-subtitle),
+:deep(.v-list-group__header) {
+  color: #000000 !important;
+}
+
+:deep(.v-list-item) {
+  color: #000000 !important;
+}
+
+:deep(.v-list-item:hover) {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+:deep(.v-btn--variant-text) {
+  color: #000000 !important;
+}
+
+:deep(.v-btn--color-primary) {
+  background-color: #8B4513 !important;
 }
 </style>

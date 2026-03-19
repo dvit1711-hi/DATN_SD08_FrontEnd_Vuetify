@@ -167,4 +167,68 @@ const register = async () => {
 :deep(.auth-card) {
   border-radius: 8px !important;
 }
+
+:deep(.v-text-field__input) {
+  color: #000000 !important;
+}
+
+:deep(.v-text-field--focused .v-text-field__input) {
+  color: #000000 !important;
+}
+
+:deep(.v-field__input) {
+  color: #000000 !important;
+}
+
+:deep(.v-label) {
+  color: #333333 !important;
+}
+
+:deep(.v-field--focused .v-label) {
+  color: #000000 !important;
+}
+
+:deep(.v-input__details) {
+  color: #000000 !important;
+}
+
+:deep(.v-checkbox__label) {
+  color: #000000 !important;
+}
+
+:deep(a) {
+  color: #000000 !important;
+}
+
+:deep(a:hover) {
+  color: #8B4513 !important;
+}
+
+:deep(.v-btn--color-primary) {
+  background-color: #8B4513 !important;
+}
+
+:deep(.v-btn) {
+  color: white !important;
+}
+
+:deep(.router-link) {
+  color: #000000 !important;
+}
+
+:deep(.router-link:hover) {
+  color: #8B4513 !important;
+}
+
+:deep(.text-h4) {
+  color: #000000 !important;
+}
+
+:deep(.text-body-2) {
+  color: #333333 !important;
+}
+
+:deep(strong) {
+  color: #000000 !important;
+}
 </style>
