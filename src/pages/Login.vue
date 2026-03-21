@@ -68,8 +68,10 @@
 import { ref } from "vue"
 import axios from "axios"
 import { useRouter } from "vue-router"
+import { useUserStore } from "@/stores/user"
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const form = ref({
   username: "",
@@ -91,10 +93,12 @@ const login = async () => {
       password: form.value.password,
     })
 
-    // Lưu token + accountId
-    localStorage.setItem("token", res.data.token)
-    localStorage.setItem("accountId", res.data.accountId)
-    localStorage.setItem("username", res.data.username)
+    // Update user store with login data
+    userStore.login({
+      accountId: res.data.accountId,
+      token: res.data.token,
+      username: res.data.username
+    })
 
     window.dispatchEvent(new Event('auth-changed'))
 

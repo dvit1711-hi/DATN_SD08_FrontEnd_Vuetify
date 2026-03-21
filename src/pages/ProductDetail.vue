@@ -59,6 +59,34 @@
           </div>
         </div>
 
+        <!-- Quantity Section -->
+        <div class="mb-6">
+          <h3 class="text-subtitle-1 font-weight-bold mb-3">Số lượng</h3>
+          <div class="d-flex align-center gap-2">
+            <v-btn
+              icon="mdi-minus"
+              size="small"
+              variant="outlined"
+              @click="quantity = Math.max(1, quantity - 1)"
+            />
+            <v-text-field
+              v-model.number="quantity"
+              type="number"
+              min="1"
+              max="999"
+              class="quantity-input"
+              hide-details
+              density="compact"
+            />
+            <v-btn
+              icon="mdi-plus"
+              size="small"
+              variant="outlined"
+              @click="quantity = Math.min(999, quantity + 1)"
+            />
+          </div>
+        </div>
+
         <!-- Action Buttons -->
         <v-row class="gap-3 mb-6">
           <v-col cols="12" sm="6">
@@ -67,6 +95,8 @@
               size="large"
               block
               prepend-icon="mdi-shopping-cart"
+              @click="handleAddToCart"
+              :loading="isLoading"
             >
               Thêm giỏ hàng
             </v-btn>
@@ -103,19 +133,37 @@
       icon="mdi-alert-circle"
     />
   </v-container>
+
+  <!-- Snackbar for notifications -->
+  <v-snackbar
+    v-model="showSnackbar"
+    :timeout="3000"
+    :color="snackbarColor"
+    position="top"
+  >
+    {{ snackbarMessage }}
+  </v-snackbar>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue"
-import { useRoute } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
+import { useUserStore } from "@/stores/user"
 import axios from "axios"
 
 const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
 
 const product = ref(null)
 const images = ref([])
 const mainImage = ref("")
 const selectedColor = ref(null)
+const quantity = ref(1)
+const isLoading = ref(false)
+const showSnackbar = ref(false)
+const snackbarMessage = ref("")
+const snackbarColor = ref("success")
 
 onMounted(async () => {
   try {
@@ -145,6 +193,65 @@ function changeColor(color) {
 
 function formatPrice(price) {
   return new Intl.NumberFormat("vi-VN").format(price)
+}
+
+async function handleAddToCart() {
+  // Check if user is logged in
+  if (!userStore.isLoggedIn) {
+    snackbarMessage.value = "Vui lòng đăng nhập để thêm vào giỏ hàng"
+    snackbarColor.value = "warning"
+    showSnackbar.value = true
+    setTimeout(() => {
+      router.push("/login")
+    }, 1500)
+    return
+  }
+
+  if (!selectedColor.value) {
+    snackbarMessage.value = "Vui lòng chọn màu sắc"
+    snackbarColor.value = "error"
+    showSnackbar.value = true
+    return
+  }
+
+  if (quantity.value < 1) {
+    snackbarMessage.value = "Số lượng phải lớn hơn 0"
+    snackbarColor.value = "error"
+    showSnackbar.value = true
+    return
+  }
+
+  isLoading.value = true
+  try {
+    // Call backend API to add to cart
+    await userStore.addToCartAPI(
+      selectedColor.value.productColorID,
+      quantity.value
+    )
+
+    snackbarMessage.value = `Đã thêm ${quantity.value} sản phẩm "${product.value.productName}" vào giỏ hàng`
+    snackbarColor.value = "success"
+    showSnackbar.value = true
+
+    // Reset quantity
+    quantity.value = 1
+  } catch (error) {
+    console.error("Lỗi thêm vào giỏ:", error)
+    
+    if (error.message.includes("đăng nhập")) {
+      snackbarMessage.value = "Vui lòng đăng nhập trước"
+      snackbarColor.value = "warning"
+      setTimeout(() => {
+        router.push("/login")
+      }, 1500)
+    } else {
+      snackbarMessage.value = "Thêm vào giỏ hàng thất bại. Vui lòng thử lại"
+      snackbarColor.value = "error"
+    }
+    showSnackbar.value = true
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -183,6 +290,15 @@ function formatPrice(price) {
 .color-btn-active {
   border-color: #CDBA96;
   box-shadow: 0 0 12px rgba(205, 186, 150, 0.6);
+}
+
+.quantity-input {
+  max-width: 80px;
+}
+
+.quantity-input :deep(.v-field__input) {
+  text-align: center;
+  padding: 0;
 }
 
 :deep(.bg-background) {
