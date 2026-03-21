@@ -23,11 +23,13 @@ import AccountEdit from '@/pages/admin/accountEdit.vue'
 import AccountDetail from '@/pages/admin/accountDetail.vue'
 import DiscountManager from '@/pages/admin/discountManager.vue'
 import Statistics from '@/pages/admin/Statistics.vue'
+import Review from '@/pages/Review.vue'
 
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+
     // User Layout Routes
     {
       path: '/',
@@ -35,6 +37,7 @@ const router = createRouter({
       children: [
         {path: '', component: ProductList, name: 'Home'},
         {path: '/products', component: ProductList, name: 'Products'},
+        {path: '/review', component: Review, name: 'Review'},
         {path: '/products/:id', component: ProductDetail, name: 'ProductDetail'},
         {path: '/cart', component: ProductList, name: 'Cart'},
         {path: '/account-security', component: AccountSecurity, name: 'AccountSecurity'},

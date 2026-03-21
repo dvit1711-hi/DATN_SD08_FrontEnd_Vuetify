@@ -33,8 +33,22 @@
                 placeholder="email@example.com"
                 prepend-inner-icon="mdi-email"
                 variant="outlined"
+                :error="emailError"
+                :error-messages="emailError ? 'Email không hợp lệ' : ''"
                 hide-details
                 required
+              />
+            </v-col>
+
+            <!-- Phone Number -->
+            <v-col cols="12" class="pt-4">
+              <v-text-field
+                v-model="form.phoneNumber"
+                label="Số điện thoại"
+                placeholder="0901234567"
+                prepend-inner-icon="mdi-phone"
+                variant="outlined"
+                hide-details
               />
             </v-col>
 
@@ -83,7 +97,7 @@
 
             <!-- Submit Button -->
             <v-col cols="12" class="pt-4">
-              <v-btn block color="primary" size="large" type="submit">
+              <v-btn block color="primary" size="large" type="submit" :loading="isLoading">
                 Đăng ký
               </v-btn>
             </v-col>
@@ -112,14 +126,24 @@ const router = useRouter()
 const form = ref({
   username: "",
   email: "",
+  phoneNumber: "",
   password: "",
   confirmPassword: "",
   privacyPolicies: false,
 })
 
+const isLoading = ref(false)
+
 // Ẩn/hiện mật khẩu
 const visible1 = ref(false)
 const visible2 = ref(false)
+
+// Kiểm tra email hợp lệ
+const emailError = computed(() => {
+  if (form.value.email === "") return false
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return !emailRegex.test(form.value.email)
+})
 
 // Kiểm tra mật khẩu trùng nhau
 const passwordError = computed(() => {
@@ -127,33 +151,51 @@ const passwordError = computed(() => {
 })
 
 const register = async () => {
+  // Validate username
+  if (!form.value.username || form.value.username.trim().length < 3) {
+    alert("Tên đăng nhập phải có ít nhất 3 ký tự!")
+    return
+  }
+
+  // Validate email
+  if (emailError.value) {
+    alert("Email không hợp lệ!")
+    return
+  }
+
+  // Validate password
+  if (!form.value.password || form.value.password.length < 6) {
+    alert("Mật khẩu phải có ít nhất 6 ký tự!")
+    return
+  }
+
   if (passwordError.value) {
     alert("Mật khẩu nhập lại không khớp!")
     return
   }
 
   if (!form.value.privacyPolicies) {
-    alert("Bạn phải đồng ý điều khoản!")
+    alert("Bạn phải đồng ý chính sách & điều khoản!")
     return
   }
 
-  if (!form.value.username || !form.value.email || !form.value.password) {
-    alert("Vui lòng nhập đầy đủ thông tin!")
-    return
-  }
-
+  isLoading.value = true
   try {
     await registerApi.register({
       username: form.value.username,
       email: form.value.email,
+      phoneNumber: form.value.phoneNumber || null,
       password: form.value.password,
     })
 
-    alert("Đăng ký thành công!")
+    alert("Đăng ký thành công! Vui lòng đăng nhập.")
     router.push("/login")
   } catch (error) {
     console.error(error)
-    alert("Đăng ký thất bại!")
+    const errorMessage = error.response?.data?.message || "Đăng ký thất bại! Vui lòng thử lại."
+    alert(errorMessage)
+  } finally {
+    isLoading.value = false
   }
 }
 </script>

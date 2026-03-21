@@ -1,12 +1,12 @@
 <template>
   <div>
     <!-- Top Navigation Bar -->
-    <v-toolbar color="#eed8ae" dark height="36" class="px-8">
+    <v-toolbar color="#cdba96" dark height="36" class="px-8">
       <div class="d-flex align-center" style="width: 100%; justify-content: space-between;">
         <div class="d-flex align-center gap-4">
           <!-- Kênh Người Bán - Chỉ hiển thị khi là Admin -->
           <router-link v-if="isAdmin" :to="{ name: 'AdminDashboard' }"
-            class="text-white text-decoration-none text-caption">
+            class="text-dark text-decoration-none text-caption">
             Kênh Người Bán
           </router-link>
         </div>
@@ -36,12 +36,12 @@
     </v-toolbar>
 
     <!-- Main Header -->
-    <v-toolbar color="#eed8ae" dark height="80" class="px-8">
+    <v-toolbar color="#cdba96" dark height="80" class="px-8">
       <div class="d-flex align-center" style="width: 100%; justify-content: space-between;">
         <!-- Logo -->
-        <router-link :to="{ name: 'Home' }" class="d-flex align-center gap-3 text-decoration-none">
+        <router-link :to="{ name: 'AdminDashboard' }" class="d-flex align-center gap-3 text-decoration-none">
           <img src="/images/logo2.png" alt="DTVD" class="logo-image" />
-          <span class="text-body1 text-white font-weight-medium">Baseball Cap Shop</span>
+          <span class="text-h6 font-weight-bold text-dark">Baseball Cap Shop</span>
         </router-link>
 
         <!-- Search Bar -->
@@ -100,8 +100,8 @@
             </div>
           </template>
           <v-list density="compact">
-            <v-list-item title="Mũ Bóng Chày Cổ Điển" :to="{ name: 'Products' }" />
-            <v-list-item title="Mũ Bóng Chày Hiện Đại" :to="{ name: 'Products' }" />
+            <v-list-item title="Đánh giá" :to="{ name: 'Review' }" />
+            <v-list-item title="Lịch sử mua hàng" :to="{ name: 'Products' }" />
             <v-list-item title="Mũ Bóng Chày Nhân Vật" :to="{ name: 'Products' }" />
             <v-list-item title="Mũ Bóng Chày Espace" :to="{ name: 'Products' }" />
           </v-list>
