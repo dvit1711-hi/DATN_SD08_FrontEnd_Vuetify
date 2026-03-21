@@ -102,6 +102,11 @@ const items = [
     to: '/',
   },
   {
+    title: 'Reviews',
+    icon: 'mdi-star',
+    to: '/review',
+  },
+  {
     title: 'Admin',
     children: [
       {

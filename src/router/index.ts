@@ -21,6 +21,7 @@ import AccountEdit from '@/pages/admin/accountEdit.vue'
 import AccountDetail from '@/pages/admin/accountDetail.vue'
 import DiscountManager from '@/pages/admin/discountManager.vue'
 import Statistics from '@/pages/admin/Statistics.vue'
+import Review from '@/pages/Review.vue'
 
 
 const router = createRouter({
@@ -30,6 +31,7 @@ const router = createRouter({
     {path: '/menu',  component: Menu},
     {path: '/login', component: Login},
     {path: '/discount',  component: DiscountManager},
+    {path: '/review',  component: Review},
     
     {path: '/',  component: ProductList,},
     {path: '/footer',  component: Footer,},
