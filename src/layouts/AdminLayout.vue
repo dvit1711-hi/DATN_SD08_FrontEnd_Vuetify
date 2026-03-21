@@ -5,7 +5,7 @@
             <div class="d-flex align-center" style="width: 100%; justify-content: space-between;">
                 <!-- Logo -->
                 <router-link :to="{ name: 'AdminDashboard' }" class="d-flex align-center gap-3 text-decoration-none">
-                    <img src="/images/logo1.jpg" alt="DTVD" class="logo-image" />
+                    <img src="/images/logo2.png" alt="DTVD" class="logo-image" />
                     <span class="text-h6 font-weight-bold text-dark">Baseball Cap Shop</span>
                 </router-link>
 
