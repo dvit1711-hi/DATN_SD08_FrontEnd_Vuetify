@@ -6,7 +6,7 @@
 
     <!-- ==== Thêm Màu sản phẩm (ProductColor) ==== -->
     <div class="add-color card mb-3 pa-3">
-      <h3>Add Product Color</h3>
+      <h3>Thêm màu sản phẩm</h3>
 
       <v-row dense align="center" class="mb-2">
   <v-col cols="12" md="6">
@@ -45,7 +45,7 @@
       class="text-none"
       @click="addProductColor"
     >
-      Add color
+      Thêm màu
     </v-btn>
   </v-col>
 </v-row>
@@ -66,7 +66,14 @@
           <span class="color-name">{{ color.colorName }}</span>
         </div>
         <p class="stock-text">Stock quantity: {{ color.stockQuantity }}</p>
-        <p>Images:</p>
+        <v-btn
+          color="error"
+          small
+          class="ml-auto"
+          @click = "deleteProductColor(color.productColorID)">
+        Xóa màu
+        </v-btn>
+        <p>Ảnh:</p>
 
         <!-- Hiển thị ảnh hiện có -->
         <div class="image-gallery">
@@ -93,10 +100,10 @@
               color.images.length >= 6 || !selectedFiles[color.productColorID]
             "
           >
-            Add Image
+            Thêm ảnh
           </v-btn>
           <span v-if="color.images.length >= 6" class="limit-text">
-            Max 6 images per color
+            Tối đa là 6 ảnh
           </span>
         </div>
       </div>
@@ -185,6 +192,13 @@ export default {
           this.loadProductDetail();
         });
     },
+    deleteProductColor(productColorId){
+      if(!confirm("Bạn chắc có muốn xóa màu này không?")) return;
+      axios
+      .delete(`http://localhost:8080/api/product-color/color/${productColorId}`)
+      .then(() => this.loadProductDetail())
+      .catch(err => console.error(err));
+    }
   },
 };
 </script>
