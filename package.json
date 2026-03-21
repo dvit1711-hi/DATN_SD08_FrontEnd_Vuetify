@@ -17,11 +17,13 @@
   "dependencies": {
     "@fontsource/roboto": "^5.2.9",
     "@mdi/font": "7.4.47",
+    "apexcharts": "^5.10.4",
     "axios": "^1.13.6",
     "pinia": "^3.0.4",
     "vue": "^3.5.26",
     "vue-router": "^4.6.4",
     "vue-toastification": "^2.0.0-rc.5",
+    "vue3-apexcharts": "^1.11.1",
     "vuetify": "^4.0.0"
   },
   "devDependencies": {

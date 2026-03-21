@@ -11,15 +11,8 @@
       <v-card-text class="pa-6">
         <v-row>
           <v-col cols="12" md="6">
-            <v-text-field
-              v-model="search"
-              label="Tìm kiếm theo tên hoặc email..."
-              variant="outlined"
-              prepend-inner-icon="mdi-magnify"
-              density="comfortable"
-              clearable
-              hide-details
-            />
+            <v-text-field v-model="search" label="Tìm kiếm theo tên hoặc email..." variant="outlined"
+              prepend-inner-icon="mdi-magnify" density="comfortable" clearable hide-details />
           </v-col>
         </v-row>
       </v-card-text>
@@ -28,16 +21,11 @@
     <!-- Table -->
     <v-card class="rounded-lg" elevation="0" border>
       <v-card-text class="pa-6">
-        <v-data-table
-          :headers="headers"
-          :items="filteredAccounts"
-          :items-per-page="10"
-          class="table-modern"
-        >
+        <v-data-table :headers="headers" :items="filteredAccounts" :items-per-page="10" class="table-modern">
           <template #item.user="{ item }">
             <div class="d-flex align-center gap-3">
-              <v-avatar size="40" class="flex-shrink-0">
-                <img :src="getImage(item.images)" @error="handleImgError" />
+              <v-avatar size="36" class="flex-shrink-0">
+                <img :src="getImage(item.images)" @error="handleImgError" class="account-avatar" />
               </v-avatar>
               <div>
                 <div class="font-weight-bold">{{ item.username }}</div>
@@ -55,24 +43,14 @@
 
           <template #item.roles="{ item }">
             <div class="d-flex flex-wrap gap-1">
-              <v-chip
-                v-for="r in item.roles"
-                :key="r"
-                size="small"
-                color="secondary"
-                variant="tonal"
-              >
+              <v-chip v-for="r in item.roles" :key="r" size="small" color="secondary" variant="tonal">
                 {{ r }}
               </v-chip>
             </div>
           </template>
 
           <template #item.status="{ item }">
-            <v-chip
-              size="small"
-              :color="statusColor(item.statusName)"
-              variant="flat"
-            >
+            <v-chip size="small" :color="statusColor(item.statusName)" variant="flat">
               {{ getStatusText(item.statusName) }}
             </v-chip>
           </template>
@@ -83,22 +61,10 @@
 
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
-              <v-btn
-                icon
-                size="small"
-                variant="text"
-                color="primary"
-                @click="goToDetail(item.id)"
-              >
+              <v-btn icon size="small" variant="text" color="primary" @click="goToDetail(item.id)">
                 <v-icon>mdi-eye</v-icon>
               </v-btn>
-              <v-btn
-                icon
-                size="small"
-                variant="text"
-                color="warning"
-                @click="goToStatusEdit(item.id)"
-              >
+              <v-btn icon size="small" variant="text" color="warning" @click="goToStatusEdit(item.id)">
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
             </div>
@@ -160,17 +126,8 @@ const goToStatusEdit = id => {
 }
 
 const getImage = img => {
-  if (typeof img !== "string" || !img.trim()) {
-    return defaultAvatar
-  }
-
-  const value = img.trim()
-
-  if (value.startsWith("data:image")) return value
-  if (value.startsWith("http://") || value.startsWith("https://")) return value
-  if (value.startsWith("/")) return `http://localhost:8080${value}`
-
-  return `http://localhost:8080/${value}`
+  if (!img) return '/images/default.jpg'
+  return img
 }
 
 const handleImgError = e => {
@@ -227,5 +184,12 @@ const filteredAccounts = computed(() =>
 
 :deep(.v-card) {
   border-radius: 8px !important;
+}
+
+.account-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
 }
 </style>
