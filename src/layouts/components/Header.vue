@@ -25,7 +25,6 @@
               <v-list-item title="English" />
             </v-list>
           </v-menu>
-          <span class="text-caption" style="color: rgba(255,255,255,0.7)">|</span>
           <!-- Ẩn khi đã đăng nhập -->
           <router-link v-if="!isLoggedIn" :to="{ name: 'Register' }"
             class="text-white text-decoration-none text-caption">Đăng
@@ -47,7 +46,6 @@
                         Baseball Cap Shop
                     </span>
                 </router-link>
-
         <!-- Search Bar -->
         <div class="flex-grow-1 mx-6" style="max-width: 600px;">
           <v-text-field v-model="searchQuery" placeholder="Tìm kiếm sản phẩm..." prepend-inner-icon="mdi-magnify"
