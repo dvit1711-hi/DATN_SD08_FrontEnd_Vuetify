@@ -10,6 +10,10 @@ export default {
     return axios.get(`${API}/card`)
   },
 
+  getDetail(id) {
+    return axios.get(`${API}/detail/${id}`)
+  },
+
   getById(id) {
     return axios.get(`${API}/${id}`)
   },

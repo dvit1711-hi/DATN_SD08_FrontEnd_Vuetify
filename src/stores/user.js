@@ -8,11 +8,30 @@ export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || null)
   const username = ref(localStorage.getItem('username') || null)
 
+  const parseValidInt = (value) => {
+    const parsed = Number.parseInt(value, 10)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }
+
+  const buildAuthConfig = () => {
+    if (!token.value) return undefined
+    return {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    }
+  }
+
   // Get cart of current user
   const getOrCreateCart = async () => {
-    if (cartId.value) {
-      return cartId.value
+    const existingCartId = parseValidInt(cartId.value)
+    if (existingCartId) {
+      return existingCartId
     }
+
+    // Clean corrupted values like "undefined"/"null" left in localStorage.
+    cartId.value = null
+    localStorage.removeItem('cartId')
 
     if (!accountId.value) {
       throw new Error('Bạn cần đăng nhập trước')
@@ -20,19 +39,25 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       // Create new cart for user
-      const response = await axios.post(
-        'http://localhost:8080/api/carts',
-        { accountID: parseInt(accountId.value) },
-        {
-          headers: {
-            Authorization: `Bearer ${token.value}`
-          }
-        }
-      )
+      const payload = { accountID: parseInt(accountId.value, 10) }
+      let response
 
-      const newCartId = response.data.id || response.data.cartID
+      try {
+        response = await axios.post('http://localhost:8080/api/carts', payload, buildAuthConfig())
+      } catch (error) {
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          response = await axios.post('http://localhost:8080/api/carts', payload)
+        } else {
+          throw error
+        }
+      }
+
+      const newCartId = parseValidInt(response.data?.id || response.data?.cartID)
+      if (!newCartId) {
+        throw new Error('Không lấy được cartID từ phản hồi tạo giỏ hàng')
+      }
       cartId.value = newCartId
-      localStorage.setItem('cartId', newCartId)
+      localStorage.setItem('cartId', String(newCartId))
 
       return newCartId
     } catch (error) {
@@ -49,20 +74,22 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       const cid = await getOrCreateCart()
+      const payload = {
+        cartID: parseInt(cid, 10),
+        productColorID: parseInt(productColorId, 10),
+        quantity: parseInt(quantity, 10)
+      }
 
-      const response = await axios.post(
-        'http://localhost:8080/api/cart-items',
-        {
-          cartID: parseInt(cid),
-          productColorID: parseInt(productColorId),
-          quantity: parseInt(quantity)
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token.value}`
-          }
+      let response
+      try {
+        response = await axios.post('http://localhost:8080/api/cart-items', payload, buildAuthConfig())
+      } catch (error) {
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          response = await axios.post('http://localhost:8080/api/cart-items', payload)
+        } else {
+          throw error
         }
-      )
+      }
 
       return response.data
     } catch (error) {

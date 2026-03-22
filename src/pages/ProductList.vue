@@ -45,8 +45,8 @@
               <div class="text-caption text-grey mb-2">Màu sắc:</div>
               <div class="d-flex gap-2">
                 <button
-                  v-for="c in p.colors"
-                  :key="c.colorName"
+                  v-for="c in getDisplayColors(p)"
+                  :key="c.productColorID || c.colorName"
                   class="color-btn"
                   :style="{ background: c.colorCode }"
                   :title="c.colorName"
@@ -70,7 +70,7 @@
               size="small"
               variant="flat"
               block
-              @click.prevent="addToCart(p)"
+              @click.stop.prevent="addToCart(p)"
             >
               <v-icon left>mdi-shopping-cart</v-icon>
               Thêm giỏ
@@ -87,14 +87,31 @@
       text="Vui lòng quay lại sau"
       icon="mdi-inbox"
     />
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar
+      v-model="showSnackbar"
+      :color="snackbarColor"
+      timeout="3000"
+      top
+    >
+      {{ snackbarMessage }}
+    </v-snackbar>
   </v-container>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
 
+const router = useRouter();
+const userStore = useUserStore();
 const products = ref([]);
+const showSnackbar = ref(false);
+const snackbarMessage = ref("");
+const snackbarColor = ref("success");
 
 onMounted(async () => {
   try {
@@ -109,8 +126,80 @@ const formatPrice = (price) => {
   return new Intl.NumberFormat("vi-VN").format(price);
 };
 
-function addToCart(product) {
-  alert("Đã thêm vào giỏ: " + product.productName);
+function getDisplayColors(product) {
+  if (Array.isArray(product?.colors) && product.colors.length > 0) {
+    return product.colors;
+  }
+
+  if (product?.colorCode || product?.colorName) {
+    return [
+      {
+        productColorID: product.productColorID,
+        colorCode: product.colorCode,
+        colorName: product.colorName,
+      },
+    ];
+  }
+
+  return [];
+}
+
+async function resolveProductColorId(product) {
+  const directProductColorId = Number.parseInt(product?.productColorID, 10);
+  if (Number.isFinite(directProductColorId) && directProductColorId > 0) {
+    return directProductColorId;
+  }
+
+  if (Array.isArray(product?.colors) && product.colors.length > 0) {
+    const colorId = Number.parseInt(product.colors[0]?.productColorID, 10);
+    if (Number.isFinite(colorId) && colorId > 0) {
+      return colorId;
+    }
+  }
+
+  const productId = Number.parseInt(product?.productID, 10);
+  if (!Number.isFinite(productId) || productId <= 0) {
+    return null;
+  }
+
+  const detailRes = await productApi.getDetail(productId);
+  const fallbackColorId = Number.parseInt(detailRes?.data?.colors?.[0]?.productColorID, 10);
+  return Number.isFinite(fallbackColorId) && fallbackColorId > 0 ? fallbackColorId : null;
+}
+
+async function addToCart(product) {
+  // Check if user is logged in
+  if (!userStore.isLoggedIn) {
+    snackbarMessage.value = "Vui lòng đăng nhập để thêm vào giỏ hàng";
+    snackbarColor.value = "warning";
+    showSnackbar.value = true;
+    setTimeout(() => {
+      router.push("/login");
+    }, 1500);
+    return;
+  }
+
+  const productColorId = await resolveProductColorId(product);
+
+  if (!productColorId) {
+    snackbarMessage.value = "Không tìm thấy màu sản phẩm để thêm vào giỏ";
+    snackbarColor.value = "error";
+    showSnackbar.value = true;
+    return;
+  }
+
+  try {
+    // This API flow creates cart first when missing, then adds the product
+    await userStore.addToCartAPI(productColorId, 1);
+    snackbarMessage.value = `Đã thêm "${product.productName}" vào giỏ hàng`;
+    snackbarColor.value = "success";
+    showSnackbar.value = true;
+  } catch (error) {
+    console.error("Lỗi thêm vào giỏ:", error);
+    snackbarMessage.value = error?.response?.data?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại";
+    snackbarColor.value = "error";
+    showSnackbar.value = true;
+  }
 }
 </script>
 

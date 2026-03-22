@@ -51,10 +51,31 @@
             </div>
           </div>
 
+          <!-- Chọn số lượng -->
+          <div class="mb-4">
+            <h3 class="text-subtitle-1 font-weight-bold mb-2">Số lượng</h3>
+            <v-text-field
+              v-model.number="quantity"
+              type="number"
+              min="1"
+              max="100"
+              outlined
+              dense
+              style="max-width: 150px"
+            />
+          </div>
+
           <!-- Nút hành động -->
           <v-row class="gap-3">
             <v-col cols="6">
-              <v-btn color="primary" block >
+              <v-btn 
+                color="primary" 
+                block 
+                @click="handleAddToCart"
+                :loading="isLoading"
+                :disabled="isLoading"
+              >
+                <v-icon left>mdi-shopping-cart</v-icon>
                 Thêm vào giỏ hàng
               </v-btn>
             </v-col>
@@ -73,6 +94,16 @@
         </div>
       </v-col>
     </v-row>
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar
+      v-model="showSnackbar"
+      :color="snackbarColor"
+      timeout="3000"
+      top
+    >
+      {{ snackbarMessage }}
+    </v-snackbar>
 
     <!-- Star distribution and Reviews section -->
     <v-row class="mt-8">
@@ -203,6 +234,8 @@ import axios from "axios"
 import reviewApi from "@/api/ReviewApi"
 
 const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
 const product = ref(null)
 const images = ref([])
 const mainImage = ref("")
