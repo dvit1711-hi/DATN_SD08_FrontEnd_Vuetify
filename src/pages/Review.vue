@@ -5,7 +5,7 @@
       <v-row>
         <v-col cols="12" md="8" offset-md="2">
           <h1 class="text-h4 font-weight-bold mb-2">Đánh giá sản phẩm</h1>
-          <p class="text-body-1 text-grey">Chia sẻ trải nghiệm của bạn về sản phẩm</p>
+          <p class="text-body-1 text-grey">Chỉ đánh giá sản phẩm từ các đơn hàng đã thanh toán</p>
         </v-col>
       </v-row>
     </v-container>
@@ -13,21 +13,37 @@
     <!-- Main content -->
     <v-container fluid>
       <v-row>
-        <!-- Left side - Product selector -->
+        <!-- Left side - Order and Product selector -->
         <v-col cols="12" md="3">
           <v-card class="sticky-card" elevation="0" border>
             <v-card-item>
-              <div class="text-subtitle2 font-weight-bold mb-3">Chọn sản phẩm</div>
+              <!-- Order selector -->
+              <div class="text-subtitle2 font-weight-bold mb-3">Chọn đơn hàng đã thanh toán</div>
               <v-select
-                v-model="selectedProductId"
-                :items="products"
-                item-title="productName"
-                item-value="productID"
-                @update:modelValue="loadReviews"
+                v-model="selectedOrderId"
+                :items="paidOrders"
+                item-title="orderLabel"
+                item-value="orderId"
+                @update:modelValue="onOrderSelected"
                 variant="outlined"
                 dense
                 class="mb-4"
               />
+
+              <!-- Product selector (only if order selected) -->
+              <template v-if="selectedOrderId && selectedOrderProducts.length > 0">
+                <div class="text-subtitle2 font-weight-bold mb-3 mt-4">Chọn sản phẩm</div>
+                <v-select
+                  v-model="selectedProductId"
+                  :items="selectedOrderProducts"
+                  item-title="productName"
+                  item-value="productId"
+                  @update:modelValue="loadReviews"
+                  variant="outlined"
+                  dense
+                  class="mb-4"
+                />
+              </template>
 
               <!-- Rating summary -->
               <div v-if="selectedProductId" class="mb-4">
@@ -62,64 +78,80 @@
 
         <!-- Right side - Reviews -->
         <v-col cols="12" md="9">
-          <!-- Add review form -->
-          <v-card v-if="selectedProductId" class="mb-6" elevation="0" border>
-            <v-card-item>
-              <div class="text-subtitle2 font-weight-bold mb-4">Viết đánh giá của bạn</div>
+          <!-- No order selected -->
+          <div v-if="!selectedOrderId" class="text-center py-12">
+            <v-icon icon="mdi-inbox-outline" size="64" class="text-grey" />
+            <p class="text-body-2 text-grey mt-4">Hãy chọn một đơn hàng đã thanh toán để bắt đầu</p>
+            <p v-if="paidOrders.length === 0" class="text-body-2 text-grey mt-2">
+              Bạn chưa có đơn hàng nào được thanh toán
+            </p>
+          </div>
 
-              <v-form @submit.prevent="submitReview" class="review-form">
-                <!-- Star rating input -->
-                <div class="mb-4">
-                  <div class="text-body-2 mb-2">Đánh giá sản phẩm</div>
-                  <v-rating
-                    v-model="newReview.rating"
-                    :length="5"
-                    size="large"
-                    color="amber"
-                    hover
-                  />
-                  <div class="text-caption text-grey mt-1">
-                    {{ newReview.rating ? `${newReview.rating} sao` : "Chọn đánh giá" }}
+          <!-- No product selected -->
+          <div v-else-if="!selectedProductId" class="text-center py-12">
+            <v-icon icon="mdi-folder-open-outline" size="64" class="text-grey" />
+            <p class="text-body-2 text-grey mt-4">Vui lòng chọn sản phẩm để xem đánh giá</p>
+          </div>
+
+          <!-- Product reviews -->
+          <template v-else>
+            <!-- Add review form -->
+            <v-card class="mb-6" elevation="0" border>
+              <v-card-item>
+                <div class="text-subtitle2 font-weight-bold mb-4">Viết đánh giá của bạn</div>
+
+                <v-form @submit.prevent="submitReview" class="review-form">
+                  <!-- Star rating input -->
+                  <div class="mb-4">
+                    <div class="text-body-2 mb-2">Đánh giá sản phẩm</div>
+                    <v-rating
+                      v-model="newReview.rating"
+                      :length="5"
+                      size="large"
+                      color="amber"
+                      hover
+                    />
+                    <div class="text-caption text-grey mt-1">
+                      {{ newReview.rating ? `${newReview.rating} sao` : "Chọn đánh giá" }}
+                    </div>
                   </div>
-                </div>
 
-                <!-- Comment input -->
-                <div class="mb-4">
-                  <v-textarea
-                    v-model="newReview.comment"
-                    label="Bình luận"
-                    placeholder="Chia sẻ trải nghiệm của bạn..."
-                    variant="outlined"
-                    rows="4"
-                    counter="500"
-                    maxlength="500"
-                  />
-                </div>
+                  <!-- Comment input -->
+                  <div class="mb-4">
+                    <v-textarea
+                      v-model="newReview.comment"
+                      label="Bình luận"
+                      placeholder="Chia sẻ trải nghiệm của bạn..."
+                      variant="outlined"
+                      rows="4"
+                      counter="500"
+                      maxlength="500"
+                    />
+                  </div>
 
-                <!-- Submit button -->
-                <div class="d-flex gap-2">
-                  <v-btn
-                    type="submit"
-                    color="primary"
-                    :loading="isSubmitting"
-                    :disabled="!newReview.rating"
-                  >
-                    {{ editingReviewId ? 'Cập nhật đánh giá' : 'Gửi đánh giá' }}
-                  </v-btn>
-                  <v-btn
-                    v-if="editingReviewId"
-                    variant="outlined"
-                    @click="cancelEdit"
-                  >
-                    Hủy
-                  </v-btn>
-                </div>
-              </v-form>
-            </v-card-item>
-          </v-card>
+                  <!-- Submit button -->
+                  <div class="d-flex gap-2">
+                    <v-btn
+                      type="submit"
+                      color="primary"
+                      :loading="isSubmitting"
+                      :disabled="!newReview.rating"
+                    >
+                      {{ editingReviewId ? 'Cập nhật đánh giá' : 'Gửi đánh giá' }}
+                    </v-btn>
+                    <v-btn
+                      v-if="editingReviewId"
+                      variant="outlined"
+                      @click="cancelEdit"
+                    >
+                      Hủy
+                    </v-btn>
+                  </div>
+                </v-form>
+              </v-card-item>
+            </v-card>
 
-          <!-- Reviews list -->
-          <div v-if="selectedProductId">
+            <!-- Reviews list -->
             <div v-if="filteredReviews.length > 0">
               <v-card
                 v-for="review in filteredReviews"
@@ -195,13 +227,7 @@
               <v-icon icon="mdi-folder-open-outline" size="64" class="text-grey" />
               <p class="text-body-2 text-grey mt-4">Chưa có đánh giá nào</p>
             </div>
-          </div>
-
-          <!-- No product selected -->
-          <div v-else class="text-center py-12">
-            <v-icon icon="mdi-inbox-outline" size="64" class="text-grey" />
-            <p class="text-body-2 text-grey mt-4">Vui lòng chọn sản phẩm để xem đánh giá</p>
-          </div>
+          </template>
         </v-col>
       </v-row>
     </v-container>
@@ -231,11 +257,12 @@
 <script setup>
 import { ref, computed, onMounted } from "vue"
 import reviewApi from "@/api/ReviewApi"
-import productApi from "@/api/productApi"
 
 // Refs
+const selectedOrderId = ref(null)
 const selectedProductId = ref(null)
-const products = ref([])
+const paidOrders = ref([])
+const selectedOrderProducts = ref([])
 const reviews = ref([])
 const selectedStarFilter = ref(null)
 const isLoading = ref(false)
@@ -244,40 +271,61 @@ const isDeleting = ref(false)
 const showDeleteConfirm = ref(false)
 const deleteReviewId = ref(null)
 const editingReviewId = ref(null)
-const currentUserId = ref(null) // Get from localStorage on mount
+const currentUserId = ref(null)
 
 const newReview = ref({
   rating: 0,
   comment: "",
 })
 
-// Get products on mount
+// Load paid orders on mount
 onMounted(async () => {
-  await loadProducts()
-  
   // Get current user ID from localStorage
   const accountIdStr = localStorage.getItem("accountId")
   if (accountIdStr) {
     try {
       currentUserId.value = parseInt(accountIdStr)
+      await loadPaidOrders()
     } catch (e) {
       console.log("Could not parse accountId from localStorage")
       currentUserId.value = null
     }
+  } else {
+    console.log("No accountId found in localStorage")
   }
 })
 
-// Load products
-const loadProducts = async () => {
+// Load paid orders for current account
+const loadPaidOrders = async () => {
+  if (!currentUserId.value) return
+
   try {
     isLoading.value = true
-    const response = await productApi.getAll()
-    products.value = response.data
+    const response = await reviewApi.getPaidOrdersWithDetailsForAccount(currentUserId.value)
+    paidOrders.value = response.data.map(order => ({
+      ...order,
+      orderLabel: `Đơn hàng #${order.orderId} - ${formatDate(order.orderDate)} - ${order.totalAmount?.toFixed(2) || 0}đ`
+    }))
   } catch (error) {
-    console.error("Failed to load products:", error)
-    products.value = []
+    console.error("Failed to load paid orders:", error)
+    paidOrders.value = []
   } finally {
     isLoading.value = false
+  }
+}
+
+// Handle order selection
+const onOrderSelected = (orderId) => {
+  selectedProductId.value = null
+  reviews.value = []
+  selectedStarFilter.value = null
+  
+  const order = paidOrders.value.find(o => o.orderId === orderId)
+  if (order && order.items) {
+    selectedOrderProducts.value = order.items.map(item => ({
+      productId: item.productId,
+      productName: `${item.productName} (Màu: ${item.colorName})`
+    }))
   }
 }
 
@@ -347,7 +395,7 @@ const submitReview = async () => {
       alert("Cập nhật đánh giá thành công!")
       editingReviewId.value = null
     } else {
-      // Create new review
+      // Create new review (will be validated on backend to ensure product was purchased)
       await reviewApi.createReview({
         productId: selectedProductId.value,
         accountId: currentUserId.value,
@@ -361,7 +409,11 @@ const submitReview = async () => {
     await loadReviews()
   } catch (error) {
     console.error("Failed to submit review:", error)
-    alert("Lỗi! Vui lòng thử lại.")
+    if (error.response?.data) {
+      alert(`Lỗi: ${error.response.data.message || 'Vui lòng thử lại.'}`)
+    } else {
+      alert("Lỗi! Vui lòng thử lại.")
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -451,17 +503,16 @@ const formatDate = (dateString) => {
   text-align: left;
   font-size: 0.875rem;
   color: #666;
+}
 
-  &:hover {
-    background: #f9f9f9;
-  }
+.star-filter-btn:hover {
+  background: #f5f5f5;
+}
 
-  &.active {
-    background: #ffeaa7;
-    border-color: #ffd700;
-    color: #333;
-    font-weight: 500;
-  }
+.star-filter-btn.active {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
 }
 
 :deep(.v-rating) {

@@ -6,7 +6,7 @@
 
     <!-- ==== Thêm Màu sản phẩm (ProductColor) ==== -->
     <div class="add-color card mb-3 pa-3">
-      <h3>Add Product Color</h3>
+      <h3>Thêm màu sản phẩm</h3>
 
       <v-row dense align="center" class="mb-2">
   <v-col cols="12" md="6">
@@ -15,8 +15,8 @@
       :items="colors"
       item-title="colorName"
       item-value="colorId"
-      label="Chọn màu"
-      placeholder="Chọn màu"
+      label="Select color"
+      placeholder="Select color"
       variant="outlined"
       density="comfortable"
       hide-details="auto"
@@ -28,8 +28,8 @@
     <v-text-field
       v-model="newColor.stockQuantity"
       type="number"
-      label="Số lượng"
-      placeholder="Nhập số lượng"
+      label="Stock quantity"
+      placeholder="Stock quantity"
       variant="outlined"
       density="comfortable"
       hide-details="auto"
@@ -65,7 +65,15 @@
           ></div>
           <span class="color-name">{{ color.colorName }}</span>
         </div>
-        <p>Images:</p>
+        <p class="stock-text">Stock quantity: {{ color.stockQuantity }}</p>
+        <v-btn
+          color="error"
+          small
+          class="ml-auto"
+          @click = "deleteProductColor(color.productColorID)">
+        Xóa màu
+        </v-btn>
+        <p>Ảnh:</p>
 
         <!-- Hiển thị ảnh hiện có -->
         <div class="image-gallery">
@@ -92,10 +100,10 @@
               color.images.length >= 6 || !selectedFiles[color.productColorID]
             "
           >
-            Add Image
+            Thêm ảnh
           </v-btn>
           <span v-if="color.images.length >= 6" class="limit-text">
-            Max 6 images per color
+            Tối đa là 6 ảnh
           </span>
         </div>
       </div>
@@ -184,6 +192,13 @@ export default {
           this.loadProductDetail();
         });
     },
+    deleteProductColor(productColorId){
+      if(!confirm("Bạn chắc có muốn xóa màu này không?")) return;
+      axios
+      .delete(`http://localhost:8080/api/product-color/color/${productColorId}`)
+      .then(() => this.loadProductDetail())
+      .catch(err => console.error(err));
+    }
   },
 };
 </script>
@@ -305,5 +320,11 @@ export default {
 
 .color-select {
   margin-top: 4px;
+}
+.stock-text {
+  margin: 6px 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
 }
 </style>

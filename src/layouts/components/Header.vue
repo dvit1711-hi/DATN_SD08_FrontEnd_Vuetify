@@ -5,8 +5,8 @@
       <div class="d-flex align-center" style="width: 100%; justify-content: space-between;">
         <div class="d-flex align-center gap-4">
           <!-- Kênh Người Bán - Chỉ hiển thị khi là Admin -->
-          <router-link v-if="isAdmin" :to="{ name: 'AdminDashboard' }"
-            class="text-white text-decoration-none text-caption">
+          <router-link v-if="isAdmin" :to="{ name: 'AdminDashboard' }" class="text-decoration-none text-caption"
+            style="color: white;">
             Kênh Người Bán
           </router-link>
         </div>
@@ -24,7 +24,6 @@
               <v-list-item title="English" />
             </v-list>
           </v-menu>
-          <span class="text-caption" style="color: rgba(255,255,255,0.7)">|</span>
           <!-- Ẩn khi đã đăng nhập -->
           <router-link v-if="!isLoggedIn" :to="{ name: 'Register' }"
             class="text-white text-decoration-none text-caption">Đăng
@@ -40,11 +39,12 @@
     <v-toolbar color="#cdba96" dark height="80" class="px-8">
       <div class="d-flex align-center" style="width: 100%; justify-content: space-between;">
         <!-- Logo -->
-        <router-link :to="{ name: 'AdminDashboard' }" class="d-flex align-center gap-3 text-decoration-none">
-                    <img src="/images/logo2.png" alt="DTVD" class="logo-image" />
-                    <span class="text-h6 font-weight-bold text-dark">Baseball Cap Shop</span>
-                </router-link>
-
+        <router-link :to="{ name: 'Home' }" class="d-flex align-center gap-3 text-decoration-none">
+          <img src="/images/logo2.png" alt="DTVD" class="logo-image" />
+          <span class="font-weight-bold text-dark" style="font-size: 28px; letter-spacing: 1px;">
+            Baseball Cap Shop
+          </span>
+        </router-link>
         <!-- Search Bar -->
         <div class="flex-grow-1 mx-6" style="max-width: 600px;">
           <v-text-field v-model="searchQuery" placeholder="Tìm kiếm sản phẩm..." prepend-inner-icon="mdi-magnify"
@@ -54,14 +54,14 @@
         <!-- Right Side Actions -->
         <div class="d-flex align-center gap-4">
           <!-- Shopping Cart -->
-          <router-link :to="{ name: 'Cart' }"
-            class="d-flex flex-column align-center text-decoration-none text-white gap-1">
-            <v-badge color="red" :content="cartCount" offset-x="-8" offset-y="8">
-              <v-icon size="28">mdi-shopping-outline</v-icon>
-            </v-badge>
-            <span class="text-caption">Giỏ Hàng</span>
-          </router-link>
+          <router-link :to="{ name: 'Cart' }" class="d-flex flex-column align-center text-decoration-none gap-1"
+            style="color: white;">
 
+            <v-badge color="red" :content="cartCount" offset-x="-8" offset-y="8">
+              <v-icon size="28" style="color: white;">mdi-shopping-outline</v-icon>
+            </v-badge>
+            <span class="text-caption" style="color: white;">Giỏ Hàng</span>
+          </router-link>
           <!-- User Menu with Avatar -->
           <v-menu offset-y v-if="isLoggedIn">
             <template v-slot:activator="{ props }">
@@ -88,7 +88,7 @@
         <router-link :to="{ name: 'Home' }" class="text-decoration-none text-body2 font-weight-medium text-dark">
           Trang Chủ
         </router-link>
-        <router-link :to="{ name: 'Products' }" class="text-decoration-none text-body2 font-weight-medium text-dark">
+        <router-link :to="{ name: 'ProductList' }" class="text-decoration-none text-body2 font-weight-medium text-dark">
           Sản Phẩm
         </router-link>
         <v-menu offset-y>
@@ -102,12 +102,12 @@
           </template>
           <v-list density="compact">
             <v-list-item title="Đánh giá" :to="{ name: 'Review' }" />
-            <v-list-item title="Lịch sử mua hàng" :to="{ name: 'Products' }" />
-            <v-list-item title="Mũ Bóng Chày Nhân Vật" :to="{ name: 'Products' }" />
-            <v-list-item title="Mũ Bóng Chày Espace" :to="{ name: 'Products' }" />
+            <v-list-item title="Lịch sử mua hàng" :to="{ name: 'ProductList' }" />
+            <v-list-item title="Mũ Bóng Chày Nhân Vật" :to="{ name: 'ProductList' }" />
+            <v-list-item title="Mũ Bóng Chày Espace" :to="{ name: 'ProductList' }" />
           </v-list>
         </v-menu>
-        <router-link :to="{ name: 'Products' }" class="text-decoration-none text-body2 font-weight-medium"
+        <router-link :to="{ name: 'ProductList' }" class="text-decoration-none text-body2 font-weight-medium"
           style="color: #FF6633;">
           🔥 Khuyến Mãi
         </router-link>
@@ -178,7 +178,7 @@ const checkAdminRole = async () => {
 
 const handleSearch = () => {
   if (searchQuery.value.trim()) {
-    router.push({ name: 'Products', query: { search: searchQuery.value } })
+    router.push({ name: 'ProductList', query: { search: searchQuery.value } })
   }
 }
 

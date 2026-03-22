@@ -235,7 +235,7 @@ const saveProduct = () => {
 }
 
 const editProduct = (p) => {
-  form.value = { ...p, brandID: p.brand?.brandID || p.brandID }
+  form.value = { ...p, brandID: p.branID?.brandID || p.brandID }
   showAddForm.value = true
 }
 
