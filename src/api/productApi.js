@@ -22,6 +22,10 @@ export default {
     return axios.put(`${API}/${id}`, data)
   },
 
+  addToCart(cartItem) {
+    return axios.post(`${API}/add-to-cart`, cartItem)
+  },
+
   // delete(id) {
   //   return axios.delete(`${API}/${id}`)
   // },

@@ -196,8 +196,14 @@
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { ref, computed, onMounted, watch } from "vue"
 import { useRoute } from "vue-router"
+=======
+import { ref, onMounted } from "vue"
+import { useRoute, useRouter } from "vue-router"
+import { useUserStore } from "@/stores/user"
+>>>>>>> 6eb4421b80b59d4282e9b8c91705408f353bb033
 import axios from "axios"
 import reviewApi from "@/api/ReviewApi"
 
@@ -206,6 +212,11 @@ const product = ref(null)
 const images = ref([])
 const mainImage = ref("")
 const selectedColor = ref(null)
+const quantity = ref(1)
+const isLoading = ref(false)
+const showSnackbar = ref(false)
+const snackbarMessage = ref("")
+const snackbarColor = ref("success")
 
 // Review related refs
 const reviews = ref([])
@@ -249,6 +260,7 @@ function formatPrice(price) {
   return new Intl.NumberFormat("vi-VN").format(price)
 }
 
+<<<<<<< HEAD
 // Load reviews for the product
 const loadReviews = async (productID) => {
   try {
@@ -319,6 +331,66 @@ const formatDate = (dateString) => {
     day: "numeric",
   })
 }
+=======
+async function handleAddToCart() {
+  // Check if user is logged in
+  if (!userStore.isLoggedIn) {
+    snackbarMessage.value = "Vui lòng đăng nhập để thêm vào giỏ hàng"
+    snackbarColor.value = "warning"
+    showSnackbar.value = true
+    setTimeout(() => {
+      router.push("/login")
+    }, 1500)
+    return
+  }
+
+  if (!selectedColor.value) {
+    snackbarMessage.value = "Vui lòng chọn màu sắc"
+    snackbarColor.value = "error"
+    showSnackbar.value = true
+    return
+  }
+
+  if (quantity.value < 1) {
+    snackbarMessage.value = "Số lượng phải lớn hơn 0"
+    snackbarColor.value = "error"
+    showSnackbar.value = true
+    return
+  }
+
+  isLoading.value = true
+  try {
+    // Call backend API to add to cart
+    await userStore.addToCartAPI(
+      selectedColor.value.productColorID,
+      quantity.value
+    )
+
+    snackbarMessage.value = `Đã thêm ${quantity.value} sản phẩm "${product.value.productName}" vào giỏ hàng`
+    snackbarColor.value = "success"
+    showSnackbar.value = true
+
+    // Reset quantity
+    quantity.value = 1
+  } catch (error) {
+    console.error("Lỗi thêm vào giỏ:", error)
+    
+    if (error.message.includes("đăng nhập")) {
+      snackbarMessage.value = "Vui lòng đăng nhập trước"
+      snackbarColor.value = "warning"
+      setTimeout(() => {
+        router.push("/login")
+      }, 1500)
+    } else {
+      snackbarMessage.value = "Thêm vào giỏ hàng thất bại. Vui lòng thử lại"
+      snackbarColor.value = "error"
+    }
+    showSnackbar.value = true
+  } finally {
+    isLoading.value = false
+  }
+}
+>>>>>>> 6eb4421b80b59d4282e9b8c91705408f353bb033
 </script>
 
 <style scoped>
