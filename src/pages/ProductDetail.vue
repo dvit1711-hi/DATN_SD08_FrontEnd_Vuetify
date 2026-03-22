@@ -196,14 +196,9 @@
 </template>
 
 <script setup>
-<<<<<<< HEAD
-import { ref, computed, onMounted, watch } from "vue"
-import { useRoute } from "vue-router"
-=======
-import { ref, onMounted } from "vue"
+import { ref, onMounted, computed, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useUserStore } from "@/stores/user"
->>>>>>> 6eb4421b80b59d4282e9b8c91705408f353bb033
 import axios from "axios"
 import reviewApi from "@/api/ReviewApi"
 
@@ -260,7 +255,6 @@ function formatPrice(price) {
   return new Intl.NumberFormat("vi-VN").format(price)
 }
 
-<<<<<<< HEAD
 // Load reviews for the product
 const loadReviews = async (productID) => {
   try {
@@ -331,7 +325,6 @@ const formatDate = (dateString) => {
     day: "numeric",
   })
 }
-=======
 async function handleAddToCart() {
   // Check if user is logged in
   if (!userStore.isLoggedIn) {
@@ -390,7 +383,6 @@ async function handleAddToCart() {
     isLoading.value = false
   }
 }
->>>>>>> 6eb4421b80b59d4282e9b8c91705408f353bb033
 </script>
 
 <style scoped>
