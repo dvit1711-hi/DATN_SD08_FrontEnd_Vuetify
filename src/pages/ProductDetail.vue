@@ -392,6 +392,8 @@ async function handleAddToCart() {
       quantity.value
     )
 
+    window.dispatchEvent(new Event('cart-changed'))
+
     snackbarMessage.value = `Đã thêm ${quantity.value} sản phẩm "${product.value.productName}" vào giỏ hàng`
     snackbarColor.value = "success"
     showSnackbar.value = true

@@ -102,7 +102,7 @@
           </template>
           <v-list density="compact">
             <v-list-item title="Đánh giá" :to="{ name: 'Review' }" />
-            <v-list-item title="Lịch sử mua hàng" :to="{ name: 'ProductList' }" />
+            <v-list-item title="Lịch sử mua hàng" :to="{ name: 'PurchaseHistory' }" />
             <v-list-item title="Mũ Bóng Chày Nhân Vật" :to="{ name: 'ProductList' }" />
             <v-list-item title="Mũ Bóng Chày Espace" :to="{ name: 'ProductList' }" />
           </v-list>
@@ -128,6 +128,51 @@ const isAdmin = ref(false)
 const isLoggedIn = ref(false)
 const username = ref('')
 const userAvatar = ref('')
+
+const loadCartCount = async () => {
+  let cartId = Number.parseInt(localStorage.getItem('cartId') || '', 10)
+
+  if (!Number.isFinite(cartId) || cartId <= 0) {
+    const accountId = Number.parseInt(localStorage.getItem('accountId') || '', 10)
+    const token = localStorage.getItem('token')
+
+    if (Number.isFinite(accountId) && accountId > 0) {
+      try {
+        const config = token
+          ? {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          : undefined
+
+        const cartRes = await axios.post('http://localhost:8080/api/carts', { accountID: accountId }, config)
+        const resolvedCartId = Number.parseInt(cartRes.data?.id || cartRes.data?.cartID, 10)
+        if (Number.isFinite(resolvedCartId) && resolvedCartId > 0) {
+          cartId = resolvedCartId
+          localStorage.setItem('cartId', String(resolvedCartId))
+        }
+      } catch (error) {
+        console.error('Lỗi khi đồng bộ cartId:', error)
+      }
+    }
+  }
+
+  if (!Number.isFinite(cartId) || cartId <= 0) {
+    cartCount.value = 0
+    return
+  }
+
+  try {
+    const res = await axios.get('http://localhost:8080/api/cart-items')
+    cartCount.value = (res.data || [])
+      .filter((item: any) => item.cartID === cartId)
+      .reduce((sum: number, item: any) => sum + (Number.parseInt(item.quantity, 10) || 0), 0)
+  } catch (error) {
+    console.error('Lỗi khi tải số lượng giỏ hàng:', error)
+    cartCount.value = 0
+  }
+}
 
 const checkAdminRole = async () => {
   // Lấy thông tin từ localStorage
@@ -172,6 +217,8 @@ const checkAdminRole = async () => {
     userAvatar.value = ''
   }
 
+  await loadCartCount()
+
   // Kiểm tra admin role
   isAdmin.value = userRole === 'admin' || userRole === 'ADMIN'
 }
@@ -187,21 +234,25 @@ const handleLogout = () => {
   localStorage.removeItem('accountId')
   localStorage.removeItem('userRole')
   localStorage.removeItem('username')
+  localStorage.removeItem('cartId')
 
   isAdmin.value = false
   isLoggedIn.value = false
   username.value = ''
   userAvatar.value = ''
+  cartCount.value = 0
   router.push({ name: 'Login' })
 }
 
 onMounted(() => {
   checkAdminRole()
   window.addEventListener('auth-changed', checkAdminRole)
+  window.addEventListener('cart-changed', loadCartCount)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('auth-changed', checkAdminRole)
+  window.removeEventListener('cart-changed', loadCartCount)
 })
 </script>
 

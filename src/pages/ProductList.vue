@@ -191,6 +191,7 @@ async function addToCart(product) {
   try {
     // This API flow creates cart first when missing, then adds the product
     await userStore.addToCartAPI(productColorId, 1);
+    window.dispatchEvent(new Event('cart-changed'));
     snackbarMessage.value = `Đã thêm "${product.productName}" vào giỏ hàng`;
     snackbarColor.value = "success";
     showSnackbar.value = true;

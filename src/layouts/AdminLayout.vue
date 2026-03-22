@@ -79,6 +79,10 @@
                         <v-list-item :to="{ name: 'Statistics' }" title="Thống kê" prepend-icon="mdi-chart-box"
                             active-color="primary" />
 
+                        <!-- Payment Confirmation -->
+                        <v-list-item :to="{ name: 'AdminPayments' }" title="Xác nhận thanh toán"
+                            prepend-icon="mdi-cash-check" active-color="primary" />
+
                         <v-divider class="my-2" />
 
                         <!-- Back to Store -->

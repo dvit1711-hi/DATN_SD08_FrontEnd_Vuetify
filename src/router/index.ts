@@ -24,6 +24,8 @@ import DiscountManager from '@/pages/admin/discountManager.vue'
 import Statistics from '@/pages/admin/Statistics.vue'
 import Review from '@/pages/Review.vue'
 import Home from '@/pages/Home.vue'
+import PurchaseHistory from '@/pages/PurchaseHistory.vue'
+import PaymentManager from '@/pages/admin/PaymentManager.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -36,7 +38,8 @@ const router = createRouter({
         { path: 'products', component: ProductList, name: 'ProductList' },
         { path: 'review', component: Review, name: 'Review' },
         { path: 'products/:id', component: ProductDetail, name: 'ProductDetail' },
-        { path: 'cart', component: ProductList, name: 'Cart' },
+        { path: 'cart', component: () => import('@/pages/Cart.vue'), name: 'Cart' },
+        { path: 'purchase-history', component: PurchaseHistory, name: 'PurchaseHistory' },
         { path: 'account-security', component: AccountSecurity, name: 'AccountSecurity' },
         { path: 'account-setting', component: AccountSetting, name: 'AccountSetting' },
       ],
@@ -57,6 +60,7 @@ const router = createRouter({
         { path: 'accounts/edit/:id', component: AccountEdit, name: 'AccountEdit' },
         { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
         { path: 'statistics', component: Statistics, name: 'Statistics' },
+        { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
       ],
     },
 
