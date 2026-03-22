@@ -46,5 +46,10 @@ export default {
   // Delete review
   deleteReview(id) {
     return axios.delete(`${API}/${id}`)
+  },
+
+  // Get paid orders with details for account
+  getPaidOrdersWithDetailsForAccount(accountId) {
+    return axios.get(`${API}/account/${accountId}/paid-orders`)
   }
 }
