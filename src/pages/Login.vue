@@ -1,6 +1,12 @@
 <template>
   <div class="auth-wrapper d-flex align-center justify-center pa-4">
-    <v-card class="auth-card rounded-lg" max-width="460" :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-6'" elevation="0" border>
+    <v-card
+      class="auth-card rounded-lg"
+      max-width="460"
+      :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-6'"
+      elevation="0"
+      border
+    >
       <v-card-item class="justify-center pb-2">
         <div class="text-center">
           <h1 class="text-h4 font-weight-bold mb-2">Đăng nhập</h1>
@@ -11,7 +17,6 @@
       <v-card-text>
         <v-form @submit.prevent="login">
           <v-row>
-            <!-- Username -->
             <v-col cols="12">
               <v-text-field
                 v-model="form.username"
@@ -24,7 +29,6 @@
               />
             </v-col>
 
-            <!-- Password -->
             <v-col cols="12" class="pt-4">
               <v-text-field
                 v-model="form.password"
@@ -50,7 +54,6 @@
               </v-btn>
             </v-col>
 
-            <!-- Link to Register -->
             <v-col cols="12" class="text-center mt-2">
               <span class="text-body-2">Chưa có tài khoản?</span>
               <router-link to="/register" class="text-primary text-decoration-none ms-1">
@@ -69,6 +72,7 @@ import { ref } from "vue"
 import axios from "axios"
 import { useRouter } from "vue-router"
 import { useUserStore } from "@/stores/user"
+import accountApi from "@/api/accountApi"
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -76,36 +80,97 @@ const userStore = useUserStore()
 const form = ref({
   username: "",
   password: "",
-  remember: false
+  remember: false,
 })
 
 const isPasswordVisible = ref(false)
 
 const login = async () => {
+  console.log("=== LOGIN FUNCTION CALLED ===")
+
   try {
+    console.log("Form values:", form.value)
+
     if (!form.value.username || !form.value.password) {
       alert("Vui lòng nhập tên đăng nhập và mật khẩu")
       return
     }
 
+    console.log("Sending login request to API...")
     const res = await axios.post("http://localhost:8080/auth/login", {
       username: form.value.username,
       password: form.value.password,
     })
 
-    // Update user store with login data
+    console.log("✅ Login response:", res.data)
+
+    // Lưu vào store
     userStore.login({
       accountId: res.data.accountId,
       token: res.data.token,
-      username: res.data.username
+      username: res.data.username,
     })
 
-    window.dispatchEvent(new Event('auth-changed'))
+    // Lưu localStorage
+    localStorage.setItem("token", res.data.token)
+    localStorage.setItem("accountId", res.data.accountId)
+    localStorage.setItem("username", res.data.username)
+
+    // Nếu username là admin thì set luôn
+    if (res.data.username === "admin") {
+      localStorage.setItem("userRole", "admin")
+      console.log("✅ Set admin role for username: admin")
+    } else {
+      // Gọi API lấy role
+      if (res.data.accountId) {
+        try {
+          const accountRes = await accountApi.getById(res.data.accountId)
+          console.log("📋 Full account response:", accountRes.data)
+
+          const account = accountRes.data.account || accountRes.data
+          console.log("📋 Account object:", account)
+          console.log("📋 Account keys:", Object.keys(account))
+
+          let userRole = null
+
+          if (account.role) {
+            userRole = account.role
+          } else if (account.roleId) {
+            userRole = account.roleId
+          } else if (account.accountRole) {
+            userRole = account.accountRole
+          } else if (account.type) {
+            userRole = account.type
+          } else if (account.status !== undefined && account.status !== null) {
+            userRole = account.status === 1 ? "admin" : "user"
+          }
+
+          if (userRole) {
+            localStorage.setItem("userRole", userRole)
+            console.log("✅ Saved userRole:", userRole)
+          } else {
+            console.warn("⚠️ Không tìm thấy role field trong account info")
+            console.log("Available fields:", account)
+          }
+        } catch (error) {
+          console.error("❌ Lỗi khi lấy thông tin account:", error)
+        }
+      }
+    }
+
+    console.log("Final stored data:", {
+      accountId: localStorage.getItem("accountId"),
+      username: localStorage.getItem("username"),
+      userRole: localStorage.getItem("userRole"),
+    })
+
+    window.dispatchEvent(new Event("auth-changed"))
 
     alert("Đăng nhập thành công!")
-    router.push("/account")
+    router.push({ name: "Home" })
   } catch (error) {
-    console.error(error)
+    console.error("Login error:", error)
+    console.error("Error response:", error.response?.data)
     alert("Sai tài khoản hoặc mật khẩu!")
   }
 }
@@ -114,11 +179,14 @@ const login = async () => {
 <style scoped>
 .auth-wrapper {
   height: 100vh;
-  background: linear-gradient(135deg, rgba(245, 222, 179, 0.1) 0%, rgba(238, 216, 174, 0.1) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(245, 222, 179, 0.1) 0%,
+    rgba(238, 216, 174, 0.1) 100%
+  );
 }
 
 :deep(.auth-card) {
   border-radius: 8px !important;
 }
-
 </style>
