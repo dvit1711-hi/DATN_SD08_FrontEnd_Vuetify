@@ -149,6 +149,8 @@ export default {
     addProductColor() {
       console.log("Product ID:", this.id);
       console.log("New Color:", this.newColor);
+      if (!this.newColor.colorId) { alert("Chọn màu!"); return; }
+  if (this.newColor.stockQuantity < 0) { alert("Stock phải >=0"); return; }
       if (!this.newColor.colorId) return;
       axios
         .post(

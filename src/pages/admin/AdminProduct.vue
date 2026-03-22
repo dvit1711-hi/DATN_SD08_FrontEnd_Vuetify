@@ -3,13 +3,15 @@
     <!-- Header -->
     <div class="mb-6">
       <h1 class="text-h4 font-weight-bold mb-2">Quản lý sản phẩm</h1>
-      <p class="text-subtitle-1 text-grey">Thêm, chỉnh sửa và quản lý sản phẩm</p>
+      <p class="text-subtitle-1 text-grey">
+        Thêm, chỉnh sửa và quản lý sản phẩm
+      </p>
     </div>
 
     <!-- Add Product Button -->
-    <v-btn 
-      color="primary" 
-      size="large" 
+    <v-btn
+      color="primary"
+      size="large"
       prepend-icon="mdi-plus"
       class="mb-6"
       @click="showAddForm = true"
@@ -106,7 +108,9 @@
           </template>
 
           <template #item.price="{ item }">
-            <span class="text-primary font-weight-bold">{{ formatPrice(item.price) }}đ</span>
+            <span class="text-primary font-weight-bold"
+              >{{ formatPrice(item.price) }}đ</span
+            >
           </template>
 
           <template #item.status="{ item }">
@@ -115,12 +119,12 @@
               :color="item.status === 'ACTIVE' ? 'success' : 'error'"
               variant="flat"
             >
-              {{ item.status === 'ACTIVE' ? 'Kích hoạt' : 'Tắt' }}
+              {{ item.status === "ACTIVE" ? "Kích hoạt" : "Tắt" }}
             </v-chip>
           </template>
 
           <template #item.brand="{ item }">
-            {{ item.name || '—' }}
+            {{ item.name || "—" }}
           </template>
 
           <template #item.actions="{ item }">
@@ -209,6 +213,22 @@ const saveProduct = () => {
     alert('Vui lòng nhập đủ thông tin')
     return
   }
+    if (!form.value.productName || form.value.productName.trim() === "") {
+    alert('Vui lòng nhập tên sản phẩm');
+    return;
+  }
+  if (!form.value.price || form.value.price < 0) {
+    alert('Vui lòng nhập giá hợp lệ');
+    return;
+  }
+  if (!form.value.brandID) {
+    alert('Vui lòng chọn thương hiệu');
+    return;
+  }
+  if (!['ACTIVE','INACTIVE'].includes(form.value.status)) {
+    alert('Trạng thái không hợp lệ');
+    return;
+  }
 
   if (form.value.productID) {
     // Update product
@@ -234,9 +254,9 @@ const saveProduct = () => {
   }
 }
 
-const editProduct = (p) => {
-  form.value = { ...p, brandID: p.branID?.brandID || p.brandID }
-  showAddForm.value = true
+const editProduct = (p) => { form.value = 
+  { ...p, brandID: p.branID?.brandID || p.brandID };
+ showAddForm.value = true 
 }
 
 const cancelForm = () => {
@@ -269,7 +289,7 @@ const formatPrice = (price) => {
 
 <style scoped>
 :deep(.bg-background) {
-  background-color: #F5DEB3;
+  background-color: #f5deb3;
 }
 
 .table-modern :deep(.v-table__wrapper) {

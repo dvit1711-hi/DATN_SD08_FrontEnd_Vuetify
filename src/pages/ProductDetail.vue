@@ -54,13 +54,13 @@
           <!-- Nút hành động -->
           <v-row class="gap-3">
             <v-col cols="6">
-              <v-btn color="primary" block prepend-icon="mdi-shopping-cart">
+              <v-btn color="primary" block >
                 Thêm vào giỏ hàng
               </v-btn>
             </v-col>
             <v-col cols="6">
-              <v-btn color="secondary" block outlined prepend-icon="mdi-heart-outline">
-                Yêu thích
+              <v-btn color="secondary" block outlined >
+                Mua ngay
               </v-btn>
             </v-col>
           </v-row>
@@ -73,19 +73,147 @@
         </div>
       </v-col>
     </v-row>
+
+    <!-- Star distribution and Reviews section -->
+    <v-row class="mt-8">
+      <!-- Left side - Rating summary -->
+      <v-col cols="12" md="3">
+        <v-card class="sticky-card" elevation="0" border>
+          <v-card-item>
+            <div class="text-subtitle2 font-weight-bold mb-2">Tổng quan đánh giá</div>
+            <div class="d-flex align-center gap-2 mb-2">
+              <div class="text-h5 font-weight-bold">{{ averageRating.toFixed(1) }}</div>
+              <v-rating
+                :model-value="averageRating"
+                readonly
+                size="small"
+                color="amber"
+              />
+            </div>
+            <div class="text-caption text-grey mb-4">{{ totalReviews }} đánh giá</div>
+
+            <!-- Star distribution -->
+            <div>
+              <button
+                class="star-filter-btn all-reviews-btn"
+                :class="{ active: selectedStarFilter === null }"
+                @click="selectedStarFilter = null"
+              >
+                <v-icon icon="mdi-check-all" size="small" class="mr-1" />
+                Tất cả
+              </button>
+              <button
+                v-for="star in [5, 4, 3, 2, 1]"
+                :key="star"
+                class="star-filter-btn"
+                :class="{ active: selectedStarFilter === star }"
+                @click="selectedStarFilter = selectedStarFilter === star ? null : star"
+              >
+                {{ star }} <v-icon icon="mdi-star" size="small" />
+              </button>
+            </div>
+          </v-card-item>
+        </v-card>
+      </v-col>
+
+      <!-- Right side - Reviews list -->
+      <v-col cols="12" md="9">
+        <div v-if="reviews.length > 0" class="reviews-container">
+          <!-- Reviews wrapper with grey background -->
+          <div class="reviews-wrapper pa-6">
+            <h2 class="text-h6 font-weight-bold mb-4">Đánh giá từ khách hàng</h2>
+            
+            <!-- Reviews Cards -->
+            <div class="reviews-list">
+              <v-card
+                v-for="review in paginatedReviews"
+                :key="review.id"
+                class="review-card mb-4"
+                elevation="0"
+                border
+              >
+                <v-card-item class="pa-4">
+                  <div class="d-flex gap-3">
+                    <!-- Avatar with user image -->
+                    <div class="review-avatar-wrapper">
+                      <v-avatar size="48" class="review-avatar">
+                        <v-img
+                          :src="review.userAvatar || getDefaultAvatar(review.username)"
+                          :alt="review.username"
+                          cover
+                        />
+                      </v-avatar>
+                    </div>
+
+                    <!-- Review content -->
+                    <div class="flex-grow-1">
+                      <!-- Header: Username and date -->
+                      <div class="d-flex align-center justify-space-between mb-2">
+                        <div>
+                          <div class="font-weight-bold text-body-1">{{ review.username }}</div>
+                          <div class="text-caption text-grey">{{ formatDate(review.createdAt) }}</div>
+                        </div>
+                      </div>
+
+                      <!-- Star rating -->
+                      <v-rating
+                        :model-value="review.rating"
+                        readonly
+                        size="x-small"
+                        color="amber"
+                        class="mb-2"
+                      />
+
+                      <!-- Comment -->
+                      <p class="text-body-2 mb-0 review-comment">
+                        {{ review.comment }}
+                      </p>
+                    </div>
+                  </div>
+                </v-card-item>
+              </v-card>
+            </div>
+
+            <!-- Pagination -->
+            <div class="d-flex justify-center mt-6">
+              <v-pagination
+                v-model="currentPage"
+                :length="totalPages"
+                :total-visible="5"
+                color="primary"
+                size="small"
+              />
+            </div>
+          </div>
+        </div>
+        <div v-else class="reviews-wrapper pa-8 text-center">
+          <v-icon icon="mdi-folder-open-outline" size="64" class="text-grey" />
+          <p class="text-body-2 text-grey mt-4">Chưa có đánh giá nào</p>
+        </div>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
 import { useRoute } from "vue-router"
 import axios from "axios"
+import reviewApi from "@/api/ReviewApi"
 
 const route = useRoute()
 const product = ref(null)
 const images = ref([])
 const mainImage = ref("")
 const selectedColor = ref(null)
+
+// Review related refs
+const reviews = ref([])
+const averageRating = ref(0)
+const totalReviews = ref(0)
+const selectedStarFilter = ref(null)
+const currentPage = ref(1)
+const itemsPerPage = 5
 
 onMounted(async () => {
   try {
@@ -98,9 +226,17 @@ onMounted(async () => {
       images.value = selectedColor.value.images || []
       mainImage.value = images.value[0] || ""
     }
+
+    // Load reviews and rating stats
+    await loadReviews(productID)
   } catch (error) {
     console.error(error)
   }
+})
+
+// Reset page when filter changes
+watch(selectedStarFilter, () => {
+  currentPage.value = 1
 })
 
 function changeColor(color) {
@@ -112,6 +248,77 @@ function changeColor(color) {
 function formatPrice(price) {
   return new Intl.NumberFormat("vi-VN").format(price)
 }
+
+// Load reviews for the product
+const loadReviews = async (productID) => {
+  try {
+    const response = await reviewApi.getReviewsByProductId(productID)
+    reviews.value = response.data
+    await loadRatingStats(productID)
+  } catch (error) {
+    console.error("Failed to load reviews:", error)
+    reviews.value = []
+  }
+}
+
+// Load rating statistics
+const loadRatingStats = async (productID) => {
+  try {
+    const avgResponse = await reviewApi.getAverageRatingForProduct(productID)
+    const totalResponse = await reviewApi.getTotalReviewsForProduct(productID)
+    averageRating.value = avgResponse.data
+    totalReviews.value = totalResponse.data
+  } catch (error) {
+    console.error("Failed to load rating stats:", error)
+  }
+}
+
+// Filter reviews by star
+const filteredReviews = computed(() => {
+  if (!selectedStarFilter.value) {
+    return reviews.value
+  }
+  return reviews.value.filter(r => r.rating === selectedStarFilter.value)
+})
+
+// Calculate total pages
+const totalPages = computed(() => {
+  return Math.ceil(filteredReviews.value.length / itemsPerPage)
+})
+
+// Paginated reviews
+const paginatedReviews = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredReviews.value.slice(start, end)
+})
+
+// Get initials from username
+const getInitials = (username) => {
+  if (!username) return "?"
+  return username
+    .split(" ")
+    .map(word => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+// Get default avatar from API
+const getDefaultAvatar = (username) => {
+  // Using UI Avatars service as fallback
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=667eea&color=fff&bold=true`
+}
+
+// Format date
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString("vi-VN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+}
 </script>
 
 <style scoped>
@@ -120,6 +327,7 @@ function formatPrice(price) {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  background-color: #f9f9f9;
 }
 .thumb-img:hover {
   border-color: #CDBA96;
@@ -145,5 +353,111 @@ function formatPrice(price) {
 .color-btn-active {
   border-color: #CDBA96;
   box-shadow: 0 0 6px rgba(205, 186, 150, 0.5);
+}
+
+.sticky-card {
+  position: sticky;
+  top: 20px;
+}
+
+.star-filter-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.star-filter-btn:hover {
+  background: #f9f9f9;
+}
+
+.star-filter-btn.active {
+  background: #ffeaa7;
+  border-color: #ffd700;
+  color: #333;
+  font-weight: 500;
+}
+
+.all-reviews-btn.active {
+  background: #c8e6c9;
+  border-color: #4caf50;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+/* Review list styles */
+.reviews-container {
+  margin-top: 2rem;
+}
+
+.reviews-wrapper {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  animation: slideUp 0.3s ease-in;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reviews-list {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.review-card {
+  transition: all 0.3s ease;
+  background: #ffffff;
+}
+
+.review-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.review-avatar-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.review-avatar {
+  border: 2px solid #ddd;
+  transition: all 0.3s ease;
+}
+
+.review-card:hover .review-avatar {
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.review-comment {
+  line-height: 1.6;
+  color: #424242;
+  word-break: break-word;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
