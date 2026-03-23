@@ -54,59 +54,63 @@
     <!-- ==== Danh sách màu và ảnh ==== -->
     <div class="color-list">
       <div
-        v-for="color in product.colors"
-        :key="color.productColorID"
-        class="color-card card mb-3"
-      >
-        <div class="color-item">
-          <div
-            class="color-box"
-            :style="{ backgroundColor: color.colorCode }"
-          ></div>
-          <span class="color-name">{{ color.colorName }}</span>
-        </div>
-        <p class="stock-text">Stock quantity: {{ color.stockQuantity }}</p>
-        <v-btn
-          color="error"
-          small
-          class="ml-auto"
-          @click = "deleteProductColor(color.productColorID)">
-        Xóa màu
-        </v-btn>
-        <p>Ảnh:</p>
+  v-for="color in product.colors"
+  :key="color.productColorID"
+  class="color-card card mb-3"
+>
+  <div class="color-header">
+    <div class="color-item">
+      <div
+        class="color-box"
+        :style="{ backgroundColor: color.colorCode }"
+      ></div>
+      <span class="color-name">{{ color.colorName }}</span>
+    </div>
 
-        <!-- Hiển thị ảnh hiện có -->
-        <div class="image-gallery">
-          <img
-            v-for="(img, index) in color.images"
-            :key="index"
-            :src="`${img}`"
-            class="product-image"
-          />
-        </div>
+    <v-btn
+      color="error"
+      size="small"
+      variant="tonal"
+      class="delete-color-btn"
+      @click="deleteProductColor(color.productColorID)"
+    >
+      Xóa màu
+    </v-btn>
+  </div>
 
-        <!-- ==== Thêm ảnh mới ==== -->
-        <div class="add-image">
-          <input
-            type="file"
-            :id="'file-' + color.productColorID"
-            @change="onFileSelected($event, color.productColorID)"
-            accept="D:\SOF203_JAVA3\DATN\FrontEnd\Project_DATN_SD08_BaseBalllCapSales_FrontEnd\vuetify-project\public\images"
-          />
-          <v-btn
-            color="success"
-            @click="addImage(color.productColorID)"
-            :disabled="
-              color.images.length >= 6 || !selectedFiles[color.productColorID]
-            "
-          >
-            Thêm ảnh
-          </v-btn>
-          <span v-if="color.images.length >= 6" class="limit-text">
-            Tối đa là 6 ảnh
-          </span>
-        </div>
-      </div>
+  <p class="stock-text">Stock quantity: {{ color.stockQuantity }}</p>
+  <p>Ảnh:</p>
+
+  <div class="image-gallery">
+    <img
+      v-for="(img, index) in color.images"
+      :key="index"
+      :src="`${img}`"
+      class="product-image"
+    />
+  </div>
+
+  <div class="add-image">
+    <input
+      type="file"
+      :id="'file-' + color.productColorID"
+      @change="onFileSelected($event, color.productColorID)"
+      accept="image/*"
+    />
+    <v-btn
+      color="success"
+      @click="addImage(color.productColorID)"
+      :disabled="
+        color.images.length >= 5 || !selectedFiles[color.productColorID]
+      "
+    >
+      Thêm ảnh
+    </v-btn>
+    <span v-if="color.images.length >= 5" class="limit-text">
+      Tối đa là 5 ảnh
+    </span>
+  </div>
+</div>
     </div>
   </div>
 </template>
@@ -328,5 +332,57 @@ export default {
   font-size: 14px;
   font-weight: 500;
   color: #333;
+}
+.color-card {
+  position: relative;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f9f9f9;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.color-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.color-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delete-color-btn {
+  min-width: auto;
+}
+
+.color-name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.color-box {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.stock-text {
+  margin: 6px 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+.color-card {
+  position: relative;
+}
+
+.delete-color-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 </style>
