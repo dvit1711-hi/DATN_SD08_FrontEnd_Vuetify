@@ -113,6 +113,7 @@
               color="success"
               hide-details
               inset
+              @update:model-value="toggleCouponActive(item)"
             />
           </template>
 
@@ -477,6 +478,20 @@ const removeDiscount = async (id) => {
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Xóa dữ liệu thất bại. Vui lòng thử lại'
     console.error('Error deleting discount:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const toggleCouponActive = async (item) => {
+  try {
+    isLoading.value = true
+    errorMessage.value = ''
+    await updateDiscountCoupon(item.id, { active: item.active })
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Cập nhật trạng thái thất bại. Vui lòng thử lại'
+    item.active = !item.active
+    console.error('Error toggling coupon status:', error)
   } finally {
     isLoading.value = false
   }

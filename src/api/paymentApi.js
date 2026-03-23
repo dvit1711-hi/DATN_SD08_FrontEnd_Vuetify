@@ -21,6 +21,25 @@ export default {
     return this.checkout(accountId, 'COD', token)
   },
 
+  checkoutSelected(accountId, method, cartItemIds, token, couponCode) {
+    const data = {
+      accountId,
+      method,
+      cartItemIds,
+      couponCode: couponCode || null,
+    }
+
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.post(`${API}/checkout/selected`, data, config)
+  },
+
   getOrdersByAccount(accountId, token) {
     const config = token
       ? {

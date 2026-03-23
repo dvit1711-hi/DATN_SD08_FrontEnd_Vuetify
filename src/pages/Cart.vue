@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <v-container class="py-8" fluid>
     <div class="mb-6">
       <h1 class="text-h4 font-weight-bold mb-2">Giỏ hàng</h1>
-      <p class="text-subtitle-1 text-grey">Xem lại sản phẩm trước khi thanh toán</p>
+      <p class="text-subtitle-1 text-grey">Chọn sản phẩm cần mua rồi tiếp tục sang trang thanh toán</p>
     </div>
 
     <v-alert
@@ -21,9 +21,29 @@
     <template v-else>
       <v-row v-if="cartItems.length > 0" class="ga-4">
         <v-col cols="12" lg="8">
+          <v-card class="mb-4" variant="outlined">
+            <v-card-text class="py-2 px-4 d-flex align-center justify-space-between">
+              <v-checkbox
+                :model-value="isAllSelected"
+                label="Chọn tất cả"
+                hide-details
+                density="compact"
+                @update:model-value="toggleSelectAll"
+              />
+              <span class="text-caption text-grey">Đã chọn {{ selectedItemIds.length }}/{{ cartItems.length }} sản phẩm</span>
+            </v-card-text>
+          </v-card>
+
           <v-card v-for="item in cartItems" :key="item.cartItemID" class="mb-4" variant="outlined">
             <v-card-text class="pa-4">
               <div class="d-flex align-center flex-wrap ga-4">
+                <v-checkbox
+                  :model-value="selectedItemIds.includes(item.cartItemID)"
+                  hide-details
+                  density="compact"
+                  @update:model-value="toggleItemSelection(item.cartItemID, $event)"
+                />
+
                 <v-img
                   :src="item.mainImage || fallbackImage"
                   width="96"
@@ -69,7 +89,7 @@
                     icon="mdi-plus"
                     size="x-small"
                     variant="outlined"
-                    :disabled="item.isUpdating"
+                    :disabled="item.isUpdating || item.quantity >= (item.stockQuantity ?? 0)"
                     @click="changeQuantity(item, item.quantity + 1)"
                   />
                 </div>
@@ -101,45 +121,28 @@
             <v-divider />
             <v-card-text>
               <div class="d-flex justify-space-between mb-2">
-                <span class="text-body-2 text-grey">Số sản phẩm</span>
-                <span class="font-weight-medium">{{ totalQuantity }}</span>
+                <span class="text-body-2 text-grey">Đã chọn</span>
+                <span class="font-weight-medium">{{ selectedTotalQuantity }} sản phẩm</span>
               </div>
               <div class="d-flex justify-space-between mb-4">
                 <span class="text-body-2 text-grey">Tạm tính</span>
-                <span class="font-weight-medium">{{ formatPrice(totalPrice) }}đ</span>
+                <span class="font-weight-medium">{{ formatPrice(selectedTotalPrice) }}đ</span>
               </div>
               <v-divider class="mb-4" />
               <div class="d-flex justify-space-between align-center">
                 <span class="text-subtitle-1 font-weight-bold">Tổng cộng</span>
-                <span class="text-h6 font-weight-bold text-primary">{{ formatPrice(totalPrice) }}đ</span>
+                <span class="text-h6 font-weight-bold text-primary">{{ formatPrice(selectedTotalPrice) }}đ</span>
               </div>
-
-              <v-select
-                v-model="selectedPaymentMethod"
-                :items="paymentMethods"
-                item-title="label"
-                item-value="value"
-                label="Phương thức thanh toán"
-                variant="outlined"
-                density="comfortable"
-                class="mt-4"
-                hide-details
-              />
-
-              <p class="text-caption text-grey mt-2">
-                {{ selectedPaymentMethodDescription }}
-              </p>
 
               <v-btn
                 block
                 color="primary"
                 class="mt-6"
                 size="large"
-                :loading="isCheckingOut"
-                :disabled="cartItems.length === 0 || isCheckingOut"
-                @click="checkout"
+                :disabled="selectedItemIds.length === 0"
+                @click="goCheckout"
               >
-                Tiến hành thanh toán
+                Tiếp tục thanh toán
               </v-btn>
             </v-card-text>
           </v-card>
@@ -173,42 +176,50 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import productApi from '@/api/productApi'
+import productColorApi from '@/api/productColorApi'
 import cartApi from '@/api/cartApi'
-import paymentApi from '@/api/paymentApi'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const isLoading = ref(false)
 const cartItems = ref([])
+const selectedItemIds = ref([])
 const showSnackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
-const isCheckingOut = ref(false)
-const paymentMethods = [
-  { label: 'Thanh toán khi nhận hàng (COD)', value: 'COD', description: 'Admin sẽ xác nhận thanh toán sau khi giao hàng.' },
-  { label: 'Chuyển khoản ngân hàng', value: 'BANK_TRANSFER', description: 'Bạn chuyển khoản và admin xác nhận khi nhận tiền.' },
-  { label: 'Ví điện tử', value: 'E_WALLET', description: 'Bạn thanh toán qua ví điện tử, admin xác nhận thủ công.' },
-]
-const selectedPaymentMethod = ref('COD')
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
-const totalQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0))
-const totalPrice = computed(() => cartItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
-const selectedPaymentMethodDescription = computed(() => {
-  return paymentMethods.find((m) => m.value === selectedPaymentMethod.value)?.description || ''
+const selectedItems = computed(() => {
+  const selectedSet = new Set(selectedItemIds.value)
+  return cartItems.value.filter((item) => selectedSet.has(item.cartItemID))
 })
+const selectedTotalQuantity = computed(() => selectedItems.value.reduce((sum, item) => sum + item.quantity, 0))
+const selectedTotalPrice = computed(() => selectedItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
+const isAllSelected = computed(() => cartItems.value.length > 0 && selectedItemIds.value.length === cartItems.value.length)
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
 
 const buildProductColorMap = async () => {
-  const res = await productApi.getAllCart()
+  const [productRes, stockRes] = await Promise.all([productApi.getAllCart(), productColorApi.getAll()])
+
+  const stockMap = new Map()
+  ;(stockRes.data || []).forEach((pc) => {
+    const colorId = Number.parseInt(pc.productColorID ?? pc.id, 10)
+    if (Number.isFinite(colorId)) {
+      stockMap.set(colorId, Number.parseInt(pc.stockQuantity, 10) || 0)
+    }
+  })
+
   const map = new Map()
-  ;(res.data || []).forEach((p) => {
+  ;(productRes.data || []).forEach((p) => {
     const colorId = Number.parseInt(p.productColorID, 10)
     if (Number.isFinite(colorId)) {
-      map.set(colorId, p)
+      map.set(colorId, {
+        ...p,
+        stockQuantity: stockMap.get(colorId) ?? 0,
+      })
     }
   })
   return map
@@ -244,12 +255,15 @@ const loadCart = async () => {
           colorName: card.colorName || '',
           colorCode: card.colorCode || '',
           mainImage: card.mainImage || '',
+          stockQuantity: Number.parseInt(card.stockQuantity, 10) || 0,
           isUpdating: false,
           isRemoving: false,
         }
       })
 
     cartItems.value = normalized
+    const validIds = new Set(normalized.map((x) => x.cartItemID))
+    selectedItemIds.value = selectedItemIds.value.filter((id) => validIds.has(id))
   } catch (error) {
     console.error('Lỗi tải giỏ hàng:', error)
     snackbarMessage.value = 'Không thể tải giỏ hàng'
@@ -262,6 +276,22 @@ const loadCart = async () => {
 
 const changeQuantity = async (item, nextQuantity) => {
   const quantity = Math.max(1, Number.parseInt(nextQuantity, 10) || 1)
+  const maxStock = Number.parseInt(item.stockQuantity, 10) || 0
+
+  if (maxStock <= 0) {
+    snackbarMessage.value = 'Sản phẩm đã hết hàng'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+
+  if (quantity > maxStock) {
+    snackbarMessage.value = `Số lượng vượt tồn kho. Tối đa ${maxStock} sản phẩm`
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+
   if (quantity === item.quantity) return
 
   item.isUpdating = true
@@ -298,6 +328,7 @@ const removeItem = async (item) => {
   try {
     await cartApi.remove(item.cartItemID, userStore.token)
     cartItems.value = cartItems.value.filter((x) => x.cartItemID !== item.cartItemID)
+    selectedItemIds.value = selectedItemIds.value.filter((id) => id !== item.cartItemID)
     window.dispatchEvent(new Event('cart-changed'))
     snackbarMessage.value = 'Đã xóa sản phẩm khỏi giỏ hàng'
     snackbarColor.value = 'success'
@@ -312,44 +343,55 @@ const removeItem = async (item) => {
   }
 }
 
+const toggleItemSelection = (cartItemId, checked) => {
+  if (checked) {
+    if (!selectedItemIds.value.includes(cartItemId)) {
+      selectedItemIds.value.push(cartItemId)
+    }
+    return
+  }
+  selectedItemIds.value = selectedItemIds.value.filter((id) => id !== cartItemId)
+}
+
+const toggleSelectAll = (checked) => {
+  if (checked) {
+    selectedItemIds.value = cartItems.value.map((item) => item.cartItemID)
+    return
+  }
+  selectedItemIds.value = []
+}
+
+const goCheckout = () => {
+  if (selectedItemIds.value.length === 0) {
+    snackbarMessage.value = 'Vui lòng chọn ít nhất 1 sản phẩm để thanh toán'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+
+  const invalidItem = selectedItems.value.find((item) => {
+    const stock = Number.parseInt(item.stockQuantity, 10) || 0
+    const qty = Number.parseInt(item.quantity, 10) || 0
+    return qty <= 0 || qty > stock
+  })
+
+  if (invalidItem) {
+    snackbarMessage.value = `${invalidItem.productName || 'Sản phẩm'} không đủ tồn kho để thanh toán`
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+
+  sessionStorage.setItem('selectedCartItemIds', JSON.stringify(selectedItemIds.value))
+  router.push({ name: 'Checkout' })
+}
+
 const goProducts = () => {
   router.push({ name: 'ProductList' })
 }
 
 const goLogin = () => {
   router.push({ name: 'Login' })
-}
-
-const checkout = async () => {
-  if (cartItems.value.length === 0 || isCheckingOut.value) return
-
-  const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    snackbarMessage.value = 'Không xác định được tài khoản thanh toán'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
-    return
-  }
-
-  isCheckingOut.value = true
-  try {
-    const res = await paymentApi.checkout(accountId, selectedPaymentMethod.value, userStore.token)
-    cartItems.value = []
-    window.dispatchEvent(new Event('cart-changed'))
-    snackbarMessage.value = `Đặt hàng thành công. Mã đơn #${res.data?.id || res.data?.orderID || ''}`.trim()
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
-    setTimeout(() => {
-      router.push({ name: 'PurchaseHistory' })
-    }, 600)
-  } catch (error) {
-    console.error('Lỗi thanh toán:', error)
-    snackbarMessage.value = error?.response?.data?.message || 'Thanh toán thất bại. Vui lòng thử lại'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
-  } finally {
-    isCheckingOut.value = false
-  }
 }
 
 onMounted(loadCart)

@@ -39,6 +39,7 @@ const router = createRouter({
         { path: 'review', component: Review, name: 'Review' },
         { path: 'products/:id', component: ProductDetail, name: 'ProductDetail' },
         { path: 'cart', component: () => import('@/pages/Cart.vue'), name: 'Cart' },
+        { path: 'checkout', component: () => import('@/pages/Checkout.vue'), name: 'Checkout' },
         { path: 'purchase-history', component: PurchaseHistory, name: 'PurchaseHistory' },
         { path: 'account-security', component: AccountSecurity, name: 'AccountSecurity' },
         { path: 'account-setting', component: AccountSetting, name: 'AccountSetting' },

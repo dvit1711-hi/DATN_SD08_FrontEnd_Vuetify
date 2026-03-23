@@ -39,14 +39,14 @@
               </div>
 
               <div class="d-flex align-center ga-2">
-                <v-chip size="small" :color="order.paymentStatus === 'PAID' ? 'success' : 'warning'" variant="tonal">
-                  {{ order.paymentStatus }}
+                <v-chip size="small" :color="getDisplayStatus(order).color" variant="tonal">
+                  {{ getDisplayStatus(order).label }}
+                </v-chip>
+                <v-chip v-if="order.couponCode" size="small" color="orange" variant="tonal">
+                  Mã: {{ order.couponCode }}
                 </v-chip>
                 <v-chip size="small" color="secondary" variant="tonal">
-                  {{ order.paymentMethod || 'UNKNOWN' }}
-                </v-chip>
-                <v-chip size="small" :color="order.orderStatus === 'PAID' ? 'success' : 'info'" variant="tonal">
-                  {{ order.orderStatus }}
+                  {{ getPaymentMethodLabel(order.paymentMethod) }}
                 </v-chip>
                 <div class="font-weight-bold text-primary">{{ formatPrice(order.totalAmount) }}đ</div>
               </div>
@@ -54,6 +54,16 @@
           </v-expansion-panel-title>
 
           <v-expansion-panel-text>
+            <v-alert
+              type="info"
+              variant="tonal"
+              density="comfortable"
+              class="mb-3"
+              icon="mdi-map-marker"
+              title="Địa chỉ nhận hàng"
+              :text="formatOrderAddress(order.shippingAddress)"
+            />
+
             <v-list lines="two" class="bg-grey-lighten-5 rounded-lg">
               <v-list-item v-for="item in order.items" :key="item.orderDetailId" class="py-2">
                 <template #prepend>
@@ -64,7 +74,7 @@
 
                 <v-list-item-title class="font-weight-medium">{{ item.productName }}</v-list-item-title>
                 <v-list-item-subtitle>
-                  Màu: {{ item.colorName || 'N/A' }} | Số lượng: {{ item.quantity }} | Giá: {{ formatPrice(item.price) }}đ
+                  Màu: {{ item.colorName || 'Không xác định' }} | Số lượng: {{ item.quantity }} | Giá: {{ formatPrice(item.price) }}đ
                 </v-list-item-subtitle>
               </v-list-item>
             </v-list>
@@ -95,9 +105,54 @@ const fallbackImage = 'https://via.placeholder.com/64x64?text=No+Image'
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const formatPrice = (value) => new Intl.NumberFormat('vi-VN').format(value || 0)
+const formatOrderAddress = (shippingAddress) => {
+  const value = String(shippingAddress || '').trim()
+  return value.length > 0 ? value : 'Không có địa chỉ cho đơn này'
+}
+
 const formatDate = (value) => {
-  if (!value) return 'N/A'
+  if (!value) return 'Không có dữ liệu'
   return new Date(value).toLocaleString('vi-VN')
+}
+
+const getPaymentStatusLabel = (status) => {
+  const normalized = String(status || '').toUpperCase()
+  if (normalized === 'PAID') return 'Đã thanh toán'
+  if (normalized === 'UNPAID') return 'Chưa thanh toán'
+  return 'Không xác định'
+}
+
+const getOrderStatusLabel = (status) => {
+  const normalized = String(status || '').toUpperCase()
+  if (normalized === 'PENDING_PAYMENT') return 'Chờ thanh toán'
+  if (normalized === 'PAID') return 'Đã thanh toán'
+  if (normalized === 'CANCELLED') return 'Đã hủy'
+  return 'Không xác định'
+}
+
+const getDisplayStatus = (order) => {
+  const payment = getPaymentStatusLabel(order?.paymentStatus)
+  const orderStatus = getOrderStatusLabel(order?.orderStatus)
+
+  if (payment === 'Đã thanh toán' || orderStatus === 'Đã thanh toán') {
+    return { label: 'Đã thanh toán', color: 'success' }
+  }
+  if (orderStatus === 'Đã hủy') {
+    return { label: 'Đã hủy', color: 'error' }
+  }
+  if (payment === 'Chưa thanh toán' || orderStatus === 'Chờ thanh toán') {
+    return { label: 'Chờ thanh toán', color: 'warning' }
+  }
+
+  return { label: 'Không xác định', color: 'info' }
+}
+
+const getPaymentMethodLabel = (method) => {
+  const normalized = String(method || '').toUpperCase()
+  if (normalized === 'COD') return 'Thanh toán khi nhận hàng'
+  if (normalized === 'BANK_TRANSFER') return 'Chuyển khoản ngân hàng'
+  if (normalized === 'E_WALLET') return 'Ví điện tử'
+  return 'Không xác định'
 }
 
 const loadOrders = async () => {

@@ -80,7 +80,14 @@
               </v-btn>
             </v-col>
             <v-col cols="6">
-              <v-btn color="secondary" block outlined >
+              <v-btn
+                color="secondary"
+                block
+                outlined
+                @click="handleBuyNow"
+                :loading="isLoading"
+                :disabled="isLoading"
+              >
                 Mua ngay
               </v-btn>
             </v-col>
@@ -413,6 +420,63 @@ async function handleAddToCart() {
       snackbarMessage.value = "Thêm vào giỏ hàng thất bại. Vui lòng thử lại"
       snackbarColor.value = "error"
     }
+    showSnackbar.value = true
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function handleBuyNow() {
+  if (!userStore.isLoggedIn) {
+    snackbarMessage.value = "Vui lòng đăng nhập để mua hàng"
+    snackbarColor.value = "warning"
+    showSnackbar.value = true
+    setTimeout(() => {
+      router.push("/login")
+    }, 1200)
+    return
+  }
+
+  if (!selectedColor.value) {
+    snackbarMessage.value = "Vui lòng chọn màu sắc"
+    snackbarColor.value = "error"
+    showSnackbar.value = true
+    return
+  }
+
+  if (quantity.value < 1) {
+    snackbarMessage.value = "Số lượng phải lớn hơn 0"
+    snackbarColor.value = "error"
+    showSnackbar.value = true
+    return
+  }
+
+  isLoading.value = true
+  try {
+    const addedItem = await userStore.addToCartAPI(
+      selectedColor.value.productColorID,
+      quantity.value
+    )
+
+    const addedCartItemId = Number.parseInt(addedItem?.id ?? addedItem?.cartItemID, 10)
+    if (Number.isFinite(addedCartItemId) && addedCartItemId > 0) {
+      sessionStorage.setItem("selectedCartItemIds", JSON.stringify([addedCartItemId]))
+      window.dispatchEvent(new Event('cart-changed'))
+      router.push({ name: 'Checkout' })
+      return
+    }
+
+    snackbarMessage.value = "Đã thêm vào giỏ. Vui lòng chọn sản phẩm trong giỏ để thanh toán"
+    snackbarColor.value = "warning"
+    showSnackbar.value = true
+    window.dispatchEvent(new Event('cart-changed'))
+    setTimeout(() => {
+      router.push({ name: 'Cart' })
+    }, 800)
+  } catch (error) {
+    console.error("Lỗi mua ngay:", error)
+    snackbarMessage.value = "Không thể xử lý mua ngay. Vui lòng thử lại"
+    snackbarColor.value = "error"
     showSnackbar.value = true
   } finally {
     isLoading.value = false
