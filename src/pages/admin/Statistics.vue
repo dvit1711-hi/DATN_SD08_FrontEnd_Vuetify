@@ -223,7 +223,7 @@
                             <span class="detail-label">Chi nhiều nhất</span>
                             <strong>{{ stats.topCustomerBySpending?.username || 'N/A' }}</strong>
                             <span class="detail-value">({{ formatCurrency(stats.topCustomerBySpending?.totalSpent || 0)
-                                }})</span>
+                            }})</span>
                         </div>
                     </div>
                 </v-col>
@@ -396,11 +396,17 @@ const overviewCards = computed(() => [
 
 const trendSeries = computed(() => {
     const months = Object.keys(stats.value.ordersByMonth || {}).sort((a, b) => Number(a) - Number(b))
-    const values = months.map(m => stats.value.ordersByMonth[m] || 0)
+    const values = months.map(m => Number(stats.value.ordersByMonth[m] || 0))
 
     return [
         {
             name: 'Đơn hàng',
+            type: 'column',
+            data: values,
+        },
+        {
+            name: 'Xu hướng',
+            type: 'line',
             data: values,
         },
     ]
@@ -408,19 +414,55 @@ const trendSeries = computed(() => {
 
 const trendOptions = computed(() => {
     const months = Object.keys(stats.value.ordersByMonth || {}).sort((a, b) => Number(a) - Number(b))
+
     return {
         chart: {
+            type: 'line',
+            stacked: false,
             toolbar: { show: false },
+            zoom: { enabled: false },
         },
         xaxis: {
             categories: months.map(m => `Tháng ${m}`),
+            axisBorder: { show: false },
+            axisTicks: { show: false },
         },
         stroke: {
             curve: 'smooth',
-            width: 3,
+            width: [0, 3],
+        },
+        plotOptions: {
+            bar: {
+                columnWidth: '35%',
+                borderRadius: 4,
+                borderRadiusApplication: 'end',
+            },
         },
         dataLabels: {
             enabled: false,
+        },
+        fill: {
+            opacity: [0.75, 1],
+        },
+        markers: {
+            size: [0, 4],
+            hover: {
+                size: 6,
+            },
+        },
+        legend: {
+            show: true,
+            position: 'bottom',
+            horizontalAlign: 'center',
+        },
+        tooltip: {
+            shared: true,
+            intersect: false,
+        },
+        colors: ['#f59e0b', '#ef4444'],
+        grid: {
+            borderColor: '#e5e7eb',
+            strokeDashArray: 4,
         },
     }
 })
@@ -641,6 +683,10 @@ onMounted(loadStatistics)
 .detail-value {
     font-size: 13px;
     color: #475569;
+}
+
+:deep(.apexcharts-legend) {
+    justify-content: center !important;
 }
 
 @media (max-width: 960px) {
