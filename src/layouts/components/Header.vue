@@ -103,8 +103,6 @@
           <v-list density="compact">
             <v-list-item title="Đánh giá" :to="{ name: 'Review' }" />
             <v-list-item title="Lịch sử mua hàng" :to="{ name: 'PurchaseHistory' }" />
-            <v-list-item title="Mũ Bóng Chày Nhân Vật" :to="{ name: 'ProductList' }" />
-            <v-list-item title="Mũ Bóng Chày Espace" :to="{ name: 'ProductList' }" />
           </v-list>
         </v-menu>
         <router-link :to="{ name: 'ProductList' }" class="text-decoration-none text-body2 font-weight-medium"
