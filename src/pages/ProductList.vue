@@ -36,9 +36,9 @@
             <h3 class="text-subtitle-1 font-weight-bold mb-1 line-clamp-2">
               {{ p.productName }}
             </h3>
-            <p class="text-caption text-grey mb-3">
+            <!-- <p class="text-caption text-grey mb-3">
               {{ p.description?.substring(0, 50) }}...
-            </p>
+            </p> -->
 
             <!-- Colors -->
             <div class="mb-3 flex-grow-1">
@@ -101,26 +101,41 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
 
 const router = useRouter();
+const route = useRoute();
 const userStore = useUserStore();
+
 const products = ref([]);
 const showSnackbar = ref(false);
 const snackbarMessage = ref("");
 const snackbarColor = ref("success");
 
-onMounted(async () => {
+const loadProducts = async () => {
   try {
-    const res = await productApi.getAllCart();
+    const keyword = route.query.search?.toString().trim() || "";
+    const res = await productApi.getAllCart(keyword);
     products.value = res.data || [];
   } catch (error) {
     console.error("Lỗi tải sản phẩm:", error);
+    products.value = [];
   }
+};
+
+onMounted(async () => {
+  await loadProducts();
 });
+
+watch(
+  () => route.query.search,
+  async () => {
+    await loadProducts();
+  }
+);
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("vi-VN").format(price);
@@ -163,16 +178,22 @@ async function resolveProductColorId(product) {
   }
 
   const detailRes = await productApi.getDetail(productId);
-  const fallbackColorId = Number.parseInt(detailRes?.data?.colors?.[0]?.productColorID, 10);
-  return Number.isFinite(fallbackColorId) && fallbackColorId > 0 ? fallbackColorId : null;
+  const fallbackColorId = Number.parseInt(
+    detailRes?.data?.colors?.[0]?.productColorID,
+    10
+  );
+
+  return Number.isFinite(fallbackColorId) && fallbackColorId > 0
+    ? fallbackColorId
+    : null;
 }
 
 async function addToCart(product) {
-  // Check if user is logged in
   if (!userStore.isLoggedIn) {
     snackbarMessage.value = "Vui lòng đăng nhập để thêm vào giỏ hàng";
     snackbarColor.value = "warning";
     showSnackbar.value = true;
+
     setTimeout(() => {
       router.push("/login");
     }, 1500);
@@ -189,15 +210,17 @@ async function addToCart(product) {
   }
 
   try {
-    // This API flow creates cart first when missing, then adds the product
     await userStore.addToCartAPI(productColorId, 1);
-    window.dispatchEvent(new Event('cart-changed'));
+    window.dispatchEvent(new Event("cart-changed"));
+
     snackbarMessage.value = `Đã thêm "${product.productName}" vào giỏ hàng`;
     snackbarColor.value = "success";
     showSnackbar.value = true;
   } catch (error) {
     console.error("Lỗi thêm vào giỏ:", error);
-    snackbarMessage.value = error?.response?.data?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại";
+    snackbarMessage.value =
+      error?.response?.data?.message ||
+      "Không thể thêm vào giỏ hàng. Vui lòng thử lại";
     snackbarColor.value = "error";
     showSnackbar.value = true;
   }

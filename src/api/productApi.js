@@ -6,8 +6,10 @@ export default {
   getAll() {
     return axios.get(API)
   },
-  getAllCart() {
-    return axios.get(`${API}/card`)
+  getAllCart(search) {
+    return axios.get(`${API}/card`, {
+      params: search ? { search } : {},
+    });
   },
 
   getDetail(id) {

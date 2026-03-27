@@ -47,9 +47,17 @@
         </router-link>
         <!-- Search Bar -->
         <div class="flex-grow-1 mx-6" style="max-width: 600px;">
-          <v-text-field v-model="searchQuery" placeholder="Tìm kiếm sản phẩm..." prepend-inner-icon="mdi-magnify"
-            outlined dense hide-details class="bg-white rounded" @keyup.enter="handleSearch" />
-        </div>
+  <v-text-field
+    v-model="searchQuery"
+    placeholder="Tìm kiếm sản phẩm..."
+    prepend-inner-icon="mdi-magnify"
+    outlined
+    dense
+    hide-details
+    class="bg-white rounded"
+    @keyup.enter="handleSearch"
+  />
+</div>
 
         <!-- Right Side Actions -->
         <div class="d-flex align-center gap-4">
@@ -224,10 +232,13 @@ const checkAdminRole = async () => {
 }
 
 const handleSearch = () => {
-  if (searchQuery.value.trim()) {
-    router.push({ name: 'ProductList', query: { search: searchQuery.value } })
-  }
-}
+  const keyword = searchQuery.value.trim();
+
+  router.push({
+    name: "ProductList",
+    query: keyword ? { search: keyword } : {}
+  });
+};
 
 const handleLogout = () => {
   localStorage.removeItem('token')
