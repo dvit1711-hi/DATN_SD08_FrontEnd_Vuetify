@@ -9,108 +9,123 @@
       <h3>Thêm màu sản phẩm</h3>
 
       <v-row dense align="center" class="mb-2">
-  <v-col cols="12" md="6">
-    <v-select
-      v-model="newColor.colorId"
-      :items="colors"
-      item-title="colorName"
-      item-value="colorId"
-      label="Select color"
-      placeholder="Select color"
-      variant="outlined"
-      density="comfortable"
-      hide-details="auto"
-      class="input-field"
-    />
-  </v-col>
+        <v-col cols="12" md="6">
+          <v-select
+            v-model="newColor.colorId"
+            :items="colors"
+            item-title="colorName"
+            item-value="colorId"
+            label="Select color"
+            placeholder="Select color"
+            variant="outlined"
+            density="comfortable"
+            hide-details="auto"
+            class="input-field"
+          />
+        </v-col>
 
-  <v-col cols="12" md="3">
-    <v-text-field
-      v-model="newColor.stockQuantity"
-      type="number"
-      label="Stock quantity"
-      placeholder="Stock quantity"
-      variant="outlined"
-      density="comfortable"
-      hide-details="auto"
-      class="input-field"
-    />
-  </v-col>
+        <v-col cols="12" md="3">
+          <v-text-field
+            v-model="newColor.stockQuantity"
+            type="number"
+            label="Stock quantity"
+            placeholder="Stock quantity"
+            variant="outlined"
+            density="comfortable"
+            hide-details="auto"
+            class="input-field"
+          />
+        </v-col>
 
-  <v-col cols="12" md="3">
-    <v-btn
-      color="primary"
-      block
-      height="48"
-      class="text-none"
-      @click="addProductColor"
-    >
-      Thêm màu
-    </v-btn>
-  </v-col>
-</v-row>
+        <v-col cols="12" md="3">
+          <v-btn
+            color="primary"
+            block
+            height="48"
+            class="text-none"
+            @click="addProductColor"
+          >
+            Thêm màu
+          </v-btn>
+        </v-col>
+      </v-row>
     </div>
 
     <!-- ==== Danh sách màu và ảnh ==== -->
     <div class="color-list">
       <div
-  v-for="color in product.colors"
-  :key="color.productColorID"
-  class="color-card card mb-3"
->
-  <div class="color-header">
-    <div class="color-item">
-      <div
-        class="color-box"
-        :style="{ backgroundColor: color.colorCode }"
-      ></div>
-      <span class="color-name">{{ color.colorName }}</span>
-    </div>
+        v-for="color in product.colors"
+        :key="color.productColorID"
+        class="color-card card mb-3"
+      >
+        <div class="color-header">
+          <div class="color-item">
+            <div
+              class="color-box"
+              :style="{ backgroundColor: color.colorCode }"
+            ></div>
+            <span class="color-name">{{ color.colorName }}</span>
+          </div>
 
-    <v-btn
-      color="error"
-      size="small"
-      variant="tonal"
-      class="delete-color-btn"
-      @click="deleteProductColor(color.productColorID)"
-    >
-      Xóa màu
-    </v-btn>
-  </div>
+          <v-btn
+            color="error"
+            size="small"
+            variant="tonal"
+            class="delete-color-btn"
+            @click="deleteProductColor(color.productColorID)"
+          >
+            Xóa màu
+          </v-btn>
+        </div>
 
-  <p class="stock-text">Stock quantity: {{ color.stockQuantity }}</p>
-  <p>Ảnh:</p>
+        <p class="stock-text">Stock quantity: {{ color.stockQuantity }}</p>
+        <p>Ảnh:</p>
 
-  <div class="image-gallery">
-    <img
-      v-for="(img, index) in color.images"
-      :key="index"
-      :src="`${img}`"
-      class="product-image"
-    />
-  </div>
+        <div class="image-gallery">
+          <img
+            v-for="(img, index) in color.images"
+            :key="index"
+            :src="`${img}`"
+            class="product-image"
+          />
+        </div>
 
-  <div class="add-image">
-    <input
-      type="file"
-      :id="'file-' + color.productColorID"
-      @change="onFileSelected($event, color.productColorID)"
-      accept="image/*"
-    />
-    <v-btn
-      color="success"
-      @click="addImage(color.productColorID)"
-      :disabled="
-        color.images.length >= 5 || !selectedFiles[color.productColorID]
-      "
-    >
-      Thêm ảnh
-    </v-btn>
-    <span v-if="color.images.length >= 5" class="limit-text">
-      Tối đa là 5 ảnh
-    </span>
-  </div>
-</div>
+        <div class="add-image">
+          <input
+            type="file"
+            :id="'file-' + color.productColorID"
+            @change="onFileSelected($event, color.productColorID)"
+            accept="image/*"
+            class="file-input"
+          />
+
+          <v-btn
+            color="success"
+            variant="tonal"
+            class="action-btn"
+            @click="addImage(color.productColorID)"
+            :disabled="
+              color.images.length >= 5 || !selectedFiles[color.productColorID]
+            "
+          >
+            Thêm ảnh
+          </v-btn>
+
+          <v-btn
+            color="error"
+            variant="tonal"
+            class="action-btn"
+            @click="deleteAllImages(color.productColorID)"
+            :disabled="!color.images || color.images.length === 0"
+          >
+            Xóa ảnh
+          </v-btn>
+
+          <span v-if="color.images.length >= 5" class="limit-text">
+            Tối đa là 5 ảnh
+          </span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -153,8 +168,14 @@ export default {
     addProductColor() {
       console.log("Product ID:", this.id);
       console.log("New Color:", this.newColor);
-      if (!this.newColor.colorId) { alert("Chọn màu!"); return; }
-  if (this.newColor.stockQuantity < 0) { alert("Stock phải >=0"); return; }
+      if (!this.newColor.colorId) {
+        alert("Chọn màu!");
+        return;
+      }
+      if (this.newColor.stockQuantity < 0) {
+        alert("Stock phải >=0");
+        return;
+      }
       if (!this.newColor.colorId) return;
       axios
         .post(
@@ -198,13 +219,30 @@ export default {
           this.loadProductDetail();
         });
     },
-    deleteProductColor(productColorId){
-      if(!confirm("Bạn chắc có muốn xóa màu này không?")) return;
+    deleteProductColor(productColorId) {
+      if (!confirm("Bạn chắc có muốn xóa màu này không?")) return;
       axios
-      .delete(`http://localhost:8080/api/product-color/color/${productColorId}`)
-      .then(() => this.loadProductDetail())
-      .catch(err => console.error(err));
-    }
+        .delete(
+          `http://localhost:8080/api/product-color/color/${productColorId}`,
+        )
+        .then(() => this.loadProductDetail())
+        .catch((err) => console.error(err));
+    },
+    deleteAllImages(productColorId) {
+      if (!confirm("Bạn có chắc muốn xóa tất cả ảnh của màu này không?"))
+        return;
+
+      axios
+        .delete(
+          `http://localhost:8080/api/image/product-color/${productColorId}`,
+        )
+        .then(() => {
+          this.loadProductDetail();
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    },
   },
 };
 </script>
@@ -246,12 +284,30 @@ export default {
 .add-image {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.action-btn {
+  min-width: 110px;
+  height: 38px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.file-input {
+  padding: 6px;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .limit-text {
-  color: red;
+  color: #d32f2f;
   font-size: 0.9em;
+  font-weight: 500;
 }
 .color-item {
   display: flex;
