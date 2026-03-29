@@ -36,6 +36,16 @@
             {{ formatPrice(product.price) }}đ
           </div>
 
+          <v-alert
+            v-if="isSelectedColorOutOfStock"
+            type="warning"
+            variant="tonal"
+            density="comfortable"
+            icon="mdi-alert-circle"
+            class="mb-4"
+            text="Màu đã chọn hiện đang hết hàng"
+          />
+
           <!-- Chọn màu -->
           <div class="mb-4">
             <h3 class="text-subtitle-1 font-weight-bold mb-2">Chọn màu sắc</h3>
@@ -58,9 +68,10 @@
               v-model.number="quantity"
               type="number"
               min="1"
-              max="100"
+              :max="selectedColorStock > 0 ? selectedColorStock : 1"
               outlined
               dense
+              :disabled="isSelectedColorOutOfStock"
               style="max-width: 150px"
             />
           </div>
@@ -73,10 +84,10 @@
                 block 
                 @click="handleAddToCart"
                 :loading="isLoading"
-                :disabled="isLoading"
+                :disabled="isLoading || isSelectedColorOutOfStock"
               >
                 <v-icon left>mdi-shopping-cart</v-icon>
-                Thêm vào giỏ hàng
+                {{ isSelectedColorOutOfStock ? 'Hết hàng' : 'Thêm vào giỏ hàng' }}
               </v-btn>
             </v-col>
             <v-col cols="6">
@@ -86,9 +97,9 @@
                 outlined
                 @click="handleBuyNow"
                 :loading="isLoading"
-                :disabled="isLoading"
+                :disabled="isLoading || isSelectedColorOutOfStock"
               >
-                Mua ngay
+                {{ isSelectedColorOutOfStock ? 'Hết hàng' : 'Mua ngay' }}
               </v-btn>
             </v-col>
           </v-row>
@@ -253,6 +264,9 @@ const showSnackbar = ref(false)
 const snackbarMessage = ref("")
 const snackbarColor = ref("success")
 
+const selectedColorStock = computed(() => Number.parseInt(selectedColor.value?.stockQuantity, 10) || 0)
+const isSelectedColorOutOfStock = computed(() => selectedColorStock.value <= 0)
+
 // Review related refs
 const reviews = ref([])
 const averageRating = ref(0)
@@ -268,7 +282,8 @@ onMounted(async () => {
     product.value = res.data
 
     if (product.value.colors.length) {
-      selectedColor.value = product.value.colors[0]
+      const firstAvailableColor = product.value.colors.find((c) => (Number.parseInt(c.stockQuantity, 10) || 0) > 0)
+      selectedColor.value = firstAvailableColor || product.value.colors[0]
       images.value = selectedColor.value.images || []
       mainImage.value = images.value[0] || ""
     }
@@ -289,6 +304,12 @@ function changeColor(color) {
   selectedColor.value = color
   images.value = color.images || []
   mainImage.value = images.value[0]
+  if (quantity.value < 1) {
+    quantity.value = 1
+  }
+  if (selectedColorStock.value > 0 && quantity.value > selectedColorStock.value) {
+    quantity.value = selectedColorStock.value
+  }
 }
 
 function formatPrice(price) {
@@ -384,7 +405,14 @@ async function handleAddToCart() {
     return
   }
 
-  if (quantity.value < 1) {
+  if (isSelectedColorOutOfStock.value) {
+    snackbarMessage.value = "Màu đã chọn đang hết hàng"
+    snackbarColor.value = "warning"
+    showSnackbar.value = true
+    return
+  }
+
+  if (quantity.value < 1 || quantity.value > selectedColorStock.value) {
     snackbarMessage.value = "Số lượng phải lớn hơn 0"
     snackbarColor.value = "error"
     showSnackbar.value = true
@@ -444,7 +472,14 @@ async function handleBuyNow() {
     return
   }
 
-  if (quantity.value < 1) {
+  if (isSelectedColorOutOfStock.value) {
+    snackbarMessage.value = "Màu đã chọn đang hết hàng"
+    snackbarColor.value = "warning"
+    showSnackbar.value = true
+    return
+  }
+
+  if (quantity.value < 1 || quantity.value > selectedColorStock.value) {
     snackbarMessage.value = "Số lượng phải lớn hơn 0"
     snackbarColor.value = "error"
     showSnackbar.value = true

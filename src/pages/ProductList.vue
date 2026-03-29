@@ -36,6 +36,15 @@
             <h3 class="text-subtitle-1 font-weight-bold mb-1 line-clamp-2">
               {{ p.productName }}
             </h3>
+            <v-chip
+              v-if="isOutOfStock(p)"
+              size="x-small"
+              color="error"
+              variant="flat"
+              class="mb-2 out-of-stock-chip"
+            >
+              Hết hàng
+            </v-chip>
             <!-- <p class="text-caption text-grey mb-3">
               {{ p.description?.substring(0, 50) }}...
             </p> -->
@@ -70,10 +79,11 @@
               size="small"
               variant="flat"
               block
+              :disabled="isOutOfStock(p)"
               @click.stop.prevent="addToCart(p)"
             >
               <v-icon left>mdi-shopping-cart</v-icon>
-              Thêm giỏ
+              {{ isOutOfStock(p) ? 'Hết hàng' : 'Thêm giỏ' }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -105,6 +115,7 @@ import { ref, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
+import productColorApi from "@/api/productColorApi";
 
 const router = useRouter();
 const route = useRoute();
@@ -118,8 +129,23 @@ const snackbarColor = ref("success");
 const loadProducts = async () => {
   try {
     const keyword = route.query.search?.toString().trim() || "";
-    const res = await productApi.getAllCart(keyword);
-    products.value = res.data || [];
+    const [res, stockRes] = await Promise.all([
+      productApi.getAllCart(keyword),
+      productColorApi.getAll(),
+    ]);
+
+    const stockMap = new Map();
+    (stockRes.data || []).forEach((pc) => {
+      const productColorId = Number.parseInt(pc.productColorID ?? pc.id, 10);
+      if (Number.isFinite(productColorId)) {
+        stockMap.set(productColorId, Number.parseInt(pc.stockQuantity, 10) || 0);
+      }
+    });
+
+    products.value = (res.data || []).map((p) => ({
+      ...p,
+      stockQuantity: stockMap.get(Number.parseInt(p.productColorID, 10)) ?? 0,
+    }));
   } catch (error) {
     console.error("Lỗi tải sản phẩm:", error);
     products.value = [];
@@ -139,6 +165,10 @@ watch(
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("vi-VN").format(price);
+};
+
+const isOutOfStock = (product) => {
+  return (Number.parseInt(product?.stockQuantity, 10) || 0) <= 0;
 };
 
 function getDisplayColors(product) {
@@ -189,6 +219,13 @@ async function resolveProductColorId(product) {
 }
 
 async function addToCart(product) {
+  if (isOutOfStock(product)) {
+    snackbarMessage.value = "Sản phẩm đã hết hàng";
+    snackbarColor.value = "warning";
+    showSnackbar.value = true;
+    return;
+  }
+
   if (!userStore.isLoggedIn) {
     snackbarMessage.value = "Vui lòng đăng nhập để thêm vào giỏ hàng";
     snackbarColor.value = "warning";
@@ -261,8 +298,15 @@ async function addToCart(product) {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.out-of-stock-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-self: flex-start;
 }
 
 :deep(.w-100) {
