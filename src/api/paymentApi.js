@@ -75,4 +75,28 @@ export default {
 
     return axios.put(`${API}/orders/${orderId}/confirm`, null, config)
   },
+
+  cancelOrderByUser(accountId, orderId, token) {
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.put(`${API}/account/${accountId}/orders/${orderId}/cancel`, null, config)
+  },
+
+  cancelOrderByAdmin(orderId, token) {
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.put(`${API}/orders/${orderId}/cancel`, null, config)
+  },
 }

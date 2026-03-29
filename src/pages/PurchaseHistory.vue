@@ -64,6 +64,19 @@
               :text="formatOrderAddress(order.shippingAddress)"
             />
 
+            <div class="d-flex justify-end mb-3">
+              <v-btn
+                v-if="canCancelOrder(order)"
+                color="error"
+                variant="outlined"
+                size="small"
+                :loading="cancellingOrderId === order.orderId"
+                @click="cancelOrder(order)"
+              >
+                Hủy đơn hàng
+              </v-btn>
+            </div>
+
             <v-list lines="two" class="bg-grey-lighten-5 rounded-lg">
               <v-list-item v-for="item in order.items" :key="item.orderDetailId" class="py-2">
                 <template #prepend>
@@ -100,6 +113,7 @@ const userStore = useUserStore()
 
 const orders = ref([])
 const isLoading = ref(false)
+const cancellingOrderId = ref(null)
 const fallbackImage = 'https://via.placeholder.com/64x64?text=No+Image'
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
@@ -119,6 +133,7 @@ const getPaymentStatusLabel = (status) => {
   const normalized = String(status || '').toUpperCase()
   if (normalized === 'PAID') return 'Đã thanh toán'
   if (normalized === 'UNPAID') return 'Chưa thanh toán'
+  if (normalized === 'CANCELLED') return 'Đã hủy'
   return 'Không xác định'
 }
 
@@ -176,6 +191,33 @@ const loadOrders = async () => {
     orders.value = []
   } finally {
     isLoading.value = false
+  }
+}
+
+const canCancelOrder = (order) => {
+  const orderStatus = String(order?.orderStatus || '').toUpperCase()
+  const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+  return orderStatus === 'PENDING_PAYMENT' && paymentStatus === 'UNPAID'
+}
+
+const cancelOrder = async (order) => {
+  if (!canCancelOrder(order)) return
+
+  const confirmed = window.confirm(`Bạn có chắc muốn hủy đơn #${order.orderId}?`)
+  if (!confirmed) return
+
+  const accountId = Number.parseInt(userStore.accountId, 10)
+  if (!Number.isFinite(accountId) || accountId <= 0) return
+
+  cancellingOrderId.value = order.orderId
+  try {
+    await paymentApi.cancelOrderByUser(accountId, order.orderId, userStore.token)
+    order.orderStatus = 'CANCELLED'
+    order.paymentStatus = 'CANCELLED'
+  } catch (error) {
+    console.error('Lỗi hủy đơn hàng:', error)
+  } finally {
+    cancellingOrderId.value = null
   }
 }
 

@@ -26,8 +26,8 @@
         </template>
 
         <template #item.paymentStatus="{ item }">
-          <v-chip size="small" :color="item.paymentStatus === 'PAID' ? 'success' : 'warning'" variant="tonal">
-            {{ item.paymentStatus }}
+          <v-chip size="small" :color="getPaymentStatusColor(item.paymentStatus)" variant="tonal">
+            {{ getPaymentStatusLabel(item.paymentStatus) }}
           </v-chip>
         </template>
 
@@ -38,8 +38,8 @@
         </template>
 
         <template #item.orderStatus="{ item }">
-          <v-chip size="small" :color="item.orderStatus === 'PAID' ? 'success' : 'info'" variant="tonal">
-            {{ item.orderStatus }}
+          <v-chip size="small" :color="getOrderStatusColor(item.orderStatus)" variant="tonal">
+            {{ getOrderStatusLabel(item.orderStatus) }}
           </v-chip>
         </template>
 
@@ -48,16 +48,29 @@
         </template>
 
         <template #item.actions="{ item }">
-          <v-btn
-            color="success"
-            variant="flat"
-            size="small"
-            :disabled="item.paymentStatus === 'PAID'"
-            :loading="confirmingOrderId === item.orderId"
-            @click="confirmPayment(item)"
-          >
-            Xác nhận đã thanh toán
-          </v-btn>
+          <div class="d-flex ga-2">
+            <v-btn
+              color="success"
+              variant="flat"
+              size="small"
+              :disabled="!canConfirmOrder(item)"
+              :loading="confirmingOrderId === item.orderId"
+              @click="confirmPayment(item)"
+            >
+              Xác nhận đã thanh toán
+            </v-btn>
+
+            <v-btn
+              color="error"
+              variant="outlined"
+              size="small"
+              :disabled="!canCancelOrder(item)"
+              :loading="cancellingOrderId === item.orderId"
+              @click="cancelOrder(item)"
+            >
+              Hủy đơn
+            </v-btn>
+          </div>
         </template>
       </v-data-table>
     </v-card>
@@ -75,6 +88,7 @@ import paymentApi from '@/api/paymentApi'
 const orders = ref([])
 const isLoading = ref(false)
 const confirmingOrderId = ref(null)
+const cancellingOrderId = ref(null)
 const showSnackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
@@ -94,6 +108,50 @@ const formatDate = (value) => {
   return new Date(value).toLocaleString('vi-VN')
 }
 
+const getPaymentStatusLabel = (status) => {
+  const normalized = String(status || '').toUpperCase()
+  if (normalized === 'PAID') return 'Đã thanh toán'
+  if (normalized === 'UNPAID') return 'Chưa thanh toán'
+  if (normalized === 'CANCELLED') return 'Đã hủy'
+  return 'Không xác định'
+}
+
+const getOrderStatusLabel = (status) => {
+  const normalized = String(status || '').toUpperCase()
+  if (normalized === 'PAID') return 'Đã thanh toán'
+  if (normalized === 'PENDING_PAYMENT') return 'Chờ thanh toán'
+  if (normalized === 'CANCELLED') return 'Đã hủy'
+  return 'Không xác định'
+}
+
+const getPaymentStatusColor = (status) => {
+  const normalized = String(status || '').toUpperCase()
+  if (normalized === 'PAID') return 'success'
+  if (normalized === 'UNPAID') return 'warning'
+  if (normalized === 'CANCELLED') return 'error'
+  return 'info'
+}
+
+const getOrderStatusColor = (status) => {
+  const normalized = String(status || '').toUpperCase()
+  if (normalized === 'PAID') return 'success'
+  if (normalized === 'PENDING_PAYMENT') return 'info'
+  if (normalized === 'CANCELLED') return 'error'
+  return 'grey'
+}
+
+const canConfirmOrder = (order) => {
+  const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+  const orderStatus = String(order?.orderStatus || '').toUpperCase()
+  return paymentStatus === 'UNPAID' && orderStatus === 'PENDING_PAYMENT'
+}
+
+const canCancelOrder = (order) => {
+  const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+  const orderStatus = String(order?.orderStatus || '').toUpperCase()
+  return paymentStatus === 'UNPAID' && orderStatus === 'PENDING_PAYMENT'
+}
+
 const loadOrders = async () => {
   isLoading.value = true
   try {
@@ -111,7 +169,7 @@ const loadOrders = async () => {
 }
 
 const confirmPayment = async (order) => {
-  if (order.paymentStatus === 'PAID') return
+  if (!canConfirmOrder(order)) return
 
   confirmingOrderId.value = order.orderId
   try {
@@ -129,6 +187,31 @@ const confirmPayment = async (order) => {
     showSnackbar.value = true
   } finally {
     confirmingOrderId.value = null
+  }
+}
+
+const cancelOrder = async (order) => {
+  if (!canCancelOrder(order)) return
+
+  const confirmed = window.confirm(`Bạn có chắc muốn hủy đơn #${order.orderId}?`)
+  if (!confirmed) return
+
+  cancellingOrderId.value = order.orderId
+  try {
+    const token = localStorage.getItem('token')
+    await paymentApi.cancelOrderByAdmin(order.orderId, token)
+    order.paymentStatus = 'CANCELLED'
+    order.orderStatus = 'CANCELLED'
+    snackbarMessage.value = `Đã hủy đơn #${order.orderId}`
+    snackbarColor.value = 'success'
+    showSnackbar.value = true
+  } catch (error) {
+    console.error('Lỗi hủy đơn hàng:', error)
+    snackbarMessage.value = 'Hủy đơn thất bại'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+  } finally {
+    cancellingOrderId.value = null
   }
 }
 
