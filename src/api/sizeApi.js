@@ -1,20 +1,14 @@
 import axios from "axios";
 
-const API = "http://localhost:8080/api/product";
+const API = "http://localhost:8080/api/size";
 
 export default {
   getAll() {
     return axios.get(API);
   },
 
-  getAllCard(search) {
-    return axios.get(`${API}/card`, {
-      params: search ? { search } : {},
-    });
-  },
-
-  getDetail(id) {
-    return axios.get(`${API}/detail/${id}`);
+  getById(id) {
+    return axios.get(`${API}/${id}`);
   },
 
   create(data) {
