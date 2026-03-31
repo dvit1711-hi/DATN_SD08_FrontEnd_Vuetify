@@ -130,7 +130,7 @@ const loadProducts = async () => {
   try {
     const keyword = route.query.search?.toString().trim() || "";
     const [res, stockRes] = await Promise.all([
-      productApi.getAllCart(keyword),
+      productApi.getAllCard(keyword),
       productColorApi.getAll(),
     ]);
 
