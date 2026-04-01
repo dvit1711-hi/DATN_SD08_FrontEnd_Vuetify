@@ -2,90 +2,64 @@
   <div v-if="product" class="product-detail">
     <h2>{{ product.productName }}</h2>
     <p>{{ product.description }}</p>
-    <p>Price: {{ product.price }}</p>
+    <p>Thương hiệu: {{ product.brandName || "—" }}</p>
+    <p>Chất liệu: {{ product.materialName || "—" }}</p>
 
-    <!-- ==== Thêm Màu sản phẩm (ProductColor) ==== -->
-    <div class="add-color card mb-3 pa-3">
-      <h3>Thêm màu sản phẩm</h3>
-
-      <v-row dense align="center" class="mb-2">
-        <v-col cols="12" md="6">
-          <v-select
-            v-model="newColor.colorId"
-            :items="colors"
-            item-title="colorName"
-            item-value="colorId"
-            label="Select color"
-            placeholder="Select color"
-            variant="outlined"
-            density="comfortable"
-            hide-details="auto"
-            class="input-field"
-          />
-        </v-col>
-
-        <v-col cols="12" md="3">
-          <v-text-field
-            v-model="newColor.stockQuantity"
-            type="number"
-            label="Stock quantity"
-            placeholder="Stock quantity"
-            variant="outlined"
-            density="comfortable"
-            hide-details="auto"
-            class="input-field"
-          />
-        </v-col>
-
-        <v-col cols="12" md="3">
-          <v-btn
-            color="primary"
-            block
-            height="48"
-            class="text-none"
-            @click="addProductColor"
-          >
-            Thêm màu
-          </v-btn>
-        </v-col>
-      </v-row>
+    <div class="header-actions mb-3">
+      <v-btn color="primary" @click="openAddVariantDialog">
+        Thêm biến thể sản phẩm
+      </v-btn>
     </div>
 
-    <!-- ==== Danh sách màu và ảnh ==== -->
     <div class="color-list">
       <div
-        v-for="color in product.colors"
-        :key="color.productColorID"
+        v-for="variant in sortedVariants"
+        :key="variant.productColorID"
         class="color-card card mb-3"
       >
         <div class="color-header">
           <div class="color-item">
             <div
               class="color-box"
-              :style="{ backgroundColor: color.colorCode }"
+              :style="{ backgroundColor: variant.colorCode }"
             ></div>
-            <span class="color-name">{{ color.colorName }}</span>
+            <span class="color-name">
+              {{ variant.colorName }} - Size {{ variant.sizeName || "—" }}
+            </span>
           </div>
 
-          <v-btn
-            color="error"
-            size="small"
-            variant="tonal"
-            class="delete-color-btn"
-            @click="deleteProductColor(color.productColorID)"
-          >
-            Xóa màu
-          </v-btn>
+          <div class="action-buttons">
+            <v-btn
+              color="warning"
+              size="small"
+              variant="tonal"
+              class="action-color-btn"
+              @click="startEdit(variant)"
+            >
+              Sửa
+            </v-btn>
+
+            <v-btn
+              color="error"
+              size="small"
+              variant="tonal"
+              class="delete-color-btn"
+              @click="deleteProductColor(variant.productColorID)"
+            >
+              Xóa
+            </v-btn>
+          </div>
         </div>
 
-        <p class="stock-text">Stock quantity: {{ color.stockQuantity }}</p>
+        <p class="stock-text">Giá: {{ formatPrice(variant.price) }}đ</p>
+        <p class="stock-text">Stock quantity: {{ variant.stockQuantity }}</p>
         <p>Ảnh:</p>
 
         <div class="image-gallery">
           <img
-            v-for="(img, index) in color.images"
+            v-for="(img, index) in variant.images"
             :key="index"
-            :src="`${img}`"
+            :src="img"
             class="product-image"
           />
         </div>
@@ -93,8 +67,8 @@
         <div class="add-image">
           <input
             type="file"
-            :id="'file-' + color.productColorID"
-            @change="onFileSelected($event, color.productColorID)"
+            :id="'file-' + variant.productColorID"
+            @change="onFileSelected($event, variant.productColorID)"
             accept="image/*"
             class="file-input"
           />
@@ -103,9 +77,10 @@
             color="success"
             variant="tonal"
             class="action-btn"
-            @click="addImage(color.productColorID)"
+            @click="addImage(variant.productColorID)"
             :disabled="
-              color.images.length >= 5 || !selectedFiles[color.productColorID]
+              variant.images.length >= 5 ||
+              !selectedFiles[variant.productColorID]
             "
           >
             Thêm ảnh
@@ -115,18 +90,146 @@
             color="error"
             variant="tonal"
             class="action-btn"
-            @click="deleteAllImages(color.productColorID)"
-            :disabled="!color.images || color.images.length === 0"
+            @click="deleteAllImages(variant.productColorID)"
+            :disabled="!variant.images || variant.images.length === 0"
           >
             Xóa ảnh
           </v-btn>
 
-          <span v-if="color.images.length >= 5" class="limit-text">
+          <span v-if="variant.images.length >= 5" class="limit-text">
             Tối đa là 5 ảnh
           </span>
         </div>
       </div>
     </div>
+
+    <!-- Dialog sửa thông tin biến thể -->
+    <v-dialog v-model="dialogEdit" width="500px">
+      <v-card v-if="editingVariantId">
+        <v-card-title class="text-h6 font-weight-bold">
+          Sửa thông tin - {{ editData.colorName }} - Size {{ editData.sizeName }}
+        </v-card-title>
+
+        <v-divider></v-divider>
+
+        <v-card-text class="pa-4">
+          <v-select
+            v-model="editData.colorID"
+            :items="colors"
+            item-title="colorName"
+            item-value="colorID"
+            label="Chọn màu"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+
+          <v-select
+            v-model="editData.sizeID"
+            :items="sizes"
+            item-title="sizeName"
+            item-value="sizeID"
+            label="Chọn size"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+
+          <v-text-field
+            v-model.number="editData.price"
+            type="number"
+            label="Giá"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+
+          <v-text-field
+            v-model.number="editData.stockQuantity"
+            type="number"
+            label="Stock Quantity"
+            variant="outlined"
+            density="compact"
+          />
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn color="grey" variant="text" @click="cancelEdit">
+            Hủy
+          </v-btn>
+          <v-btn color="success" variant="raised" @click="saveEdit">
+            Lưu
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog thêm biến thể sản phẩm -->
+    <v-dialog v-model="dialogAddVariant" width="500px">
+      <v-card>
+        <v-card-title class="text-h6 font-weight-bold">
+          Thêm biến thể sản phẩm
+        </v-card-title>
+
+        <v-divider></v-divider>
+
+        <v-card-text class="pa-4">
+          <v-select
+            v-model="newVariant.colorID"
+            :items="colors"
+            item-title="colorName"
+            item-value="colorID"
+            label="Chọn màu"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+
+          <v-select
+            v-model="newVariant.sizeID"
+            :items="sizes"
+            item-title="sizeName"
+            item-value="sizeID"
+            label="Chọn size"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+
+          <v-text-field
+            v-model.number="newVariant.price"
+            type="number"
+            label="Giá"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+
+          <v-text-field
+            v-model.number="newVariant.stockQuantity"
+            type="number"
+            label="Stock Quantity"
+            variant="outlined"
+            density="compact"
+          />
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn color="grey" variant="text" @click="cancelAddVariant">
+            Hủy
+          </v-btn>
+          <v-btn color="primary" variant="raised" @click="addProductColor">
+            Thêm
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -138,98 +241,157 @@ export default {
   data() {
     return {
       product: null,
-      colors: [], // từ table Colors
-      newColor: { colorId: null, stockQuantity: 0 },
-      selectedFiles: {}, // lưu file được chọn cho từng color
+      colors: [],
+      sizes: [],
+      newVariant: {
+        colorID: null,
+        sizeID: null,
+        price: 0,
+        stockQuantity: 0,
+      },
+      selectedFiles: {},
+      dialogEdit: false,
+      editingVariantId: null,
+      editData: {},
+      dialogAddVariant: false,
     };
+  },
+  computed: {
+    sortedVariants() {
+      if (!this.product?.colors) return [];
+      return [...this.product.colors].sort(
+        (a, b) => b.productColorID - a.productColorID,
+      );
+    },
   },
   mounted() {
     this.loadProductDetail();
     this.loadColors();
+    this.loadSizes();
   },
   methods: {
+    formatPrice(price) {
+      return new Intl.NumberFormat("vi-VN").format(Number(price) || 0);
+    },
+
     loadProductDetail() {
       axios
         .get(`http://localhost:8080/api/product/detail/${this.id}`)
         .then((res) => {
           this.product = res.data;
-
-          // Sắp xếp: màu mới thêm ở trên cùng
-          this.product.colors.sort(
-            (a, b) => b.productColorID - a.productColorID,
-          );
-        });
+        })
+        .catch((err) => console.error(err));
     },
+
     loadColors() {
       axios.get("http://localhost:8080/api/color").then((res) => {
-        this.colors = res.data;
+        this.colors = (res.data || []).map((c) => ({
+          ...c,
+          value: Number(c.colorID ?? c.colorID),
+        }));
+        console.log("colors:", this.colors);
       });
     },
+    loadSizes() {
+      axios.get("http://localhost:8080/api/size").then((res) => {
+        this.sizes = (res.data || []).map((s) => ({
+          ...s,
+          value: Number(s.sizeID ?? s.id),
+        }));
+        console.log("sizes:", this.sizes);
+      });
+    },
+
     addProductColor() {
-      console.log("Product ID:", this.id);
-      console.log("New Color:", this.newColor);
-      if (!this.newColor.colorId) {
+      if (!this.newVariant.colorID) {
         alert("Chọn màu!");
         return;
       }
-      if (this.newColor.stockQuantity < 0) {
-        alert("Stock phải >=0");
+
+      if (!this.newVariant.sizeID) {
+        alert("Chọn size!");
         return;
       }
-      if (!this.newColor.colorId) return;
+
+      if (this.newVariant.price == null || this.newVariant.price < 0) {
+        alert("Giá phải >= 0");
+        return;
+      }
+
+      if (this.newVariant.stockQuantity < 0) {
+        alert("Stock phải >= 0");
+        return;
+      }
+
       axios
         .post(
           `http://localhost:8080/api/product-color/${this.id}/color`,
-          this.newColor,
+          this.newVariant,
         )
         .then(() => {
-          this.newColor = { colorId: null, stockQuantity: 0 };
+          this.newVariant = {
+            colorID: null,
+            sizeID: null,
+            price: 0,
+            stockQuantity: 0,
+          };
+          this.dialogAddVariant = false;
           this.loadProductDetail();
         })
         .catch((err) => console.error(err));
     },
 
-    onFileSelected(event, colorId) {
+    openAddVariantDialog() {
+      this.dialogAddVariant = true;
+    },
+
+    cancelAddVariant() {
+      this.dialogAddVariant = false;
+      this.newVariant = {
+        colorID: null,
+        sizeID: null,
+        price: 0,
+        stockQuantity: 0,
+      };
+    },
+
+    onFileSelected(event, productColorId) {
       const file = event.target.files[0];
       if (file) {
         this.selectedFiles = {
           ...this.selectedFiles,
-          [colorId]: file,
+          [productColorId]: file,
         };
       }
     },
 
-    addImage(colorId) {
-      const file = this.selectedFiles[colorId];
+    addImage(productColorId) {
+      const file = this.selectedFiles[productColorId];
       if (!file) return;
 
-      // Tạo FormData gửi file
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("isMain", false);
-
-      // API giả lập: lưu ảnh trong /public/images
       axios
-        .post(`http://localhost:8080/api/image/color/${colorId}/image`, {
-          imageUrl: `/images/${file.name}`, // lưu tên file, frontend sẽ load từ /images/
+        .post(`http://localhost:8080/api/image/color/${productColorId}/image`, {
+          imageUrl: `/images/${file.name}`,
           isMain: false,
         })
         .then(() => {
-          this.selectedFiles[colorId] = null;
+          this.selectedFiles[productColorId] = null;
           this.loadProductDetail();
-        });
+        })
+        .catch((err) => console.error(err));
     },
+
     deleteProductColor(productColorId) {
-      if (!confirm("Bạn chắc có muốn xóa màu này không?")) return;
+      if (!confirm("Bạn chắc có muốn xóa biến thể này không?")) return;
+
       axios
-        .delete(
-          `http://localhost:8080/api/product-color/color/${productColorId}`,
-        )
+        .delete(`http://localhost:8080/api/product-color/${productColorId}`)
         .then(() => this.loadProductDetail())
         .catch((err) => console.error(err));
     },
+
     deleteAllImages(productColorId) {
-      if (!confirm("Bạn có chắc muốn xóa tất cả ảnh của màu này không?"))
+      if (!confirm("Bạn có chắc muốn xóa tất cả ảnh của biến thể này không?"))
         return;
 
       axios
@@ -243,6 +405,68 @@ export default {
           console.error(err);
         });
     },
+
+    startEdit(variant) {
+      this.editingVariantId = variant.productColorID;
+      this.editData = {
+        colorID: variant.colorID,
+        sizeID: variant.sizeID,
+        colorName: variant.colorName,
+        sizeName: variant.sizeName,
+        price: variant.price,
+        stockQuantity: variant.stockQuantity,
+      };
+      this.dialogEdit = true;
+    },
+
+    cancelEdit() {
+      this.dialogEdit = false;
+      this.editingVariantId = null;
+      this.editData = {};
+    },
+
+    saveEdit() {
+      if (!this.editData.colorID) {
+        alert("Chọn màu!");
+        return;
+      }
+
+      if (!this.editData.sizeID) {
+        alert("Chọn size!");
+        return;
+      }
+
+      if (this.editData.price == null || this.editData.price < 0) {
+        alert("Giá phải >= 0");
+        return;
+      }
+
+      if (this.editData.stockQuantity < 0) {
+        alert("Stock phải >= 0");
+        return;
+      }
+
+      axios
+        .put(
+          `http://localhost:8080/api/product-color/${this.editingVariantId}`,
+          {
+            colorID: this.editData.colorID,
+            sizeID: this.editData.sizeID,
+            price: this.editData.price,
+            stockQuantity: this.editData.stockQuantity,
+          },
+        )
+        .then(() => {
+          this.dialogEdit = false;
+          this.editingVariantId = null;
+          this.editData = {};
+          this.loadProductDetail();
+        })
+        .catch((err) => {
+          console.error(err);
+          alert("Cập nhật thất bại");
+        });
+    },
   },
 };
 </script>
@@ -254,17 +478,16 @@ export default {
   font-family: Arial, sans-serif;
 }
 
+.header-actions {
+  margin: 16px 0;
+}
+
 .add-color,
 .color-card {
   padding: 16px;
   border-radius: 8px;
   background: #f9f9f9;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.color-name {
-  font-weight: bold;
-  margin-bottom: 8px;
 }
 
 .image-gallery {
@@ -309,86 +532,7 @@ export default {
   font-size: 0.9em;
   font-weight: 500;
 }
-.color-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
 
-.color-box {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin-right: 8px;
-}
-.product-detail {
-  max-width: 900px;
-  margin: auto;
-  font-family: Arial, sans-serif;
-}
-
-.add-color,
-.color-card {
-  padding: 16px;
-  border-radius: 8px;
-  background: #f9f9f9;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.color-name {
-  font-weight: bold;
-  margin-bottom: 8px;
-}
-
-.image-gallery {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.product-image {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-
-.add-image {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.limit-text {
-  color: red;
-  font-size: 0.9em;
-}
-
-.color-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.color-box {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin-right: 8px;
-}
-
-.color-select {
-  margin-top: 4px;
-}
-.stock-text {
-  margin: 6px 0 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
 .color-card {
   position: relative;
   padding: 16px;
@@ -410,8 +554,17 @@ export default {
   gap: 8px;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-color-btn {
+  min-width: 60px;
+}
+
 .delete-color-btn {
-  min-width: auto;
+  min-width: 60px;
 }
 
 .color-name {
@@ -431,14 +584,5 @@ export default {
   font-size: 14px;
   font-weight: 500;
   color: #333;
-}
-.color-card {
-  position: relative;
-}
-
-.delete-color-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
 }
 </style>
