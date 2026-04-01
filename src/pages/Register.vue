@@ -12,40 +12,41 @@
       <v-card-text>
         <v-form @submit.prevent="confirmRegister">
           <v-row>
-            <!-- Username -->
             <v-col cols="12">
               <v-text-field v-model="form.username" label="Tên đăng nhập" placeholder="your_username"
                 prepend-inner-icon="mdi-account" variant="outlined" hide-details="auto" required />
             </v-col>
 
-            <!-- Email + gửi OTP -->
             <v-col cols="12" class="pt-4">
               <v-text-field v-model="form.email" label="Email" type="email" placeholder="email@example.com"
                 prepend-inner-icon="mdi-email" variant="outlined" :error="emailError"
                 :error-messages="emailError ? 'Email không hợp lệ' : ''" hide-details="auto" required />
             </v-col>
 
-            <v-col cols="12" class="pt-2">
-              <v-btn block color="primary" variant="outlined" :loading="isSendingOtp"
-                :disabled="emailError || !form.email" @click="sendOtp">
-                Gửi mã OTP
+            <v-col cols="12" class="pt-1">
+              <v-btn class="otp-btn" block color="primary" variant="flat" size="large" :loading="isSendingOtp"
+                :disabled="!form.email || !!emailError" @click="sendOtp">
+                {{ otpSent ? "Gửi lại mã OTP" : "Gửi mã OTP" }}
               </v-btn>
             </v-col>
 
-            <!-- OTP -->
+            <v-col cols="12" class="pt-0" v-if="otpMessage">
+              <div class="otp-message">
+                {{ otpMessage }}
+              </div>
+            </v-col>
+
             <v-col cols="12" class="pt-4">
               <v-text-field v-model="form.otp" label="Mã OTP" placeholder="Nhập mã OTP đã gửi về email"
                 prepend-inner-icon="mdi-shield-key" variant="outlined" hide-details="auto" required />
             </v-col>
 
-            <!-- Password -->
             <v-col cols="12" class="pt-4">
               <v-text-field v-model="form.password" label="Mật khẩu" :type="visible1 ? 'text' : 'password'"
                 prepend-inner-icon="mdi-lock" :append-inner-icon="visible1 ? 'mdi-eye-off' : 'mdi-eye'"
                 @click:append-inner="visible1 = !visible1" variant="outlined" hide-details="auto" required />
             </v-col>
 
-            <!-- Confirm Password -->
             <v-col cols="12" class="pt-4">
               <v-text-field v-model="form.confirmPassword" label="Xác nhận mật khẩu"
                 :type="visible2 ? 'text' : 'password'" prepend-inner-icon="mdi-lock-check"
@@ -54,7 +55,6 @@
                 hide-details="auto" required />
             </v-col>
 
-            <!-- Privacy Policy -->
             <v-col cols="12" class="pt-4">
               <div class="d-flex align-center gap-2">
                 <v-checkbox v-model="form.privacyPolicies" hide-details />
@@ -64,14 +64,12 @@
               </div>
             </v-col>
 
-            <!-- Submit Button -->
             <v-col cols="12" class="pt-4">
               <v-btn block color="primary" size="large" type="submit" :loading="isRegistering">
                 Xác nhận đăng ký
               </v-btn>
             </v-col>
 
-            <!-- Link Login -->
             <v-col cols="12" class="text-center mt-2">
               <span class="text-body-2">Bạn đã có tài khoản?</span>
               <router-link to="/login" class="text-primary text-decoration-none ms-1">
@@ -103,6 +101,8 @@ const form = ref({
 
 const isSendingOtp = ref(false)
 const isRegistering = ref(false)
+const otpSent = ref(false)
+const otpMessage = ref("")
 
 const visible1 = ref(false)
 const visible2 = ref(false)
@@ -121,21 +121,30 @@ const passwordError = computed(() => {
 })
 
 const sendOtp = async () => {
+  otpMessage.value = ""
+
   if (emailError.value || !form.value.email) {
     alert("Vui lòng nhập email hợp lệ!")
     return
   }
 
-  isSendingOtp.value = true
   try {
-    const res = await registerApi.requestOtp(form.value.email)
-    alert(res?.data?.message || "OTP đã được gửi tới email của bạn!")
+    isSendingOtp.value = true
+
+    const res = await registerApi.requestOtp({
+      email: form.value.email.trim(),
+    })
+
+    otpSent.value = true
+    otpMessage.value = res?.data?.message || "OTP đã được gửi tới email của bạn!"
+    alert(otpMessage.value)
   } catch (error) {
     console.error("Lỗi gửi OTP:", error)
     const errorMessage =
       error.response?.data?.message ||
       error.response?.data ||
       "Gửi OTP thất bại! Vui lòng thử lại."
+    otpMessage.value = errorMessage
     alert(errorMessage)
   } finally {
     isSendingOtp.value = false
@@ -173,8 +182,9 @@ const confirmRegister = async () => {
     return
   }
 
-  isRegistering.value = true
   try {
+    isRegistering.value = true
+
     const res = await registerApi.confirmRegister({
       username: form.value.username.trim(),
       email: form.value.email.trim(),
@@ -182,7 +192,7 @@ const confirmRegister = async () => {
       otp: form.value.otp.trim(),
     })
 
-    alert(res?.data || "Đăng ký tài khoản thành công!")
+    alert(res?.data?.message || res?.data || "Đăng ký tài khoản thành công!")
     router.push("/login")
   } catch (error) {
     console.error("Lỗi đăng ký:", error)
@@ -199,7 +209,7 @@ const confirmRegister = async () => {
 
 <style scoped>
 .auth-wrapper {
-  height: 100vh;
+  min-height: 100vh;
   background: linear-gradient(135deg,
       rgba(245, 222, 179, 0.1) 0%,
       rgba(238, 216, 174, 0.1) 100%);
@@ -207,6 +217,19 @@ const confirmRegister = async () => {
 
 :deep(.auth-card) {
   border-radius: 8px !important;
+}
+
+.otp-btn {
+  min-height: 44px;
+}
+
+.otp-message {
+  font-size: 14px;
+  color: #8b4513;
+  background: rgba(139, 69, 19, 0.08);
+  border: 1px solid rgba(139, 69, 19, 0.15);
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 
 :deep(.v-text-field__input) {
@@ -242,11 +265,11 @@ const confirmRegister = async () => {
 }
 
 :deep(a:hover) {
-  color: #8B4513 !important;
+  color: #8b4513 !important;
 }
 
 :deep(.v-btn--color-primary) {
-  background-color: #8B4513 !important;
+  background-color: #8b4513 !important;
 }
 
 :deep(.v-btn) {
@@ -258,7 +281,7 @@ const confirmRegister = async () => {
 }
 
 :deep(.router-link:hover) {
-  color: #8B4513 !important;
+  color: #8b4513 !important;
 }
 
 :deep(.text-h4) {
