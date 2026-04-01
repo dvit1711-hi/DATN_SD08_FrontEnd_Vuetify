@@ -26,7 +26,7 @@
 
             <v-col cols="12" class="d-flex align-center justify-space-between my-4">
               <v-checkbox v-model="form.remember" label="Ghi nhớ tôi" hide-details />
-              <a href="#" class="text-primary text-decoration-none">Quên mật khẩu?</a>
+              <router-link to="/forgot-password">Quên mật khẩu?</router-link>
             </v-col>
 
             <v-col cols="12">

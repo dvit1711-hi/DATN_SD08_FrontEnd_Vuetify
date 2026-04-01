@@ -26,6 +26,7 @@ import Review from '@/pages/Review.vue'
 import Home from '@/pages/Home.vue'
 import PurchaseHistory from '@/pages/PurchaseHistory.vue'
 import PaymentManager from '@/pages/admin/PaymentManager.vue'
+import ForgotPassword from '@/pages/ForgotPassword.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -48,6 +49,7 @@ const router = createRouter({
 
     { path: '/login', component: Login, name: 'Login' },
     { path: '/register', component: Register, name: 'Register' },
+    { path: '/forgot-password', component: ForgotPassword, name: 'ForgotPassword' },
 
     {
       path: '/admin',
