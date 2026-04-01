@@ -31,8 +31,14 @@
             Thương hiệu: {{ product.brandName || "—" }}
           </p>
 
-          <div class="price mb-4 text-h5 font-weight-bold text-primary">
-            {{ formatPrice(selectedVariant?.price || 0) }}đ
+          <div class="price mb-4">
+            <div v-if="getVariantDiscount(selectedVariant)" class="price-section">
+              <div class="original-price">{{ formatPrice(selectedVariant?.price || 0) }}đ</div>
+              <div class="discounted-price">{{ formatPrice(getDiscountedVariantPrice(selectedVariant)) }}đ</div>
+            </div>
+            <div v-else class="text-h5 font-weight-bold text-primary">
+              {{ formatPrice(selectedVariant?.price || 0) }}đ
+            </div>
           </div>
 
           <v-alert
@@ -238,6 +244,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
 import reviewApi from "@/api/ReviewApi";
+import { getActiveProductDiscounts } from "@/api/productDiscountApi";
 
 const route = useRoute();
 const router = useRouter();
@@ -252,6 +259,7 @@ const isLoading = ref(false);
 const showSnackbar = ref(false);
 const snackbarMessage = ref("");
 const snackbarColor = ref("success");
+const discountMap = ref(new Map());
 
 const reviews = ref([]);
 const averageRating = ref(0);
@@ -271,8 +279,20 @@ const isSelectedVariantOutOfStock = computed(
 onMounted(async () => {
   try {
     const productID = route.params.id;
-    const res = await productApi.getDetail(productID);
+    const [res, discountRes] = await Promise.all([
+      productApi.getDetail(productID),
+      getActiveProductDiscounts()
+    ]);
     product.value = res.data;
+
+    // Build discount map by productColorId
+    discountMap.value = new Map();
+    (discountRes.data || []).forEach((discount) => {
+      const productColorId = Number.parseInt(discount.productColorId, 10);
+      if (Number.isFinite(productColorId)) {
+        discountMap.value.set(productColorId, discount);
+      }
+    });
 
     if (product.value?.colors?.length) {
       const firstAvailable =
@@ -308,6 +328,32 @@ function changeVariant(variant) {
 function formatPrice(price) {
   return new Intl.NumberFormat("vi-VN").format(Number(price) || 0);
 }
+
+const getVariantDiscount = (variant) => {
+  if (!variant) return null;
+  const productColorId = Number.parseInt(variant.productColorID, 10);
+  if (!Number.isFinite(productColorId)) return null;
+  return discountMap.value.get(productColorId) || null;
+};
+
+const getDiscountedVariantPrice = (variant) => {
+  const discount = getVariantDiscount(variant);
+  if (!discount) return variant?.price || 0;
+  
+  const price = Number.parseFloat(variant.price) || 0;
+  
+  if (discount.discountType === 'percent') {
+    const discountPercent = Number.parseFloat(discount.discountValue) || 0;
+    const discountAmount = price * (discountPercent / 100);
+    const maxDiscount = Number.parseFloat(discount.maxDiscountValue) || Infinity;
+    const actualDiscount = Math.min(discountAmount, maxDiscount);
+    return Math.max(0, price - actualDiscount);
+  } else {
+    // Fixed discount
+    const discountAmount = Number.parseFloat(discount.discountValue) || 0;
+    return Math.max(0, price - discountAmount);
+  }
+};
 
 const loadReviews = async (productID) => {
   try {
@@ -627,5 +673,24 @@ async function handleBuyNow() {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.price-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.original-price {
+  font-size: 16px;
+  color: #999;
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.discounted-price {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff6b6b;
 }
 </style>

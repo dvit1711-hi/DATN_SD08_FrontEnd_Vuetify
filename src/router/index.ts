@@ -20,7 +20,8 @@ import AccountList from '@/pages/admin/AccountList.vue'
 import AdminProductDetail from '@/pages/admin/AdminProductDetail.vue'
 import AccountEdit from '@/pages/admin/accountEdit.vue'
 import AccountDetail from '@/pages/admin/accountDetail.vue'
-import DiscountManager from '@/pages/admin/discountManager.vue'
+import DiscountManager from '@/pages/admin/DiscountManager.vue'
+import DiscountProduct from '@/pages/admin/DiscountProduct.vue'
 import Statistics from '@/pages/admin/Statistics.vue'
 import Review from '@/pages/Review.vue'
 import Home from '@/pages/Home.vue'
@@ -60,6 +61,7 @@ const router = createRouter({
         { path: 'accounts/detail/:id', component: AccountDetail, name: 'AccountDetail' },
         { path: 'accounts/edit/:id', component: AccountEdit, name: 'AccountEdit' },
         { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
+        { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct' },
         { path: 'statistics', component: Statistics, name: 'Statistics' },
         { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
       ],

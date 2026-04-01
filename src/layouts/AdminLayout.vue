@@ -71,6 +71,10 @@
                         <v-list-item :to="{ name: 'DiscountManager' }" title="Discount Manager"
                             prepend-icon="mdi-percent" active-color="primary" />
 
+                        <!-- Product Discounts -->
+                        <v-list-item :to="{ name: 'DiscountProduct' }" title="Giảm Giá Biến Thể Màu"
+                            prepend-icon="mdi-sale" active-color="primary" />
+
                         <!-- Statistics -->
                         <v-list-item :to="{ name: 'Statistics' }" title="Thống kê" prepend-icon="mdi-chart-box"
                             active-color="primary" />
