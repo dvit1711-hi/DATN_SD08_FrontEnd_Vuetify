@@ -1,6 +1,5 @@
 <template>
   <v-container fluid class="py-8">
-    <!-- Header -->
     <div class="mb-6">
       <h1 class="text-h4 font-weight-bold mb-2">Quản lý sản phẩm</h1>
       <p class="text-subtitle-1 text-grey">
@@ -8,18 +7,16 @@
       </p>
     </div>
 
-    <!-- Add Product Button -->
     <v-btn
       color="primary"
       size="large"
       prepend-icon="mdi-plus"
       class="mb-6"
-      @click="showAddForm = true"
+      @click="openCreateForm"
     >
       Thêm sản phẩm
     </v-btn>
 
-    <!-- Form Add / Edit Product -->
     <v-dialog v-model="showAddForm" max-width="720">
       <v-card class="rounded-lg">
         <v-card-title class="text-h6 font-weight-bold bg-background pa-6">
@@ -50,10 +47,12 @@
             </v-col>
 
             <v-col cols="12" md="6">
-              <v-text-field
-                v-model.number="form.price"
-                type="number"
-                label="Giá"
+              <v-select
+                v-model="form.brandID"
+                :items="brands"
+                item-title="name"
+                item-value="brandID"
+                label="Thương hiệu"
                 variant="outlined"
                 hide-details
               />
@@ -61,11 +60,11 @@
 
             <v-col cols="12" md="6">
               <v-select
-                v-model="form.brandID"
-                :items="brands"
-                item-title="name"
-                item-value="brandID"
-                label="Thương hiệu"
+                v-model="form.materialID"
+                :items="materials"
+                item-title="materialName"
+                item-value="materialID"
+                label="Chất liệu"
                 variant="outlined"
                 hide-details
               />
@@ -94,7 +93,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Table Product -->
     <v-card class="rounded-lg" elevation="0" border>
       <v-card-text class="pa-6">
         <v-data-table
@@ -107,12 +105,6 @@
             <div class="font-weight-bold">{{ item.productName }}</div>
           </template>
 
-          <template #item.price="{ item }">
-            <span class="text-primary font-weight-bold"
-              >{{ formatPrice(item.price) }}đ</span
-            >
-          </template>
-
           <template #item.status="{ item }">
             <v-chip
               size="small"
@@ -123,8 +115,12 @@
             </v-chip>
           </template>
 
-          <template #item.brand="{ item }">
+          <template #item.name="{ item }">
             {{ item.name || "—" }}
+          </template>
+
+          <template #item.materialName="{ item }">
+            {{ item.materialName || "—" }}
           </template>
 
           <template #item.actions="{ item }">
@@ -167,124 +163,154 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import productApi from "@/api/productApi";
+import materialApi from "@/api/materialApi";
+import axios from "axios";
 
-const router = useRouter()
-const products = ref([])
-const brands = ref([])
-const showAddForm = ref(false)
-const form = ref({})
+const router = useRouter();
+const products = ref([]);
+const brands = ref([]);
+const materials = ref([]);
+const showAddForm = ref(false);
+
+const defaultForm = () => ({
+  productID: null,
+  productName: "",
+  description: "",
+  brandID: null,
+  materialID: null,
+  status: "ACTIVE",
+});
+
+const form = ref(defaultForm());
 
 const headers = [
-  { title: 'STT', key: 'productID', width: '80px' },
-  { title: 'Tên sản phẩm', key: 'productName' },
-  { title: 'Mô tả', key: 'description', width: '200px' },
-  { title: 'Giá', key: 'price', width: '120px' },
-  { title: 'Thương hiệu', key: 'brand' },
-  { title: 'Trạng thái', key: 'status', width: '120px' },
-  { title: 'Thao tác', key: 'actions', width: '150px', sortable: false },
-]
+  { title: "STT", key: "productID", width: "80px" },
+  { title: "Tên sản phẩm", key: "productName" },
+  { title: "Mô tả", key: "description", width: "240px" },
+  { title: "Thương hiệu", key: "name" },
+  { title: "Chất liệu", key: "materialName" },
+  { title: "Trạng thái", key: "status", width: "120px" },
+  { title: "Thao tác", key: "actions", width: "150px", sortable: false },
+];
 
 onMounted(() => {
-  loadProducts()
-  loadBrands()
-})
+  loadProducts();
+  loadBrands();
+  loadMaterials();
+});
 
-const loadProducts = () => {
-  axios.get('http://localhost:8080/api/product')
-    .then(res => {
-      products.value = res.data || []
-    })
-    .catch(err => console.error('Lỗi tải sản phẩm:', err))
-}
-
-const loadBrands = () => {
-  axios.get('http://localhost:8080/api/brands')
-    .then(res => {
-      brands.value = res.data || []
-    })
-    .catch(err => console.error('Lỗi tải thương hiệu:', err))
-}
-
-const saveProduct = () => {
-  if (!form.value.productName || !form.value.price) {
-    alert('Vui lòng nhập đủ thông tin')
-    return
+const loadProducts = async () => {
+  try {
+    const res = await productApi.getAll();
+    products.value = res.data || [];
+  } catch (err) {
+    console.error("Lỗi tải sản phẩm:", err);
   }
-    if (!form.value.productName || form.value.productName.trim() === "") {
-    alert('Vui lòng nhập tên sản phẩm');
+};
+
+const loadBrands = async () => {
+  try {
+    const res = await axios.get("http://localhost:8080/api/brands");
+    brands.value = res.data || [];
+  } catch (err) {
+    console.error("Lỗi tải thương hiệu:", err);
+  }
+};
+
+const loadMaterials = async () => {
+  try {
+    const res = await materialApi.getAll();
+    materials.value = res.data || [];
+  } catch (err) {
+    console.error("Lỗi tải chất liệu:", err);
+  }
+};
+
+const openCreateForm = () => {
+  form.value = defaultForm();
+  showAddForm.value = true;
+};
+
+const saveProduct = async () => {
+  if (!form.value.productName || form.value.productName.trim() === "") {
+    alert("Vui lòng nhập tên sản phẩm");
     return;
   }
-  if (!form.value.price || form.value.price < 0) {
-    alert('Vui lòng nhập giá hợp lệ');
-    return;
-  }
+
   if (!form.value.brandID) {
-    alert('Vui lòng chọn thương hiệu');
-    return;
-  }
-  if (!['ACTIVE','INACTIVE'].includes(form.value.status)) {
-    alert('Trạng thái không hợp lệ');
+    alert("Vui lòng chọn thương hiệu");
     return;
   }
 
-  if (form.value.productID) {
-    // Update product
-    axios
-      .put(
-        `http://localhost:8080/api/product/${form.value.productID}`,
-        form.value,
-      )
-      .then(() => {
-        loadProducts()
-        cancelForm()
-      })
-      .catch(err => console.error('Lỗi cập nhật:', err))
-  } else {
-    // Add new product
-    axios
-      .post('http://localhost:8080/api/product', form.value)
-      .then(() => {
-        loadProducts()
-        cancelForm()
-      })
-      .catch(err => console.error('Lỗi thêm:', err))
+  if (!form.value.materialID) {
+    alert("Vui lòng chọn chất liệu");
+    return;
   }
-}
 
-const editProduct = (p) => { form.value = 
-  { ...p, brandID: p.branID?.brandID || p.brandID };
- showAddForm.value = true 
-}
+  if (!["ACTIVE", "INACTIVE"].includes(form.value.status)) {
+    alert("Trạng thái không hợp lệ");
+    return;
+  }
+
+  const payload = {
+    productName: form.value.productName,
+    description: form.value.description,
+    brandID: form.value.brandID,
+    materialID: form.value.materialID,
+    status: form.value.status,
+  };
+
+  try {
+    if (form.value.productID) {
+      await productApi.update(form.value.productID, payload);
+    } else {
+      await productApi.create(payload);
+    }
+
+    await loadProducts();
+    cancelForm();
+  } catch (err) {
+    console.error("Lỗi lưu sản phẩm:", err);
+  }
+};
+
+const editProduct = (p) => {
+  form.value = {
+    productID: p.productID,
+    productName: p.productName,
+    description: p.description,
+    brandID: p.brandID,
+    materialID: p.materialID,
+    status: p.status || "ACTIVE",
+  };
+  showAddForm.value = true;
+};
 
 const cancelForm = () => {
-  form.value = {}
-  showAddForm.value = false
-}
+  form.value = defaultForm();
+  showAddForm.value = false;
+};
 
-const deleteProduct = (id) => {
-  if (!confirm('Bạn chắc chắn muốn xóa sản phẩm này?')) return
+const deleteProduct = async (id) => {
+  if (!confirm("Bạn chắc chắn muốn xóa sản phẩm này?")) return;
 
-  axios
-    .delete(`http://localhost:8080/api/product/${id}`)
-    .then(() => {
-      loadProducts()
-    })
-    .catch(err => console.error('Lỗi xóa:', err))
-}
+  try {
+    await productApi.delete(id);
+    await loadProducts();
+  } catch (err) {
+    console.error("Lỗi xóa:", err);
+  }
+};
 
 const goToDetail = (productId) => {
   router.push({
-    name: 'AdminProductDetail',
+    name: "AdminProductDetail",
     params: { id: productId },
-  })
-}
-
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('vi-VN').format(price)
-}
+  });
+};
 </script>
 
 <style scoped>
