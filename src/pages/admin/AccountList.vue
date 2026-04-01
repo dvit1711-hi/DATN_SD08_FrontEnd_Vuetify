@@ -1,12 +1,10 @@
 <template>
   <v-container fluid class="py-8">
-    <!-- Header -->
     <div class="mb-6">
       <h1 class="text-h4 font-weight-bold mb-2">Danh sách tài khoản</h1>
       <p class="text-subtitle-1 text-grey">Quản lý tài khoản người dùng</p>
     </div>
 
-    <!-- Search & Filter -->
     <v-card class="rounded-lg mb-6" elevation="0" border>
       <v-card-text class="pa-6">
         <v-row>
@@ -18,7 +16,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- Table -->
     <v-card class="rounded-lg" elevation="0" border>
       <v-card-text class="pa-6">
         <v-data-table :headers="headers" :items="filteredAccounts" :items-per-page="10" class="table-modern">
@@ -28,17 +25,17 @@
                 <img :src="getImage(item.images)" @error="handleImgError" class="account-avatar" />
               </v-avatar>
               <div>
-                <div class="font-weight-bold">{{ item.username }}</div>
+                <div class="font-weight-bold">{{ item.username || "—" }}</div>
               </div>
             </div>
           </template>
 
           <template #item.email="{ item }">
-            {{ item.email || '—' }}
+            {{ item.email || "—" }}
           </template>
 
           <template #item.phone="{ item }">
-            {{ item.phoneNumber || '—' }}
+            {{ item.phoneNumber || "—" }}
           </template>
 
           <template #item.roles="{ item }">
@@ -46,6 +43,7 @@
               <v-chip v-for="r in item.roles" :key="r" size="small" color="secondary" variant="tonal">
                 {{ r }}
               </v-chip>
+              <span v-if="!item.roles || item.roles.length === 0">—</span>
             </div>
           </template>
 
@@ -64,7 +62,8 @@
               <v-btn icon size="small" variant="text" color="primary" @click="goToDetail(item.id)">
                 <v-icon>mdi-eye</v-icon>
               </v-btn>
-              <v-btn icon size="small" variant="text" color="warning" @click="goToStatusEdit(item.id)">
+
+              <v-btn icon size="small" variant="text" color="warning" @click="goToEdit(item.id)">
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
             </div>
@@ -86,13 +85,13 @@ const accounts = ref([])
 const defaultAvatar = "/images/default-avatar.png"
 
 const headers = [
-  { title: 'Tài khoản', key: 'user' },
-  { title: 'Email', key: 'email' },
-  { title: 'Điện thoại', key: 'phone' },
-  { title: 'Vai trò', key: 'roles' },
-  { title: 'Trạng thái', key: 'status', width: '120px' },
-  { title: 'Ngày tạo', key: 'createDate', width: '120px' },
-  { title: 'Thao tác', key: 'actions', width: '100px', sortable: false },
+  { title: "Tài khoản", key: "user" },
+  { title: "Email", key: "email" },
+  { title: "Điện thoại", key: "phone" },
+  { title: "Vai trò", key: "roles" },
+  { title: "Trạng thái", key: "status", width: "120px" },
+  { title: "Ngày tạo", key: "createDate", width: "120px" },
+  { title: "Thao tác", key: "actions", width: "100px", sortable: false },
 ]
 
 onMounted(async () => {
@@ -100,7 +99,7 @@ onMounted(async () => {
     const res = await accountApi.getAll()
 
     accounts.value = (res.data || []).map(acc => ({
-      id: acc.id || acc.accountID || null,
+      id: acc.id || acc.accountId || acc.accountID || null,
       username: acc.username || "",
       email: acc.email || "",
       phoneNumber: acc.phoneNumber || "",
@@ -118,15 +117,19 @@ onMounted(async () => {
 })
 
 const goToDetail = id => {
-  router.push(`/accountList/detail/${id}`)
+  if (!id) return
+  router.push({ name: "AccountDetail", params: { id } })
 }
 
-const goToStatusEdit = id => {
-  router.push(`/accountList/status/${id}`)
+const goToEdit = id => {
+  if (!id) return
+  router.push({ name: "AccountEdit", params: { id } })
 }
 
 const getImage = img => {
-  if (!img) return '/images/default.jpg'
+  if (!img) return "/images/default.jpg"
+  if (img.startsWith("http") || img.startsWith("data:image")) return img
+  if (img.startsWith("/")) return `http://localhost:8080${img}`
   return img
 }
 
@@ -136,20 +139,25 @@ const handleImgError = e => {
 
 const statusColor = st => {
   switch (st) {
-    case "ACTIVE": return "success"
-    case "INACTIVE": return "grey"
-    case "LOCKED": return "warning"
-    case "BANNED": return "error"
-    default: return "primary"
+    case "ACTIVE":
+      return "success"
+    case "INACTIVE":
+      return "grey"
+    case "LOCKED":
+      return "warning"
+    case "BANNED":
+      return "error"
+    default:
+      return "primary"
   }
 }
 
 const getStatusText = st => {
   const statusMap = {
-    "ACTIVE": "Kích hoạt",
-    "INACTIVE": "Không kích hoạt",
-    "LOCKED": "Khóa",
-    "BANNED": "Cấm"
+    ACTIVE: "Kích hoạt",
+    INACTIVE: "Không kích hoạt",
+    LOCKED: "Khóa",
+    BANNED: "Cấm",
   }
   return statusMap[st] || st
 }
@@ -189,7 +197,7 @@ const filteredAccounts = computed(() =>
 .account-avatar {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   border-radius: 50%;
 }
 </style>

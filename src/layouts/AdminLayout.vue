@@ -52,24 +52,20 @@
                 <!-- Sidebar -->
                 <v-navigation-drawer v-model="drawer" :permanent="true" width="200" class="bg-grey-lighten-5"
                     elevation="1">
-                    <v-list density="compact">
+                    <v-list density="compact" nav>
                         <!-- Home -->
                         <v-list-item :to="{ name: 'AdminDashboard' }" title="Home" prepend-icon="mdi-home"
                             active-color="primary" />
 
                         <!-- Products -->
-                        <v-list-group title="Products" prepend-icon="mdi-package-multiple">
-                            <v-list-item :to="{ name: 'AdminProducts' }" title="Danh sách sản phẩm"
-                                active-color="primary" />
-                            <v-list-item title="Thêm sản phẩm" active-color="primary" />
-                        </v-list-group>
+                        <v-list-item :to="{ name: 'AdminProducts' }" title="Danh sách sản phẩm"
+                            prepend-icon="mdi-format-list-bulleted" active-color="primary" />
+
+                        <v-list-item title="Thêm sản phẩm" prepend-icon="mdi-plus-box" active-color="primary" />
 
                         <!-- Accounts -->
-                        <v-list-group title="Admin Account" prepend-icon="mdi-account-tie">
-                            <v-list-item :to="{ name: 'AdminAccounts' }" title="Danh sách tài khoản"
-                                active-color="primary" />
-                            <v-list-item title="Thêm tài khoản" active-color="primary" />
-                        </v-list-group>
+                        <v-list-item :to="{ name: 'AdminAccounts' }" title="Danh sách tài khoản"
+                            prepend-icon="mdi-account-multiple" active-color="primary" />
 
                         <!-- Discount Manager -->
                         <v-list-item :to="{ name: 'DiscountManager' }" title="Discount Manager"
@@ -119,12 +115,12 @@ const loadUserInfo = async () => {
         if (token && accountId) {
             username.value = storedUsername || ''
 
-            // Lấy avatar từ API
             const res = await axios.get(`http://localhost:8080/api/account/getById/${accountId}`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    Authorization: `Bearer ${token}`
                 }
             })
+
             const account = res.data.account || res.data
 
             if (account.images) {
@@ -134,9 +130,11 @@ const loadUserInfo = async () => {
                     userAvatar.value = `http://localhost:8080${account.images}`
                 }
             } else {
-                // Không có ảnh, để trống - sẽ dùng icon fallback
                 userAvatar.value = ''
             }
+        } else {
+            username.value = ''
+            userAvatar.value = ''
         }
     } catch (error) {
         console.error('Lỗi khi lấy thông tin admin:', error)
@@ -148,6 +146,9 @@ const handleLogout = () => {
     localStorage.removeItem('accountId')
     localStorage.removeItem('userRole')
     localStorage.removeItem('username')
+    localStorage.removeItem('email')
+    localStorage.removeItem('roles')
+    localStorage.removeItem('cartId')
 
     username.value = ''
     userAvatar.value = ''

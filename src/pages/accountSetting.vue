@@ -2,7 +2,6 @@
     <VRow>
         <VCol cols="12">
             <VCard title="Thông tin tài khoản">
-                <!-- Avatar -->
                 <VCardText class="d-flex">
                     <VAvatar rounded="lg" size="100" class="me-6" :image="getImage(form.images || account.images)" />
 
@@ -30,7 +29,6 @@
 
                 <VDivider />
 
-                <!-- FORM -->
                 <VCardText>
                     <VForm class="mt-6" @submit.prevent="saveChanges">
                         <VRow>
@@ -38,8 +36,9 @@
                                 <VTextField label="Username" v-model="form.username" />
                             </VCol>
 
+                            <!-- Chỉ hiển thị email, không cho sửa -->
                             <VCol cols="12" md="6">
-                                <VTextField label="Email" v-model="form.email" />
+                                <VTextField label="Email" :model-value="displayEmail" readonly disabled />
                             </VCol>
 
                             <VCol cols="12" md="6">
@@ -95,11 +94,11 @@ const router = useRouter()
 const account = ref({})
 const address = ref({})
 const refInputEl = ref(null)
+const displayEmail = ref('')
 
 const form = ref({
     accountId: null,
     username: '',
-    email: '',
     images: '',
     phoneNumber: '',
     unitNumber: '',
@@ -113,33 +112,44 @@ const form = ref({
 
 const loadAccount = async () => {
     try {
-        const accountId = localStorage.getItem('accountId')
+        const storedAccountId = localStorage.getItem('accountId')
 
-        if (!accountId) {
+        if (!storedAccountId) {
             alert('Bạn chưa đăng nhập!')
             router.push('/login')
             return
         }
 
-        const res = await accountApi.getById(accountId)
+        const res = await accountApi.getById(storedAccountId)
 
-        account.value = res.data.account || {}
-        address.value = res.data.address || {}
+        const accountData = res.data?.account || res.data || {}
+        const addressData = res.data?.address || {}
+
+        account.value = accountData
+        address.value = addressData
+
+        console.log("account response:", res.data)
+        console.log("addressData:", addressData)
+
+        const storedUsername = localStorage.getItem('username') || ''
+        const storedEmail = localStorage.getItem('email') || ''
 
         form.value = {
-            accountId: account.value.id || null,
-            username: account.value.username || '',
-            email: account.value.email || '',
-            images: account.value.images || '',
-            phoneNumber: account.value.phoneNumber || '',
-            unitNumber: address.value.unitNumber || '',
-            streetNumber: address.value.streetNumber || '',
-            addressLine1: address.value.addressLine1 || '',
-            addressLine2: address.value.addressLine2 || '',
-            city: address.value.city || '',
-            region: address.value.region || '',
-            postalCode: address.value.postalCode || ''
+            accountId: accountData.accountId || accountData.id || Number(storedAccountId),
+            username: accountData.username || storedUsername || '',
+            images: accountData.images || '',
+            phoneNumber: accountData.phoneNumber || '',
+
+            unitNumber: addressData.unitNumber || addressData.unit_number || '',
+            streetNumber: addressData.streetNumber || addressData.street_number || '',
+            addressLine1: addressData.addressLine1 || addressData.address_line1 || '',
+            addressLine2: addressData.addressLine2 || addressData.address_line2 || '',
+            city: addressData.city || '',
+            region: addressData.region || '',
+            postalCode: addressData.postalCode || addressData.postal_code || ''
         }
+
+        displayEmail.value = accountData.email || storedEmail || ''
     } catch (err) {
         console.error('Lỗi load account:', err)
         alert('Không tải được thông tin tài khoản!')
@@ -148,36 +158,46 @@ const loadAccount = async () => {
 
 const saveChanges = async () => {
     try {
+        if (!form.value.accountId) {
+            alert("Không tìm thấy accountId")
+            return
+        }
+
+        console.log("Payload gửi lên:", form.value)
+
         await accountApi.updateAccountFull(form.value)
 
-        account.value = {
-            ...account.value,
-            username: form.value.username,
-            email: form.value.email,
-            images: form.value.images,
-            phoneNumber: form.value.phoneNumber
-        }
+        localStorage.setItem("username", form.value.username || "")
+        window.dispatchEvent(new Event("auth-changed"))
 
-        address.value = {
-            ...address.value,
-            unitNumber: form.value.unitNumber,
-            streetNumber: form.value.streetNumber,
-            addressLine1: form.value.addressLine1,
-            addressLine2: form.value.addressLine2,
-            city: form.value.city,
-            region: form.value.region,
-            postalCode: form.value.postalCode
-        }
+        await loadAccount()
 
-        alert('Cập nhật thành công!')
+        alert("Cập nhật thành công!")
     } catch (err) {
-        console.error('Lỗi update:', err)
-        alert('Lỗi khi cập nhật!')
+        console.error("Lỗi update:", err)
+
+        if (err.response?.status === 401 || err.response?.status === 403) {
+            alert("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại!")
+            localStorage.removeItem("token")
+            localStorage.removeItem("accountId")
+            localStorage.removeItem("username")
+            localStorage.removeItem("email")
+            router.push("/login")
+            return
+        }
+
+        alert(err.response?.data?.message || "Lỗi khi cập nhật!")
     }
 }
 
 const getImage = img => {
     if (!img) return '/images/default.jpg'
+
+    if (typeof img === 'string') {
+        if (img.startsWith('data:image') || img.startsWith('http')) return img
+        if (img.startsWith('/')) return `http://localhost:8080${img}`
+    }
+
     return img
 }
 

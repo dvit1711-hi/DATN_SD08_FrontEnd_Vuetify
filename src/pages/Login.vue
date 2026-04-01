@@ -1,12 +1,7 @@
 <template>
   <div class="auth-wrapper d-flex align-center justify-center pa-4">
-    <v-card
-      class="auth-card rounded-lg"
-      max-width="460"
-      :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-6'"
-      elevation="0"
-      border
-    >
+    <v-card class="auth-card rounded-lg" max-width="460" :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-6'"
+      elevation="0" border>
       <v-card-item class="justify-center pb-2">
         <div class="text-center">
           <h1 class="text-h4 font-weight-bold mb-2">Đăng nhập</h1>
@@ -18,29 +13,15 @@
         <v-form @submit.prevent="login">
           <v-row>
             <v-col cols="12">
-              <v-text-field
-                v-model="form.username"
-                label="Tên đăng nhập"
-                placeholder="your_username"
-                prepend-inner-icon="mdi-account"
-                variant="outlined"
-                autofocus
-                hide-details
-              />
+              <v-text-field v-model="form.email" label="Email" type="email" placeholder="email@example.com"
+                prepend-inner-icon="mdi-email" variant="outlined" autofocus hide-details="auto" />
             </v-col>
 
             <v-col cols="12" class="pt-4">
-              <v-text-field
-                v-model="form.password"
-                label="Mật khẩu"
-                :type="isPasswordVisible ? 'text' : 'password'"
-                placeholder="••••••••"
-                prepend-inner-icon="mdi-lock"
+              <v-text-field v-model="form.password" label="Mật khẩu" :type="isPasswordVisible ? 'text' : 'password'"
+                placeholder="••••••••" prepend-inner-icon="mdi-lock"
                 :append-inner-icon="isPasswordVisible ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="isPasswordVisible = !isPasswordVisible"
-                variant="outlined"
-                hide-details
-              />
+                @click:append-inner="isPasswordVisible = !isPasswordVisible" variant="outlined" hide-details="auto" />
             </v-col>
 
             <v-col cols="12" class="d-flex align-center justify-space-between my-4">
@@ -49,7 +30,7 @@
             </v-col>
 
             <v-col cols="12">
-              <v-btn block color="primary" size="large" type="submit">
+              <v-btn block color="primary" size="large" type="submit" :loading="isLoading">
                 Đăng nhập
               </v-btn>
             </v-col>
@@ -69,109 +50,62 @@
 
 <script setup>
 import { ref } from "vue"
-import axios from "axios"
 import { useRouter } from "vue-router"
 import { useUserStore } from "@/stores/user"
-import accountApi from "@/api/accountApi"
+import loginApi from "@/api/loginApi"
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const form = ref({
-  username: "",
+  email: "",
   password: "",
   remember: false,
 })
 
 const isPasswordVisible = ref(false)
+const isLoading = ref(false)
 
 const login = async () => {
-  console.log("=== LOGIN FUNCTION CALLED ===")
-
   try {
-    console.log("Form values:", form.value)
-
-    if (!form.value.username || !form.value.password) {
-      alert("Vui lòng nhập tên đăng nhập và mật khẩu")
+    if (!form.value.email || !form.value.password) {
+      alert("Vui lòng nhập email và mật khẩu")
       return
     }
 
-    console.log("Sending login request to API...")
-    const res = await axios.post("http://localhost:8080/auth/login", {
-      username: form.value.username,
+    isLoading.value = true
+
+    const res = await loginApi.login({
+      email: form.value.email,
       password: form.value.password,
     })
 
     console.log("✅ Login response:", res.data)
 
-    // Lưu vào store
     userStore.login({
       accountId: res.data.accountId,
       token: res.data.token,
       username: res.data.username,
-    })
-
-    // Lưu localStorage
-    localStorage.setItem("token", res.data.token)
-    localStorage.setItem("accountId", res.data.accountId)
-    localStorage.setItem("username", res.data.username)
-
-    // Nếu username là admin thì set luôn
-    if (res.data.username === "admin") {
-      localStorage.setItem("userRole", "admin")
-      console.log("✅ Set admin role for username: admin")
-    } else {
-      // Gọi API lấy role
-      if (res.data.accountId) {
-        try {
-          const accountRes = await accountApi.getById(res.data.accountId)
-          console.log("📋 Full account response:", accountRes.data)
-
-          const account = accountRes.data.account || accountRes.data
-          console.log("📋 Account object:", account)
-          console.log("📋 Account keys:", Object.keys(account))
-
-          let userRole = null
-
-          if (account.role) {
-            userRole = account.role
-          } else if (account.roleId) {
-            userRole = account.roleId
-          } else if (account.accountRole) {
-            userRole = account.accountRole
-          } else if (account.type) {
-            userRole = account.type
-          } else if (account.status !== undefined && account.status !== null) {
-            userRole = account.status === 1 ? "admin" : "user"
-          }
-
-          if (userRole) {
-            localStorage.setItem("userRole", userRole)
-            console.log("✅ Saved userRole:", userRole)
-          } else {
-            console.warn("⚠️ Không tìm thấy role field trong account info")
-            console.log("Available fields:", account)
-          }
-        } catch (error) {
-          console.error("❌ Lỗi khi lấy thông tin account:", error)
-        }
-      }
-    }
-
-    console.log("Final stored data:", {
-      accountId: localStorage.getItem("accountId"),
-      username: localStorage.getItem("username"),
-      userRole: localStorage.getItem("userRole"),
+      email: res.data.email,
+      roles: res.data.roles || [],
     })
 
     window.dispatchEvent(new Event("auth-changed"))
 
-    alert("Đăng nhập thành công!")
+    alert(res.data.message || "Đăng nhập thành công!")
     router.push({ name: "Home" })
   } catch (error) {
-    console.error("Login error:", error)
-    console.error("Error response:", error.response?.data)
-    alert("Sai tài khoản hoặc mật khẩu!")
+    console.error("❌ Login error:", error)
+    console.error("❌ Error response:", error.response?.data)
+
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data ||
+      "Sai email hoặc mật khẩu!"
+
+    alert(errorMessage)
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
@@ -179,11 +113,9 @@ const login = async () => {
 <style scoped>
 .auth-wrapper {
   height: 100vh;
-  background: linear-gradient(
-    135deg,
-    rgba(245, 222, 179, 0.1) 0%,
-    rgba(238, 216, 174, 0.1) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(245, 222, 179, 0.1) 0%,
+      rgba(238, 216, 174, 0.1) 100%);
 }
 
 :deep(.auth-card) {

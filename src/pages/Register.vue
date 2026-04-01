@@ -1,6 +1,7 @@
 <template>
   <div class="auth-wrapper d-flex align-center justify-center pa-4">
-    <v-card class="auth-card rounded-lg" max-width="460" :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-6'" elevation="0" border>
+    <v-card class="auth-card rounded-lg" max-width="460" :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-6'"
+      elevation="0" border>
       <v-card-item class="justify-center pb-2">
         <div class="text-center">
           <h1 class="text-h4 font-weight-bold mb-2">Đăng ký</h1>
@@ -9,96 +10,64 @@
       </v-card-item>
 
       <v-card-text>
-        <v-form @submit.prevent="register">
+        <v-form @submit.prevent="confirmRegister">
           <v-row>
             <!-- Username -->
             <v-col cols="12">
-              <v-text-field
-                v-model="form.username"
-                label="Tên đăng nhập"
-                placeholder="your_username"
-                prepend-inner-icon="mdi-account"
-                variant="outlined"
-                hide-details
-                required
-              />
+              <v-text-field v-model="form.username" label="Tên đăng nhập" placeholder="your_username"
+                prepend-inner-icon="mdi-account" variant="outlined" hide-details="auto" required />
             </v-col>
 
-            <!-- Email -->
+            <!-- Email + gửi OTP -->
             <v-col cols="12" class="pt-4">
-              <v-text-field
-                v-model="form.email"
-                label="Email"
-                type="email"
-                placeholder="email@example.com"
-                prepend-inner-icon="mdi-email"
-                variant="outlined"
-                :error="emailError"
-                :error-messages="emailError ? 'Email không hợp lệ' : ''"
-                hide-details
-                required
-              />
+              <v-text-field v-model="form.email" label="Email" type="email" placeholder="email@example.com"
+                prepend-inner-icon="mdi-email" variant="outlined" :error="emailError"
+                :error-messages="emailError ? 'Email không hợp lệ' : ''" hide-details="auto" required />
             </v-col>
 
-            <!-- Phone Number -->
+            <v-col cols="12" class="pt-2">
+              <v-btn block color="primary" variant="outlined" :loading="isSendingOtp"
+                :disabled="emailError || !form.email" @click="sendOtp">
+                Gửi mã OTP
+              </v-btn>
+            </v-col>
+
+            <!-- OTP -->
             <v-col cols="12" class="pt-4">
-              <v-text-field
-                v-model="form.phoneNumber"
-                label="Số điện thoại"
-                placeholder="0901234567"
-                prepend-inner-icon="mdi-phone"
-                variant="outlined"
-                hide-details
-              />
+              <v-text-field v-model="form.otp" label="Mã OTP" placeholder="Nhập mã OTP đã gửi về email"
+                prepend-inner-icon="mdi-shield-key" variant="outlined" hide-details="auto" required />
             </v-col>
 
             <!-- Password -->
             <v-col cols="12" class="pt-4">
-              <v-text-field
-                v-model="form.password"
-                label="Mật khẩu"
-                :type="visible1 ? 'text' : 'password'"
-                prepend-inner-icon="mdi-lock"
-                :append-inner-icon="visible1 ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="visible1 = !visible1"
-                variant="outlined"
-                hide-details
-                required
-              />
+              <v-text-field v-model="form.password" label="Mật khẩu" :type="visible1 ? 'text' : 'password'"
+                prepend-inner-icon="mdi-lock" :append-inner-icon="visible1 ? 'mdi-eye-off' : 'mdi-eye'"
+                @click:append-inner="visible1 = !visible1" variant="outlined" hide-details="auto" required />
             </v-col>
 
             <!-- Confirm Password -->
             <v-col cols="12" class="pt-4">
-              <v-text-field
-                v-model="form.confirmPassword"
-                label="Xác nhận mật khẩu"
-                :type="visible2 ? 'text' : 'password'"
-                prepend-inner-icon="mdi-lock-check"
-                :append-inner-icon="visible2 ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="visible2 = !visible2"
-                :error="passwordError"
-                :error-messages="passwordError ? 'Mật khẩu không khớp' : ''"
-                variant="outlined"
-                hide-details
-                required
-              />
+              <v-text-field v-model="form.confirmPassword" label="Xác nhận mật khẩu"
+                :type="visible2 ? 'text' : 'password'" prepend-inner-icon="mdi-lock-check"
+                :append-inner-icon="visible2 ? 'mdi-eye-off' : 'mdi-eye'" @click:append-inner="visible2 = !visible2"
+                :error="passwordError" :error-messages="passwordError ? 'Mật khẩu không khớp' : ''" variant="outlined"
+                hide-details="auto" required />
             </v-col>
 
             <!-- Privacy Policy -->
             <v-col cols="12" class="pt-4">
               <div class="d-flex align-center gap-2">
-                <v-checkbox
-                  v-model="form.privacyPolicies"
-                  hide-details
-                />
-                <span class="text-body-2">Tôi đồng ý với <strong>chính sách & điều khoản</strong></span>
+                <v-checkbox v-model="form.privacyPolicies" hide-details />
+                <span class="text-body-2">
+                  Tôi đồng ý với <strong>chính sách & điều khoản</strong>
+                </span>
               </div>
             </v-col>
 
             <!-- Submit Button -->
             <v-col cols="12" class="pt-4">
-              <v-btn block color="primary" size="large" type="submit" :loading="isLoading">
-                Đăng ký
+              <v-btn block color="primary" size="large" type="submit" :loading="isRegistering">
+                Xác nhận đăng ký
               </v-btn>
             </v-col>
 
@@ -126,44 +95,69 @@ const router = useRouter()
 const form = ref({
   username: "",
   email: "",
-  phoneNumber: "",
+  otp: "",
   password: "",
   confirmPassword: "",
   privacyPolicies: false,
 })
 
-const isLoading = ref(false)
+const isSendingOtp = ref(false)
+const isRegistering = ref(false)
 
-// Ẩn/hiện mật khẩu
 const visible1 = ref(false)
 const visible2 = ref(false)
 
-// Kiểm tra email hợp lệ
 const emailError = computed(() => {
   if (form.value.email === "") return false
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return !emailRegex.test(form.value.email)
 })
 
-// Kiểm tra mật khẩu trùng nhau
 const passwordError = computed(() => {
-  return form.value.confirmPassword !== "" && form.value.password !== form.value.confirmPassword
+  return (
+    form.value.confirmPassword !== "" &&
+    form.value.password !== form.value.confirmPassword
+  )
 })
 
-const register = async () => {
-  // Validate username
+const sendOtp = async () => {
+  if (emailError.value || !form.value.email) {
+    alert("Vui lòng nhập email hợp lệ!")
+    return
+  }
+
+  isSendingOtp.value = true
+  try {
+    const res = await registerApi.requestOtp(form.value.email)
+    alert(res?.data?.message || "OTP đã được gửi tới email của bạn!")
+  } catch (error) {
+    console.error("Lỗi gửi OTP:", error)
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data ||
+      "Gửi OTP thất bại! Vui lòng thử lại."
+    alert(errorMessage)
+  } finally {
+    isSendingOtp.value = false
+  }
+}
+
+const confirmRegister = async () => {
   if (!form.value.username || form.value.username.trim().length < 3) {
     alert("Tên đăng nhập phải có ít nhất 3 ký tự!")
     return
   }
 
-  // Validate email
-  if (emailError.value) {
+  if (emailError.value || !form.value.email) {
     alert("Email không hợp lệ!")
     return
   }
 
-  // Validate password
+  if (!form.value.otp || form.value.otp.trim().length === 0) {
+    alert("Vui lòng nhập mã OTP!")
+    return
+  }
+
   if (!form.value.password || form.value.password.length < 6) {
     alert("Mật khẩu phải có ít nhất 6 ký tự!")
     return
@@ -179,23 +173,26 @@ const register = async () => {
     return
   }
 
-  isLoading.value = true
+  isRegistering.value = true
   try {
-    await registerApi.register({
-      username: form.value.username,
-      email: form.value.email,
-      phoneNumber: form.value.phoneNumber || null,
+    const res = await registerApi.confirmRegister({
+      username: form.value.username.trim(),
+      email: form.value.email.trim(),
       password: form.value.password,
+      otp: form.value.otp.trim(),
     })
 
-    alert("Đăng ký thành công! Vui lòng đăng nhập.")
+    alert(res?.data || "Đăng ký tài khoản thành công!")
     router.push("/login")
   } catch (error) {
-    console.error(error)
-    const errorMessage = error.response?.data?.message || "Đăng ký thất bại! Vui lòng thử lại."
+    console.error("Lỗi đăng ký:", error)
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data ||
+      "Đăng ký thất bại! Vui lòng thử lại."
     alert(errorMessage)
   } finally {
-    isLoading.value = false
+    isRegistering.value = false
   }
 }
 </script>
@@ -203,7 +200,9 @@ const register = async () => {
 <style scoped>
 .auth-wrapper {
   height: 100vh;
-  background: linear-gradient(135deg, rgba(245, 222, 179, 0.1) 0%, rgba(238, 216, 174, 0.1) 100%);
+  background: linear-gradient(135deg,
+      rgba(245, 222, 179, 0.1) 0%,
+      rgba(238, 216, 174, 0.1) 100%);
 }
 
 :deep(.auth-card) {

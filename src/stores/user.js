@@ -7,6 +7,8 @@ export const useUserStore = defineStore('user', () => {
   const cartId = ref(localStorage.getItem('cartId') || null)
   const token = ref(localStorage.getItem('token') || null)
   const username = ref(localStorage.getItem('username') || null)
+  const email = ref(localStorage.getItem('email') || null)
+  const roles = ref(JSON.parse(localStorage.getItem('roles') || '[]'))
 
   const parseValidInt = (value) => {
     const parsed = Number.parseInt(value, 10)
@@ -22,14 +24,10 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // Get cart of current user
   const getOrCreateCart = async () => {
     const existingCartId = parseValidInt(cartId.value)
-    if (existingCartId) {
-      return existingCartId
-    }
+    if (existingCartId) return existingCartId
 
-    // Clean corrupted values like "undefined"/"null" left in localStorage.
     cartId.value = null
     localStorage.removeItem('cartId')
 
@@ -38,7 +36,6 @@ export const useUserStore = defineStore('user', () => {
     }
 
     try {
-      // Create new cart for user
       const payload = { accountID: parseInt(accountId.value, 10) }
       let response
 
@@ -56,9 +53,9 @@ export const useUserStore = defineStore('user', () => {
       if (!newCartId) {
         throw new Error('Không lấy được cartID từ phản hồi tạo giỏ hàng')
       }
+
       cartId.value = newCartId
       localStorage.setItem('cartId', String(newCartId))
-
       return newCartId
     } catch (error) {
       console.error('Lỗi tạo giỏ hàng:', error)
@@ -66,7 +63,6 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // Add item to cart via API
   const addToCartAPI = async (productColorId, quantity) => {
     if (!accountId.value) {
       throw new Error('Bạn cần đăng nhập trước')
@@ -98,29 +94,42 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // Login user
   const login = (data) => {
     accountId.value = data.accountId
-    cartId.value = null // Reset cart
+    cartId.value = null
     token.value = data.token
     username.value = data.username
+    email.value = data.email
+    roles.value = data.roles || []
 
-    localStorage.setItem('accountId', data.accountId)
+    localStorage.setItem('accountId', String(data.accountId))
     localStorage.setItem('token', data.token)
-    localStorage.setItem('username', data.username)
+    localStorage.setItem('username', data.username || '')
+    localStorage.setItem('email', data.email || '')
+    localStorage.setItem('roles', JSON.stringify(data.roles || []))
     localStorage.removeItem('cartId')
+
+    if (data.roles && data.roles.length > 0) {
+      localStorage.setItem('userRole', data.roles[0])
+    } else {
+      localStorage.removeItem('userRole')
+    }
   }
 
-  // Logout user
   const logout = () => {
     accountId.value = null
     cartId.value = null
     token.value = null
     username.value = null
+    email.value = null
+    roles.value = []
 
     localStorage.removeItem('accountId')
     localStorage.removeItem('token')
     localStorage.removeItem('username')
+    localStorage.removeItem('email')
+    localStorage.removeItem('roles')
+    localStorage.removeItem('userRole')
     localStorage.removeItem('cartId')
   }
 
@@ -131,6 +140,8 @@ export const useUserStore = defineStore('user', () => {
     cartId,
     token,
     username,
+    email,
+    roles,
     isLoggedIn,
     getOrCreateCart,
     addToCartAPI,

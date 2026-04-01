@@ -1,9 +1,18 @@
 import axios from "axios"
 
-const API = "http://localhost:8080/auth"
+const apiClient = axios.create({
+  baseURL: "http://localhost:8080", // sửa lại nếu backend chạy URL khác
+  headers: {
+    "Content-Type": "application/json",
+  },
+})
 
 export default {
-  register(data) {
-    return axios.post(`${API}/register`, data)
-  }
+  requestOtp(email) {
+    return apiClient.post("/auth/register/request-otp", { email })
+  },
+
+  confirmRegister(data) {
+    return apiClient.post("/auth/register/confirm", data)
+  },
 }

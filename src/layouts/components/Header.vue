@@ -47,17 +47,9 @@
         </router-link>
         <!-- Search Bar -->
         <div class="flex-grow-1 mx-6" style="max-width: 600px;">
-  <v-text-field
-    v-model="searchQuery"
-    placeholder="Tìm kiếm sản phẩm..."
-    prepend-inner-icon="mdi-magnify"
-    outlined
-    dense
-    hide-details
-    class="bg-white rounded"
-    @keyup.enter="handleSearch"
-  />
-</div>
+          <v-text-field v-model="searchQuery" placeholder="Tìm kiếm sản phẩm..." prepend-inner-icon="mdi-magnify"
+            outlined dense hide-details class="bg-white rounded" @keyup.enter="handleSearch" />
+        </div>
 
         <!-- Right Side Actions -->
         <div class="d-flex align-center gap-4">
@@ -146,10 +138,10 @@ const loadCartCount = async () => {
       try {
         const config = token
           ? {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
           : undefined
 
         const cartRes = await axios.post('http://localhost:8080/api/carts', { accountID: accountId }, config)
@@ -181,40 +173,36 @@ const loadCartCount = async () => {
 }
 
 const checkAdminRole = async () => {
-  // Lấy thông tin từ localStorage
   const userRole = localStorage.getItem('userRole')
+  const storedRoles = JSON.parse(localStorage.getItem('roles') || '[]')
   const accountId = localStorage.getItem('accountId')
   const storedUsername = localStorage.getItem('username')
   const token = localStorage.getItem('token')
 
-  // Kiểm tra đã đăng nhập chưa
   if (token && accountId) {
     isLoggedIn.value = true
     username.value = storedUsername || ''
 
-    // Gọi API để lấy avatar
     try {
       const res = await axios.get(`http://localhost:8080/api/account/getById/${accountId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
       })
+
       const account = res.data.account || res.data
 
       if (account.images) {
-        // Xử lý URL ảnh
         if (account.images.startsWith('http') || account.images.startsWith('data:image')) {
           userAvatar.value = account.images
         } else {
           userAvatar.value = `http://localhost:8080${account.images}`
         }
       } else {
-        // Không có ảnh, để trống - sẽ dùng icon fallback
         userAvatar.value = ''
       }
     } catch (error) {
       console.error('Lỗi khi lấy avatar:', error)
-      // Không có ảnh, để trống - sẽ dùng icon fallback
       userAvatar.value = ''
     }
   } else {
@@ -225,8 +213,11 @@ const checkAdminRole = async () => {
 
   await loadCartCount()
 
-  // Kiểm tra admin role
-  isAdmin.value = userRole === 'admin' || userRole === 'ADMIN'
+  isAdmin.value =
+    userRole === 'admin' ||
+    userRole === 'ADMIN' ||
+    userRole === 'ROLE_ADMIN' ||
+    storedRoles.includes('ROLE_ADMIN')
 }
 
 const handleSearch = () => {

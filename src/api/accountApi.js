@@ -16,6 +16,26 @@ api.interceptors.request.use(config => {
   return config
 })
 
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('accountId')
+      localStorage.removeItem('username')
+      localStorage.removeItem('email')
+      localStorage.removeItem('roles')
+      localStorage.removeItem('userRole')
+      localStorage.removeItem('cartId')
+
+      alert('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại!')
+      window.location.href = '/login'
+    }
+
+    return Promise.reject(error)
+  }
+)
+
 export default {
   getAll() {
     return api.get('/api/account')

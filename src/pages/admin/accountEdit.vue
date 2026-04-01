@@ -109,7 +109,7 @@ const loadAccount = async () => {
         const acc = res.data.account || res.data
 
         account.value = {
-            id: acc.id || acc.accountID || null,
+            id: acc.id || acc.accountID || acc.accountId || null,
             username: acc.username || "",
             email: acc.email || "",
             images: acc.images || "",
@@ -122,6 +122,10 @@ const loadAccount = async () => {
         console.error("Lỗi load account status:", err)
         alert("Không tải được tài khoản!")
     }
+}
+
+const goToAccountList = () => {
+    router.push({ name: "AdminAccounts" })
 }
 
 const saveStatus = async () => {
@@ -143,7 +147,7 @@ const saveStatus = async () => {
         })
 
         alert("Cập nhật trạng thái thành công!")
-        router.push("/accountList")
+        goToAccountList()
     } catch (err) {
         console.error("Lỗi update status:", err)
         console.error("Response:", err?.response?.data)
@@ -161,7 +165,7 @@ const getImage = img => {
 }
 
 const goBack = () => {
-    router.push("/accountList")
+    goToAccountList()
 }
 
 onMounted(async () => {
