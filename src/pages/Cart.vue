@@ -23,13 +23,35 @@
         <v-col cols="12" lg="8">
           <v-card class="mb-4" variant="outlined">
             <v-card-text class="py-2 px-4 d-flex align-center justify-space-between">
-              <v-checkbox
-                :model-value="isAllSelected"
-                label="Chọn tất cả"
-                hide-details
-                density="compact"
-                @update:model-value="toggleSelectAll"
-              />
+              <div class="d-flex align-center ga-2 flex-wrap">
+                <v-checkbox
+                  :model-value="isAllSelected"
+                  label="Chọn tất cả"
+                  hide-details
+                  density="compact"
+                  @update:model-value="toggleSelectAll"
+                />
+                <v-btn
+                  size="small"
+                  variant="text"
+                  color="error"
+                  :disabled="selectedItemIds.length === 0 || isBulkRemoving"
+                  :loading="isBulkRemoving"
+                  @click="removeSelectedItems"
+                >
+                  Xóa đã chọn
+                </v-btn>
+                <v-btn
+                  size="small"
+                  variant="text"
+                  color="error"
+                  :disabled="cartItems.length === 0 || isBulkRemoving"
+                  :loading="isBulkRemoving"
+                  @click="clearCart"
+                >
+                  Xóa toàn bộ
+                </v-btn>
+              </div>
               <span class="text-caption text-grey">Đã chọn {{ selectedItemIds.length }}/{{ cartItems.length }} sản phẩm</span>
             </v-card-text>
           </v-card>
@@ -55,6 +77,7 @@
                 <div class="flex-grow-1 min-w-220">
                   <div class="text-subtitle-1 font-weight-bold">{{ item.productName || `Màu #${item.productColorID}` }}</div>
                   <div class="text-caption text-grey">Mã màu: #{{ item.productColorID }}</div>
+                  <div class="text-caption text-grey">Size: {{ item.sizeName || '-' }}</div>
                   <div class="d-flex align-center ga-2 mt-2">
                     <span class="text-caption text-grey">Màu:</span>
                     <span class="color-dot" :style="{ backgroundColor: item.colorCode || '#ddd' }" />
@@ -172,11 +195,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import productApi from '@/api/productApi'
-import productColorApi from '@/api/productColorApi'
 import cartApi from '@/api/cartApi'
 
 const router = useRouter()
@@ -189,6 +210,7 @@ const showSnackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
+const isBulkRemoving = ref(false)
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const selectedItems = computed(() => {
@@ -201,33 +223,10 @@ const isAllSelected = computed(() => cartItems.value.length > 0 && selectedItemI
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
 
-const buildProductColorMap = async () => {
-  const [productRes, stockRes] = await Promise.all([productApi.getAllCart(), productColorApi.getAll()])
-
-  const stockMap = new Map()
-  ;(stockRes.data || []).forEach((pc) => {
-    const colorId = Number.parseInt(pc.productColorID ?? pc.id, 10)
-    if (Number.isFinite(colorId)) {
-      stockMap.set(colorId, Number.parseInt(pc.stockQuantity, 10) || 0)
-    }
-  })
-
-  const map = new Map()
-  ;(productRes.data || []).forEach((p) => {
-    const colorId = Number.parseInt(p.productColorID, 10)
-    if (Number.isFinite(colorId)) {
-      map.set(colorId, {
-        ...p,
-        stockQuantity: stockMap.get(colorId) ?? 0,
-      })
-    }
-  })
-  return map
-}
-
 const loadCart = async () => {
   if (!isLoggedIn.value) {
     cartItems.value = []
+    selectedItemIds.value = []
     return
   }
 
@@ -238,24 +237,24 @@ const loadCart = async () => {
       currentCartId = await userStore.getOrCreateCart()
     }
 
-    const [itemRes, productMap] = await Promise.all([cartApi.getAll(), buildProductColorMap()])
+    const itemRes = await cartApi.getByCart(currentCartId)
 
     const normalized = (itemRes.data || [])
-      .filter((item) => item.cartID === currentCartId)
       .map((item) => {
-        const colorId = Number.parseInt(item.productID, 10)
-        const card = productMap.get(colorId) || {}
+        const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
         return {
           cartItemID: item.cartItemID,
           cartID: item.cartID,
           productColorID: colorId,
+          sizeID: Number.parseInt(item.sizeID, 10) || null,
+          sizeName: item.sizeName || '',
           quantity: Number.parseInt(item.quantity, 10) || 1,
-          productName: card.productName || '',
-          price: Number(card.price) || 0,
-          colorName: card.colorName || '',
-          colorCode: card.colorCode || '',
-          mainImage: card.mainImage || '',
-          stockQuantity: Number.parseInt(card.stockQuantity, 10) || 0,
+          productName: item.productName || '',
+          price: Number(item.price) || 0,
+          colorName: item.colorName || '',
+          colorCode: item.colorCode || '',
+          mainImage: item.mainImage || '',
+          stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
           isUpdating: false,
           isRemoving: false,
         }
@@ -343,6 +342,62 @@ const removeItem = async (item) => {
   }
 }
 
+const removeSelectedItems = async () => {
+  if (selectedItemIds.value.length === 0 || isBulkRemoving.value) return
+
+  isBulkRemoving.value = true
+  try {
+    const selectedSet = new Set(selectedItemIds.value)
+    const selectedItems = cartItems.value.filter((item) => selectedSet.has(item.cartItemID))
+
+    await Promise.all(selectedItems.map((item) => cartApi.remove(item.cartItemID, userStore.token)))
+
+    cartItems.value = cartItems.value.filter((item) => !selectedSet.has(item.cartItemID))
+    selectedItemIds.value = []
+    window.dispatchEvent(new Event('cart-changed'))
+    snackbarMessage.value = 'Đã xóa các sản phẩm đã chọn'
+    snackbarColor.value = 'success'
+    showSnackbar.value = true
+  } catch (error) {
+    console.error('Lỗi xóa sản phẩm đã chọn:', error)
+    snackbarMessage.value = 'Không thể xóa tất cả sản phẩm đã chọn'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+  } finally {
+    isBulkRemoving.value = false
+  }
+}
+
+const clearCart = async () => {
+  if (cartItems.value.length === 0 || isBulkRemoving.value) return
+
+  const cartId = Number.parseInt(userStore.cartId, 10)
+  if (!Number.isFinite(cartId) || cartId <= 0) {
+    snackbarMessage.value = 'Không xác định được giỏ hàng hiện tại'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+
+  isBulkRemoving.value = true
+  try {
+    await cartApi.clearCart(cartId, userStore.token)
+    cartItems.value = []
+    selectedItemIds.value = []
+    window.dispatchEvent(new Event('cart-changed'))
+    snackbarMessage.value = 'Đã xóa toàn bộ giỏ hàng'
+    snackbarColor.value = 'success'
+    showSnackbar.value = true
+  } catch (error) {
+    console.error('Lỗi xóa toàn bộ giỏ hàng:', error)
+    snackbarMessage.value = 'Không thể xóa toàn bộ giỏ hàng'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+  } finally {
+    isBulkRemoving.value = false
+  }
+}
+
 const toggleItemSelection = (cartItemId, checked) => {
   if (checked) {
     if (!selectedItemIds.value.includes(cartItemId)) {
@@ -394,7 +449,14 @@ const goLogin = () => {
   router.push({ name: 'Login' })
 }
 
-onMounted(loadCart)
+onMounted(() => {
+  loadCart()
+  window.addEventListener('cart-changed', loadCart)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('cart-changed', loadCart)
+})
 </script>
 
 <style scoped>

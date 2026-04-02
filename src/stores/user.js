@@ -24,9 +24,37 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  const isCartNotFoundError = (error) => {
+    const status = error?.response?.status
+    const message = String(error?.response?.data?.message || error?.message || '').toLowerCase()
+    return status === 404 || message.includes('khong tim thay gio hang') || message.includes('không tìm thấy giỏ hàng')
+  }
+
+  const postWithOptionalAuth = async (url, payload) => {
+    try {
+      return await axios.post(url, payload, buildAuthConfig())
+    } catch (error) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return axios.post(url, payload)
+      }
+      throw error
+    }
+  }
+
   const getOrCreateCart = async () => {
     const existingCartId = parseValidInt(cartId.value)
-    if (existingCartId) return existingCartId
+    if (existingCartId) {
+      try {
+        await axios.get(`http://localhost:8080/api/cart-items/cart/${existingCartId}`)
+        return existingCartId
+      } catch (error) {
+        if (!isCartNotFoundError(error)) {
+          throw error
+        }
+        cartId.value = null
+        localStorage.removeItem('cartId')
+      }
+    }
 
     cartId.value = null
     localStorage.removeItem('cartId')
@@ -37,17 +65,7 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       const payload = { accountID: parseInt(accountId.value, 10) }
-      let response
-
-      try {
-        response = await axios.post('http://localhost:8080/api/carts', payload, buildAuthConfig())
-      } catch (error) {
-        if (error?.response?.status === 401 || error?.response?.status === 403) {
-          response = await axios.post('http://localhost:8080/api/carts', payload)
-        } else {
-          throw error
-        }
-      }
+      const response = await postWithOptionalAuth('http://localhost:8080/api/carts', payload)
 
       const newCartId = parseValidInt(response.data?.id || response.data?.cartID)
       if (!newCartId) {
@@ -68,26 +86,40 @@ export const useUserStore = defineStore('user', () => {
       throw new Error('Bạn cần đăng nhập trước')
     }
 
+    const parsedProductColorId = parseValidInt(productColorId)
+    const parsedQuantity = parseValidInt(quantity)
+    if (!parsedProductColorId) {
+      throw new Error('Biến thể sản phẩm không hợp lệ')
+    }
+    if (!parsedQuantity) {
+      throw new Error('Số lượng sản phẩm không hợp lệ')
+    }
+
     try {
       const cid = await getOrCreateCart()
       const payload = {
         cartID: parseInt(cid, 10),
-        productColorID: parseInt(productColorId, 10),
-        quantity: parseInt(quantity, 10)
+        productColorID: parsedProductColorId,
+        quantity: parsedQuantity
       }
 
-      let response
       try {
-        response = await axios.post('http://localhost:8080/api/cart-items', payload, buildAuthConfig())
+        const response = await postWithOptionalAuth('http://localhost:8080/api/cart-items', payload)
+        return response.data
       } catch (error) {
-        if (error?.response?.status === 401 || error?.response?.status === 403) {
-          response = await axios.post('http://localhost:8080/api/cart-items', payload)
-        } else {
-          throw error
+        if (isCartNotFoundError(error)) {
+          cartId.value = null
+          localStorage.removeItem('cartId')
+          const refreshedCartId = await getOrCreateCart()
+          const retryPayload = {
+            ...payload,
+            cartID: parseInt(refreshedCartId, 10)
+          }
+          const retryResponse = await postWithOptionalAuth('http://localhost:8080/api/cart-items', retryPayload)
+          return retryResponse.data
         }
+        throw error
       }
-
-      return response.data
     } catch (error) {
       console.error('Lỗi thêm vào giỏ:', error)
       throw error
