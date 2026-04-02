@@ -127,7 +127,7 @@ const statusColor = st => {
 }
 
 const goBack = () => {
-  router.push("/accountList")
+  router.push("/admin/accounts")
 }
 
 onMounted(loadAccount)

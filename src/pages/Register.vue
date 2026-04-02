@@ -131,9 +131,10 @@ const sendOtp = async () => {
   try {
     isSendingOtp.value = true
 
-  const res = await registerApi.requestOtp(
-        form.value.email.trim()
-      )
+    const res = await registerApi.requestOtp(
+      form.value.email.trim()
+    )
+
 
     otpSent.value = true
     otpMessage.value = res?.data?.message || "OTP đã được gửi tới email của bạn!"
