@@ -48,21 +48,21 @@
           <v-divider />
           <v-card-text>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-body-2 text-grey">Sản phẩm</span>
+              <span class="text-body-2 text-black">Sản phẩm</span>
               <span class="font-weight-medium">{{ totalQuantity }}</span>
             </div>
             <div class="d-flex justify-space-between mb-4">
-              <span class="text-body-2 text-grey">Tạm tính</span>
+              <span class="text-body-2 text-black">Tạm tính</span>
               <span class="font-weight-medium">{{ formatPrice(totalPrice) }}đ</span>
             </div>
             <div class="d-flex justify-space-between mb-4" v-if="discountAmount > 0">
-              <span class="text-body-2 text-grey">Giảm giá</span>
+              <span class="text-body-2 text-black">Giảm giá</span>
               <span class="font-weight-medium text-success">-{{ formatPrice(discountAmount) }}đ</span>
             </div>
             <v-divider class="mb-4" />
             <div class="d-flex justify-space-between align-center mb-4">
               <span class="text-subtitle-1 font-weight-bold">Tổng cộng</span>
-              <span class="text-h6 font-weight-bold text-primary">{{ formatPrice(finalTotal) }}đ</span>
+              <span class="text-h6 font-weight-bold">{{ formatPrice(finalTotal) }}đ</span>
             </div>
 
             <v-alert

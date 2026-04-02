@@ -31,26 +31,6 @@
                   density="compact"
                   @update:model-value="toggleSelectAll"
                 />
-                <v-btn
-                  size="small"
-                  variant="text"
-                  color="error"
-                  :disabled="selectedItemIds.length === 0 || isBulkRemoving"
-                  :loading="isBulkRemoving"
-                  @click="removeSelectedItems"
-                >
-                  Xóa đã chọn
-                </v-btn>
-                <v-btn
-                  size="small"
-                  variant="text"
-                  color="error"
-                  :disabled="cartItems.length === 0 || isBulkRemoving"
-                  :loading="isBulkRemoving"
-                  @click="clearCart"
-                >
-                  Xóa toàn bộ
-                </v-btn>
               </div>
               <span class="text-caption text-grey">Đã chọn {{ selectedItemIds.length }}/{{ cartItems.length }} sản phẩm</span>
             </v-card-text>
@@ -195,7 +175,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import cartApi from '@/api/cartApi'
@@ -210,7 +190,6 @@ const showSnackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
-const isBulkRemoving = ref(false)
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const selectedItems = computed(() => {
@@ -342,62 +321,6 @@ const removeItem = async (item) => {
   }
 }
 
-const removeSelectedItems = async () => {
-  if (selectedItemIds.value.length === 0 || isBulkRemoving.value) return
-
-  isBulkRemoving.value = true
-  try {
-    const selectedSet = new Set(selectedItemIds.value)
-    const selectedItems = cartItems.value.filter((item) => selectedSet.has(item.cartItemID))
-
-    await Promise.all(selectedItems.map((item) => cartApi.remove(item.cartItemID, userStore.token)))
-
-    cartItems.value = cartItems.value.filter((item) => !selectedSet.has(item.cartItemID))
-    selectedItemIds.value = []
-    window.dispatchEvent(new Event('cart-changed'))
-    snackbarMessage.value = 'Đã xóa các sản phẩm đã chọn'
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
-  } catch (error) {
-    console.error('Lỗi xóa sản phẩm đã chọn:', error)
-    snackbarMessage.value = 'Không thể xóa tất cả sản phẩm đã chọn'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
-  } finally {
-    isBulkRemoving.value = false
-  }
-}
-
-const clearCart = async () => {
-  if (cartItems.value.length === 0 || isBulkRemoving.value) return
-
-  const cartId = Number.parseInt(userStore.cartId, 10)
-  if (!Number.isFinite(cartId) || cartId <= 0) {
-    snackbarMessage.value = 'Không xác định được giỏ hàng hiện tại'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
-
-  isBulkRemoving.value = true
-  try {
-    await cartApi.clearCart(cartId, userStore.token)
-    cartItems.value = []
-    selectedItemIds.value = []
-    window.dispatchEvent(new Event('cart-changed'))
-    snackbarMessage.value = 'Đã xóa toàn bộ giỏ hàng'
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
-  } catch (error) {
-    console.error('Lỗi xóa toàn bộ giỏ hàng:', error)
-    snackbarMessage.value = 'Không thể xóa toàn bộ giỏ hàng'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
-  } finally {
-    isBulkRemoving.value = false
-  }
-}
-
 const toggleItemSelection = (cartItemId, checked) => {
   if (checked) {
     if (!selectedItemIds.value.includes(cartItemId)) {
@@ -451,11 +374,6 @@ const goLogin = () => {
 
 onMounted(() => {
   loadCart()
-  window.addEventListener('cart-changed', loadCart)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('cart-changed', loadCart)
 })
 </script>
 
