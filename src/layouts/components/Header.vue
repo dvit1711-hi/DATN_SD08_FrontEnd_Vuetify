@@ -6,14 +6,14 @@
         <div class="d-flex align-center gap-4">
           <!-- Kênh Người Bán - Chỉ hiển thị khi là Admin -->
           <router-link v-if="isAdmin" :to="{ name: 'AdminDashboard' }" class="text-decoration-none text-caption"
-            style="color: white;">
+            style="color: #000000;">
             Kênh Người Bán
           </router-link>
         </div>
         <div class="d-flex align-center gap-4">
           <v-menu offset-y>
             <template v-slot:activator="{ props }">
-              <div v-bind="props" class="d-flex align-center gap-2 text-caption text-white" style="cursor: pointer;">
+              <div v-bind="props" class="d-flex align-center gap-2 text-caption" style="cursor: pointer; color: #000000;">
                 <v-icon size="small">mdi-globe</v-icon>
                 <span>Tiếng Việt</span>
                 <v-icon size="small">mdi-chevron-down</v-icon>
@@ -26,10 +26,10 @@
           </v-menu>
           <!-- Ẩn khi đã đăng nhập -->
           <router-link v-if="!isLoggedIn" :to="{ name: 'Register' }"
-            class="text-white text-decoration-none text-caption">Đăng
+            class="text-decoration-none text-caption" style="color: #000000;">Đăng
             Ký</router-link>
           <router-link v-if="!isLoggedIn" :to="{ name: 'Login' }"
-            class="text-white text-decoration-none text-caption">Đăng
+            class="text-decoration-none text-caption" style="color: #000000;">Đăng
             Nhập</router-link>
         </div>
       </div>
@@ -55,20 +55,20 @@
         <div class="d-flex align-center gap-4">
           <!-- Shopping Cart -->
           <router-link :to="{ name: 'Cart' }" class="d-flex flex-column align-center text-decoration-none gap-1"
-            style="color: white;">
+            style="color: #000000;">
 
             <v-badge color="red" :content="cartCount" offset-x="-8" offset-y="8">
-              <v-icon size="28" style="color: white;">mdi-shopping-outline</v-icon>
+              <v-icon size="28" style="color: #000000;">mdi-shopping-outline</v-icon>
             </v-badge>
-            <span class="text-caption" style="color: white;">Giỏ Hàng</span>
+            <span class="text-caption" style="color: #000000;">Giỏ Hàng</span>
           </router-link>
           <!-- User Menu with Avatar -->
           <v-menu offset-y v-if="isLoggedIn">
             <template v-slot:activator="{ props }">
               <div v-bind="props" class="d-flex align-center gap-2 cursor-pointer">
                 <v-avatar v-if="userAvatar" size="32" :image="userAvatar" />
-                <v-icon v-else size="32" class="text-white">mdi-account-circle</v-icon>
-                <span class="text-white text-caption">{{ username }}</span>
+                <v-icon v-else size="32" style="color: #000000;">mdi-account-circle</v-icon>
+                <span class="text-caption" style="color: #000000;">{{ username }}</span>
               </div>
             </template>
             <v-list density="compact">

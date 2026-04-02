@@ -184,4 +184,21 @@ onMounted(() => {
 .cursor-pointer {
     cursor: pointer;
 }
+
+/* Sidebar text color */
+:deep(.v-list-item__content) {
+    color: #000000 !important;
+}
+
+:deep(.v-list-item) {
+    color: #000000 !important;
+}
+
+:deep(.v-list-item-title) {
+    color: #000000 !important;
+}
+
+:deep(.v-icon) {
+    color: #000000 !important;
+}
 </style>
