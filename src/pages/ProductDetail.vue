@@ -440,7 +440,8 @@ async function handleAddToCart() {
     await userStore.addToCartAPI(selectedVariant.value.productColorID, quantity.value);
     window.dispatchEvent(new Event("cart-changed"));
 
-    snackbarMessage.value = `Đã thêm ${quantity.value} sản phẩm "${product.value.productName}" vào giỏ hàng`;
+    const variantLabel = `${selectedVariant.value.colorName || ''} - Size ${selectedVariant.value.sizeName || '-'}`;
+    snackbarMessage.value = `Đã thêm ${quantity.value} sản phẩm "${product.value.productName}" (${variantLabel}) vào giỏ hàng`;
     snackbarColor.value = "success";
     showSnackbar.value = true;
     quantity.value = 1;

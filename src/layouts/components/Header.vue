@@ -162,9 +162,8 @@ const loadCartCount = async () => {
   }
 
   try {
-    const res = await axios.get('http://localhost:8080/api/cart-items')
+    const res = await axios.get(`http://localhost:8080/api/cart-items/cart/${cartId}`)
     cartCount.value = (res.data || [])
-      .filter((item: any) => item.cartID === cartId)
       .reduce((sum: number, item: any) => sum + (Number.parseInt(item.quantity, 10) || 0), 0)
   } catch (error) {
     console.error('Lỗi khi tải số lượng giỏ hàng:', error)

@@ -13,6 +13,13 @@ export default {
     });
   },
 
+  // Backward-compatible alias used by cart/checkout pages.
+  getAllCart(search) {
+    return axios.get(`${API}/card`, {
+      params: search ? { search } : {},
+    });
+  },
+
   getDetail(id) {
     return axios.get(`${API}/detail/${id}`);
   },

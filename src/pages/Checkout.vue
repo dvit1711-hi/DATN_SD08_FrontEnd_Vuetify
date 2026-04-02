@@ -23,6 +23,7 @@
             <div class="flex-grow-1 min-w-220">
               <div class="text-subtitle-1 font-weight-bold">{{ item.productName || `Màu #${item.productColorID}` }}</div>
               <div class="text-caption text-grey">Mã màu: #{{ item.productColorID }}</div>
+              <div class="text-caption text-grey">Size: {{ item.sizeName || '-' }}</div>
               <div class="text-caption text-grey mt-1">Số lượng: {{ item.quantity }}</div>
             </div>
 
@@ -153,8 +154,6 @@ import { useUserStore } from '@/stores/user'
 import accountApi from '@/api/accountApi'
 import cartApi from '@/api/cartApi'
 import { getAllDiscountCoupons } from '@/api/discountApi'
-import productApi from '@/api/productApi'
-import productColorApi from '@/api/productColorApi'
 import paymentApi from '@/api/paymentApi'
 
 const router = useRouter()
@@ -312,45 +311,26 @@ const loadCheckoutItems = async () => {
       currentCartId = await userStore.getOrCreateCart()
     }
 
-    const [itemRes, productRes, stockRes] = await Promise.all([
-      cartApi.getAll(),
-      productApi.getAllCart(),
-      productColorApi.getAll(),
-    ])
-
-    const productMap = new Map()
-    ;(productRes.data || []).forEach((p) => {
-      const colorId = Number.parseInt(p.productColorID, 10)
-      if (Number.isFinite(colorId)) {
-        productMap.set(colorId, p)
-      }
-    })
-
-    const stockMap = new Map()
-    ;(stockRes.data || []).forEach((pc) => {
-      const colorId = Number.parseInt(pc.productColorID ?? pc.id, 10)
-      if (Number.isFinite(colorId)) {
-        stockMap.set(colorId, Number.parseInt(pc.stockQuantity, 10) || 0)
-      }
-    })
+    const itemRes = await cartApi.getByCart(currentCartId)
 
     const selectedSet = new Set(selectedIds)
     checkoutItems.value = (itemRes.data || [])
-      .filter((item) => item.cartID === currentCartId && selectedSet.has(item.cartItemID))
+      .filter((item) => selectedSet.has(item.cartItemID))
       .map((item) => {
-        const colorId = Number.parseInt(item.productID, 10)
-        const card = productMap.get(colorId) || {}
+        const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
         return {
           cartItemID: item.cartItemID,
           cartID: item.cartID,
           productColorID: colorId,
+          sizeID: Number.parseInt(item.sizeID, 10) || null,
+          sizeName: item.sizeName || '',
           quantity: Number.parseInt(item.quantity, 10) || 1,
-          productName: card.productName || '',
-          price: Number(card.price) || 0,
-          colorName: card.colorName || '',
-          colorCode: card.colorCode || '',
-          mainImage: card.mainImage || '',
-          stockQuantity: stockMap.get(colorId) ?? 0,
+          productName: item.productName || '',
+          price: Number(item.price) || 0,
+          colorName: item.colorName || '',
+          colorCode: item.colorCode || '',
+          mainImage: item.mainImage || '',
+          stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
         }
       })
   } catch (error) {
