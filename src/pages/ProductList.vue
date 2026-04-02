@@ -23,13 +23,24 @@
           variant="elevated"
         >
           <!-- Product Image -->
-          <v-img
-            :src="p.mainImage"
-            :alt="p.productName"
-            height="240"
-            cover
-            class="product-image"
-          />
+          <div class="product-image-wrapper">
+            <v-img
+              :src="p.mainImage"
+              :alt="p.productName"
+              height="240"
+              cover
+              class="product-image"
+            />
+            <!-- Discount Badge -->
+            <div v-if="getProductDiscount(p)" class="discount-badge">
+              <span v-if="getProductDiscount(p).discountType === 'percent'">
+                -{{ getProductDiscount(p).discountValue }}%
+              </span>
+              <span v-else>
+                Giảm {{ formatCurrency(getProductDiscount(p).discountValue) }}
+              </span>
+            </div>
+          </div>
 
           <!-- Card Content -->
           <v-card-text class="pa-4 flex-grow-1 d-flex flex-column">
@@ -65,9 +76,15 @@
 
             <!-- Price -->
             <div class="mb-4">
-              <span class="text-h6 font-weight-bold text-primary">
-                {{ formatPrice(p.price) }}đ
-              </span>
+              <div v-if="getProductDiscount(p)" class="price-section">
+                <div class="original-price">{{ formatPrice(p.price) }}đ</div>
+                <div class="discounted-price">{{ formatPrice(getDiscountedPrice(p)) }}đ</div>
+              </div>
+              <div v-else class="price-section">
+                <span class="text-h6 font-weight-bold text-primary">
+                  {{ formatPrice(p.price) }}đ
+                </span>
+              </div>
             </div>
           </v-card-text>
 
@@ -116,12 +133,14 @@ import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
 import productColorApi from "@/api/productColorApi";
+import { getActiveProductDiscounts } from "@/api/productDiscountApi";
 
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
 
 const products = ref([]);
+const discountMap = ref(new Map());
 const showSnackbar = ref(false);
 const snackbarMessage = ref("");
 const snackbarColor = ref("success");
@@ -129,9 +148,10 @@ const snackbarColor = ref("success");
 const loadProducts = async () => {
   try {
     const keyword = route.query.search?.toString().trim() || "";
-    const [res, stockRes] = await Promise.all([
+    const [res, stockRes, discountRes] = await Promise.all([
       productApi.getAllCard(keyword),
       productColorApi.getAll(),
+      getActiveProductDiscounts(),
     ]);
 
     const stockMap = new Map();
@@ -139,6 +159,15 @@ const loadProducts = async () => {
       const productColorId = Number.parseInt(pc.productColorID ?? pc.id, 10);
       if (Number.isFinite(productColorId)) {
         stockMap.set(productColorId, Number.parseInt(pc.stockQuantity, 10) || 0);
+      }
+    });
+
+    // Build discount map by productColorId
+    discountMap.value = new Map();
+    (discountRes.data || []).forEach((discount) => {
+      const productColorId = Number.parseInt(discount.productColorId, 10);
+      if (Number.isFinite(productColorId)) {
+        discountMap.value.set(productColorId, discount);
       }
     });
 
@@ -165,6 +194,40 @@ watch(
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("vi-VN").format(price);
+};
+
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0
+  }).format(value);
+};
+
+const getProductDiscount = (product) => {
+  if (!product) return null;
+  const productColorId = Number.parseInt(product.productColorID, 10);
+  if (!Number.isFinite(productColorId)) return null;
+  return discountMap.value.get(productColorId) || null;
+};
+
+const getDiscountedPrice = (product) => {
+  const discount = getProductDiscount(product);
+  if (!discount) return product.price;
+  
+  const price = Number.parseFloat(product.price) || 0;
+  
+  if (discount.discountType === 'percent') {
+    const discountPercent = Number.parseFloat(discount.discountValue) || 0;
+    const discountAmount = price * (discountPercent / 100);
+    const maxDiscount = Number.parseFloat(discount.maxDiscountValue) || Infinity;
+    const actualDiscount = Math.min(discountAmount, maxDiscount);
+    return Math.max(0, price - actualDiscount);
+  } else {
+    // Fixed discount
+    const discountAmount = Number.parseFloat(discount.discountValue) || 0;
+    return Math.max(0, price - discountAmount);
+  }
 };
 
 const isOutOfStock = (product) => {
@@ -276,8 +339,59 @@ async function addToCart(product) {
   transform: translateY(-4px);
 }
 
+.product-image-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+}
+
 .product-image {
   border-radius: 12px 12px 0 0;
+}
+
+.discount-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+  animation: slideInDown 0.3s ease;
+  z-index: 10;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.price-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.original-price {
+  font-size: 14px;
+  color: #999;
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.discounted-price {
+  font-size: 18px;
+  font-weight: bold;
+  color: #ff6b6b;
 }
 
 .color-btn {
