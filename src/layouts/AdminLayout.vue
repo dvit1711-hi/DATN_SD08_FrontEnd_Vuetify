@@ -83,6 +83,14 @@
                         <v-list-item :to="{ name: 'AdminPayments' }" title="Xác nhận thanh toán"
                             prepend-icon="mdi-cash-check" active-color="primary" />
 
+                        <!-- Brand & Material -->
+                        <v-list-item :to="{ name: 'AdminBrandMaterial' }" title="Brand & Material"
+                            prepend-icon="mdi-tag" active-color="primary" />
+
+                        <!-- Color & Size -->
+                        <v-list-item :to="{ name: 'AdminColorSize' }" title="Color & Size"
+                            prepend-icon="mdi-palette" active-color="primary" />
+
                         <v-divider class="my-2" />
 
                         <!-- Back to Store -->

@@ -28,6 +28,8 @@ import Home from '@/pages/Home.vue'
 import PurchaseHistory from '@/pages/PurchaseHistory.vue'
 import PaymentManager from '@/pages/admin/PaymentManager.vue'
 import ForgotPassword from '@/pages/ForgotPassword.vue'
+import AdminBrandMetarial from '@/pages/admin/AdminBrandMetarial.vue'
+import AdminColorSize from '@/pages/admin/AdminColorSize.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -66,6 +68,8 @@ const router = createRouter({
         { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct' },
         { path: 'statistics', component: Statistics, name: 'Statistics' },
         { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
+        { path: 'brand-material', component: AdminBrandMetarial, name: 'AdminBrandMaterial' },
+        { path: 'color-size', component: AdminColorSize, name: 'AdminColorSize' },
       ],
     },
 
