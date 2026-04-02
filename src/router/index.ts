@@ -1,9 +1,3 @@
-/**
- * router/index.ts
- *
- * Manual routes for ./src/pages/*.vue
- */
-
 import { createRouter, createWebHistory } from 'vue-router'
 import UserLayout from '@/layouts/UserLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -20,13 +14,15 @@ import AccountList from '@/pages/admin/AccountList.vue'
 import AdminProductDetail from '@/pages/admin/AdminProductDetail.vue'
 import AccountEdit from '@/pages/admin/accountEdit.vue'
 import AccountDetail from '@/pages/admin/accountDetail.vue'
-import DiscountManager from '@/pages/admin/discountManager.vue'
+import DiscountManager from '@/pages/admin/DiscountManager.vue'
+import DiscountProduct from '@/pages/admin/DiscountProduct.vue'
 import Statistics from '@/pages/admin/Statistics.vue'
 import Review from '@/pages/Review.vue'
 import Home from '@/pages/Home.vue'
 import PurchaseHistory from '@/pages/PurchaseHistory.vue'
 import PaymentManager from '@/pages/admin/PaymentManager.vue'
 import ForgotPassword from '@/pages/ForgotPassword.vue'
+import AddStaffAccount from '@/pages/admin/AddStaffAccount.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -58,10 +54,14 @@ const router = createRouter({
         { path: '', component: AdminProduct, name: 'AdminDashboard' },
         { path: 'products', component: AdminProduct, name: 'AdminProducts' },
         { path: 'products/detail/:id', name: 'AdminProductDetail', component: AdminProductDetail, props: true },
+
         { path: 'accounts', component: AccountList, name: 'AdminAccounts' },
+        { path: 'accounts/staff/add', component: AddStaffAccount, name: 'AddStaffAccount' },
         { path: 'accounts/detail/:id', component: AccountDetail, name: 'AccountDetail' },
         { path: 'accounts/edit/:id', component: AccountEdit, name: 'AccountEdit' },
+
         { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
+        { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct' },
         { path: 'statistics', component: Statistics, name: 'Statistics' },
         { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
       ],

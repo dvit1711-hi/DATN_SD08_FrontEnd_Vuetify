@@ -23,13 +23,15 @@
         <v-col cols="12" lg="8">
           <v-card class="mb-4" variant="outlined">
             <v-card-text class="py-2 px-4 d-flex align-center justify-space-between">
-              <v-checkbox
-                :model-value="isAllSelected"
-                label="Chọn tất cả"
-                hide-details
-                density="compact"
-                @update:model-value="toggleSelectAll"
-              />
+              <div class="d-flex align-center ga-2 flex-wrap">
+                <v-checkbox
+                  :model-value="isAllSelected"
+                  label="Chọn tất cả"
+                  hide-details
+                  density="compact"
+                  @update:model-value="toggleSelectAll"
+                />
+              </div>
               <span class="text-caption text-grey">Đã chọn {{ selectedItemIds.length }}/{{ cartItems.length }} sản phẩm</span>
             </v-card-text>
           </v-card>
@@ -55,6 +57,7 @@
                 <div class="flex-grow-1 min-w-220">
                   <div class="text-subtitle-1 font-weight-bold">{{ item.productName || `Màu #${item.productColorID}` }}</div>
                   <div class="text-caption text-grey">Mã màu: #{{ item.productColorID }}</div>
+                  <div class="text-caption text-grey">Size: {{ item.sizeName || '-' }}</div>
                   <div class="d-flex align-center ga-2 mt-2">
                     <span class="text-caption text-grey">Màu:</span>
                     <span class="color-dot" :style="{ backgroundColor: item.colorCode || '#ddd' }" />
@@ -175,8 +178,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import productApi from '@/api/productApi'
-import productColorApi from '@/api/productColorApi'
 import cartApi from '@/api/cartApi'
 
 const router = useRouter()
@@ -201,33 +202,10 @@ const isAllSelected = computed(() => cartItems.value.length > 0 && selectedItemI
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
 
-const buildProductColorMap = async () => {
-  const [productRes, stockRes] = await Promise.all([productApi.getAllCart(), productColorApi.getAll()])
-
-  const stockMap = new Map()
-  ;(stockRes.data || []).forEach((pc) => {
-    const colorId = Number.parseInt(pc.productColorID ?? pc.id, 10)
-    if (Number.isFinite(colorId)) {
-      stockMap.set(colorId, Number.parseInt(pc.stockQuantity, 10) || 0)
-    }
-  })
-
-  const map = new Map()
-  ;(productRes.data || []).forEach((p) => {
-    const colorId = Number.parseInt(p.productColorID, 10)
-    if (Number.isFinite(colorId)) {
-      map.set(colorId, {
-        ...p,
-        stockQuantity: stockMap.get(colorId) ?? 0,
-      })
-    }
-  })
-  return map
-}
-
 const loadCart = async () => {
   if (!isLoggedIn.value) {
     cartItems.value = []
+    selectedItemIds.value = []
     return
   }
 
@@ -238,24 +216,24 @@ const loadCart = async () => {
       currentCartId = await userStore.getOrCreateCart()
     }
 
-    const [itemRes, productMap] = await Promise.all([cartApi.getAll(), buildProductColorMap()])
+    const itemRes = await cartApi.getByCart(currentCartId)
 
     const normalized = (itemRes.data || [])
-      .filter((item) => item.cartID === currentCartId)
       .map((item) => {
-        const colorId = Number.parseInt(item.productID, 10)
-        const card = productMap.get(colorId) || {}
+        const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
         return {
           cartItemID: item.cartItemID,
           cartID: item.cartID,
           productColorID: colorId,
+          sizeID: Number.parseInt(item.sizeID, 10) || null,
+          sizeName: item.sizeName || '',
           quantity: Number.parseInt(item.quantity, 10) || 1,
-          productName: card.productName || '',
-          price: Number(card.price) || 0,
-          colorName: card.colorName || '',
-          colorCode: card.colorCode || '',
-          mainImage: card.mainImage || '',
-          stockQuantity: Number.parseInt(card.stockQuantity, 10) || 0,
+          productName: item.productName || '',
+          price: Number(item.price) || 0,
+          colorName: item.colorName || '',
+          colorCode: item.colorCode || '',
+          mainImage: item.mainImage || '',
+          stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
           isUpdating: false,
           isRemoving: false,
         }
@@ -394,7 +372,9 @@ const goLogin = () => {
   router.push({ name: 'Login' })
 }
 
-onMounted(loadCart)
+onMounted(() => {
+  loadCart()
+})
 </script>
 
 <style scoped>

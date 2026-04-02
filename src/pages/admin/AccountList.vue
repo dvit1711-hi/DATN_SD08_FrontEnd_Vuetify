@@ -1,64 +1,74 @@
 <template>
-  <v-container fluid class="py-8">
-    <div class="mb-6">
-      <h1 class="text-h4 font-weight-bold mb-2">Danh sách tài khoản</h1>
-      <p class="text-subtitle-1 text-grey">Quản lý tài khoản người dùng</p>
+  <v-container fluid class="account-page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Danh sách tài khoản</h1>
+        <p class="page-subtitle">Quản lý tài khoản người dùng</p>
+      </div>
+
+      <v-btn color="primary" class="add-staff-btn" prepend-icon="mdi-account-plus"
+        @click="$router.push({ name: 'AddStaffAccount' })">
+        Thêm staff
+      </v-btn>
     </div>
 
-    <v-card class="rounded-lg mb-6" elevation="0" border>
+    <v-card class="filter-card" elevation="0" border>
       <v-card-text class="pa-6">
-        <v-row>
+        <v-row align="center">
           <v-col cols="12" md="6">
             <v-text-field v-model="search" label="Tìm kiếm theo tên hoặc email..." variant="outlined"
-              prepend-inner-icon="mdi-magnify" density="comfortable" clearable hide-details />
+              prepend-inner-icon="mdi-magnify" density="comfortable" clearable hide-details class="search-field" />
           </v-col>
         </v-row>
       </v-card-text>
     </v-card>
 
-    <v-card class="rounded-lg" elevation="0" border>
+    <v-card class="table-card" elevation="0" border>
       <v-card-text class="pa-6">
         <v-data-table :headers="headers" :items="filteredAccounts" :items-per-page="10" class="table-modern">
           <template #item.user="{ item }">
-            <div class="d-flex align-center gap-3">
-              <v-avatar size="36" class="flex-shrink-0">
+            <div class="d-flex align-center user-cell">
+              <v-avatar size="42" class="user-avatar-wrap">
                 <img :src="getImage(item.images)" @error="handleImgError" class="account-avatar" />
               </v-avatar>
-              <div>
-                <div class="font-weight-bold">{{ item.username || "—" }}</div>
+
+              <div class="user-info">
+                <div class="user-name">{{ item.username || "—" }}</div>
               </div>
             </div>
           </template>
 
           <template #item.email="{ item }">
-            {{ item.email || "—" }}
+            <span class="cell-text">{{ item.email || "—" }}</span>
           </template>
 
           <template #item.phone="{ item }">
-            {{ item.phoneNumber || "—" }}
+            <span class="cell-text">{{ item.phoneNumber || "—" }}</span>
           </template>
 
           <template #item.roles="{ item }">
-            <div class="d-flex flex-wrap gap-1">
-              <v-chip v-for="r in item.roles" :key="r" size="small" color="secondary" variant="tonal">
-                {{ r }}
+            <div class="d-flex flex-wrap role-wrap">
+              <v-chip v-for="r in item.roles" :key="r" size="small" :color="roleColor(r)" variant="tonal"
+                class="role-chip">
+                {{ roleText(r) }}
               </v-chip>
+
               <span v-if="!item.roles || item.roles.length === 0">—</span>
             </div>
           </template>
 
           <template #item.status="{ item }">
-            <v-chip size="small" :color="statusColor(item.statusName)" variant="flat">
+            <v-chip size="small" :color="statusColor(item.statusName)" variant="flat" class="status-chip">
               {{ getStatusText(item.statusName) }}
             </v-chip>
           </template>
 
           <template #item.createDate="{ item }">
-            {{ formatDate(item.createDate) }}
+            <span class="cell-text">{{ formatDate(item.createDate) }}</span>
           </template>
 
           <template #item.actions="{ item }">
-            <div class="d-flex gap-2">
+            <div class="action-wrap">
               <v-btn icon size="small" variant="text" color="primary" @click="goToDetail(item.id)">
                 <v-icon>mdi-eye</v-icon>
               </v-btn>
@@ -88,11 +98,41 @@ const headers = [
   { title: "Tài khoản", key: "user" },
   { title: "Email", key: "email" },
   { title: "Điện thoại", key: "phone" },
-  { title: "Vai trò", key: "roles" },
-  { title: "Trạng thái", key: "status", width: "120px" },
-  { title: "Ngày tạo", key: "createDate", width: "120px" },
-  { title: "Thao tác", key: "actions", width: "100px", sortable: false },
+  { title: "Vai trò", key: "role" },
+  { title: "Trạng thái", key: "status", width: "140px" },
+  { title: "Ngày tạo", key: "createDate", width: "140px" },
+  { title: "Thao tác", key: "actions", width: "110px", sortable: false },
 ]
+
+const normalizeStatusName = value => {
+  if (!value) return "UNKNOWN"
+  return String(value).trim().toUpperCase()
+}
+
+const normalizeRoles = acc => {
+  const rawRoles =
+    acc.roles ??
+    acc.roleName ??
+    acc.accountRoles ??
+    acc.accountRoleList ??
+    []
+
+  const roleArray = Array.isArray(rawRoles) ? rawRoles : [rawRoles]
+
+  return [...new Set(
+    roleArray
+      .map(role => {
+        if (!role) return null
+        if (typeof role === "string") return role
+        if (role.roleName) return role.roleName
+        if (role.name) return role.name
+        if (role.role?.roleName) return role.role.roleName
+        if (role.role?.name) return role.role.name
+        return null
+      })
+      .filter(Boolean)
+  )]
+}
 
 onMounted(async () => {
   try {
@@ -106,10 +146,8 @@ onMounted(async () => {
       images: acc.images || "",
       createDate: acc.createDate || "",
       statusId: acc.status?.id || acc.statusID || acc.statusId || null,
-      statusName: acc.status?.statusName || acc.statusName || "UNKNOWN",
-      roles: Array.isArray(acc.roles)
-        ? acc.roles.map(r => r.roleName || r.role?.roleName || r)
-        : [],
+      statusName: normalizeStatusName(acc.status?.statusName || acc.statusName),
+      role: normalizeRoles(acc),
     }))
   } catch (err) {
     console.error("Lỗi tải account:", err)
@@ -137,6 +175,28 @@ const handleImgError = e => {
   e.target.src = defaultAvatar
 }
 
+const roleColor = role => {
+  switch (role) {
+    case "ROLE_ADMIN":
+      return "error"
+    case "ROLE_STAFF":
+      return "primary"
+    case "ROLE_USER":
+      return "secondary"
+    default:
+      return "grey"
+  }
+}
+
+const roleText = role => {
+  const roleMap = {
+    ROLE_ADMIN: "Admin",
+    ROLE_STAFF: "Staff",
+    ROLE_USER: "User",
+  }
+  return roleMap[role] || role
+}
+
 const statusColor = st => {
   switch (st) {
     case "ACTIVE":
@@ -147,6 +207,8 @@ const statusColor = st => {
       return "warning"
     case "BANNED":
       return "error"
+    case "PENDING":
+      return "info"
     default:
       return "primary"
   }
@@ -158,6 +220,7 @@ const getStatusText = st => {
     INACTIVE: "Không kích hoạt",
     LOCKED: "Khóa",
     BANNED: "Cấm",
+    PENDING: "Chờ duyệt",
   }
   return statusMap[st] || st
 }
@@ -176,22 +239,89 @@ const filteredAccounts = computed(() =>
 </script>
 
 <style scoped>
+.account-page {
+  padding: 28px 20px;
+  background: #f7f4ef;
+  min-height: 100%;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 4px;
+  color: #3e2f1c;
+}
+
+.page-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #8d7b68;
+}
+
+.add-staff-btn {
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-transform: none;
+  box-shadow: 0 8px 20px rgba(181, 152, 95, 0.22);
+}
+
+.filter-card,
+.table-card {
+  border-radius: 18px !important;
+  border: 1px solid rgba(190, 171, 135, 0.18) !important;
+  background: #fcfbf8;
+}
+
+.filter-card {
+  margin-bottom: 18px;
+}
+
+.search-field :deep(.v-field) {
+  border-radius: 14px;
+  background: white;
+}
+
 .table-modern :deep(.v-table__wrapper) {
-  border-radius: 8px;
-  border: 1px solid rgba(205, 186, 150, 0.1);
+  border-radius: 14px;
+  border: 1px solid rgba(190, 171, 135, 0.14);
+  overflow: hidden;
+  background: white;
 }
 
-:deep(.v-table__wrapper tbody tr) {
-  border-bottom: 1px solid rgba(205, 186, 150, 0.08);
-  transition: background-color 0.2s ease;
+.table-modern :deep(thead tr th) {
+  background: #f4ede1;
+  color: #5c4631;
+  font-weight: 700 !important;
+  border-bottom: 1px solid rgba(190, 171, 135, 0.18);
 }
 
-:deep(.v-table__wrapper tbody tr:hover) {
-  background-color: rgba(245, 222, 179, 0.5);
+.table-modern :deep(tbody tr) {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(190, 171, 135, 0.1);
 }
 
-:deep(.v-card) {
-  border-radius: 8px !important;
+.table-modern :deep(tbody tr:hover) {
+  background: #fdf7ee;
+}
+
+.user-cell {
+  gap: 12px;
+}
+
+.user-avatar-wrap {
+  border: 2px solid rgba(190, 171, 135, 0.2);
 }
 
 .account-avatar {
@@ -199,5 +329,62 @@ const filteredAccounts = computed(() =>
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+}
+
+.user-name {
+  font-weight: 700;
+  color: #3e2f1c;
+  line-height: 1.2;
+}
+
+.cell-text {
+  color: #5f5f5f;
+}
+
+.role-wrap {
+  gap: 6px;
+}
+
+.role-chip {
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+.status-chip {
+  min-width: 98px;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.action-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+:deep(.v-btn--icon) {
+  border-radius: 10px;
+}
+
+:deep(.v-card) {
+  box-shadow: none !important;
+}
+
+@media (max-width: 768px) {
+  .account-page {
+    padding: 16px 10px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .page-header {
+    align-items: stretch;
+  }
+
+  .add-staff-btn {
+    width: 100%;
+  }
 }
 </style>

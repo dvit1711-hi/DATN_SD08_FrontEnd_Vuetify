@@ -135,6 +135,7 @@ const sendOtp = async () => {
       form.value.email.trim()
     )
 
+
     otpSent.value = true
     otpMessage.value = res?.data?.message || "OTP đã được gửi tới email của bạn!"
     alert(otpMessage.value)

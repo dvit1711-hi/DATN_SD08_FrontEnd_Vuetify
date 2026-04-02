@@ -2,24 +2,18 @@ import axios from "axios";
 
 const API = "http://localhost:8080/api/product-color";
 
+// Named exports
+export const getAll = () => axios.get(API);
+export const getById = (id) => axios.get(`${API}/${id}`);
+export const create = (productId, data) => axios.post(`${API}/${productId}/color`, data);
+export const update = (productColorId, data) => axios.put(`${API}/${productColorId}`, data);
+export const deleteProductColor = (productColorId) => axios.delete(`${API}/${productColorId}`);
+
+// Default export for backward compatibility
 export default {
-  getAll() {
-    return axios.get(API);
-  },
-
-  getById(id) {
-    return axios.get(`${API}/${id}`);
-  },
-
-  create(productId, data) {
-    return axios.post(`${API}/${productId}/color`, data);
-  },
-
-  update(productColorId, data) {
-    return axios.put(`${API}/${productColorId}`, data);
-  },
-
-  delete(productColorId) {
-    return axios.delete(`${API}/${productColorId}`);
-  },
+  getAll,
+  getById,
+  create,
+  update,
+  delete: deleteProductColor,
 };
