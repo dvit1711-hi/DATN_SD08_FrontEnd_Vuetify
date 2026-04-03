@@ -72,4 +72,12 @@ export default {
   changePassword(data) {
     return api.put('/api/account/change-password', data)
   },
+
+  getStaffStatuses() {
+    return api.get('/api/admin/staff/statuses')
+  },
+
+  createStaffAccount(data) {
+    return api.post('/api/admin/staff', data)
+  },
 }
