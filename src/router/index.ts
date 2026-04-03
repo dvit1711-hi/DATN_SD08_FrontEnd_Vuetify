@@ -91,7 +91,13 @@ const router = createRouter({
         { path: 'discounts', component: DiscountManager, name: 'DiscountManager', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'statistics', component: Statistics, name: 'Statistics', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
-        { path: 'payments', component: PaymentManager, name: 'AdminPayments', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } }
+        { path: 'payments', component: PaymentManager, name: 'AdminPayments', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
+        { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct' },
+        { path: 'statistics', component: Statistics, name: 'Statistics' },
+        { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
+        { path: 'brand-material', component: AdminBrandMetarial, name: 'AdminBrandMaterial' },
+        { path: 'color-size', component: AdminColorSize, name: 'AdminColorSize' },
       ],
     },
 
@@ -102,12 +108,6 @@ const router = createRouter({
       children: [
         { path: '', redirect: { name: 'StaffPosSale' } },
         { path: 'pos', component: PosSale, name: 'StaffPosSale', meta: { requiresAuth: true, roles: ['ROLE_STAFF'] } },
-        { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
-        { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct' },
-        { path: 'statistics', component: Statistics, name: 'Statistics' },
-        { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
-        { path: 'brand-material', component: AdminBrandMetarial, name: 'AdminBrandMaterial' },
-        { path: 'color-size', component: AdminColorSize, name: 'AdminColorSize' },
       ],
     },
 
