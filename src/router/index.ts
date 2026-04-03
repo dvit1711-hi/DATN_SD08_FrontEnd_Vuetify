@@ -88,8 +88,6 @@ const router = createRouter({
         { path: 'accounts/staff/add', component: AddStaffAccount, name: 'AddStaffAccount', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'accounts/detail/:id', component: AccountDetail, name: 'AccountDetail', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'accounts/edit/:id', component: AccountEdit, name: 'AccountEdit', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
-
-<<<<<<< HEAD
         { path: 'discounts', component: DiscountManager, name: 'DiscountManager', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'statistics', component: Statistics, name: 'Statistics', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
@@ -103,15 +101,13 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['ROLE_STAFF'] },
       children: [
         { path: '', redirect: { name: 'StaffPosSale' } },
-        { path: 'pos', component: PosSale, name: 'StaffPosSale', meta: { requiresAuth: true, roles: ['ROLE_STAFF'] } }
-=======
+        { path: 'pos', component: PosSale, name: 'StaffPosSale', meta: { requiresAuth: true, roles: ['ROLE_STAFF'] } },
         { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
         { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct' },
         { path: 'statistics', component: Statistics, name: 'Statistics' },
         { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
         { path: 'brand-material', component: AdminBrandMetarial, name: 'AdminBrandMaterial' },
         { path: 'color-size', component: AdminColorSize, name: 'AdminColorSize' },
->>>>>>> 58fb8427579f677bf5290a4e0165c02209d01324
       ],
     },
 
