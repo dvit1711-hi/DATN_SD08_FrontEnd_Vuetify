@@ -140,6 +140,23 @@ onMounted(() => {
     min-width: 0;
 }
 
+/* Sidebar text color */
+:deep(.v-list-item__content) {
+    color: #C9A982 !important;
+}
+
+:deep(.v-list-item) {
+    color: #C9A982 !important;
+}
+
+:deep(.v-list-item-title) {
+    color: #C9A982 !important;
+}
+
+:deep(.v-icon) {
+    color: #C9A982 !important;
+}
+
 .w-100 {
     width: 100%;
 }

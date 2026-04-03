@@ -183,19 +183,19 @@ onMounted(() => {
 
 /* Sidebar text color */
 :deep(.v-list-item__content) {
-    color: #000000 !important;
+    color: #C9A982 !important;
 }
 
 :deep(.v-list-item) {
-    color: #000000 !important;
+    color: #C9A982 !important;
 }
 
 :deep(.v-list-item-title) {
-    color: #000000 !important;
+    color: #C9A982 !important;
 }
 
 :deep(.v-icon) {
-    color: #000000 !important;
+    color: #C9A982 !important;
 }
 
 .page-content {
