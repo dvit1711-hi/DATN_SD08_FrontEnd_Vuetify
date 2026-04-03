@@ -66,6 +66,18 @@ const form = ref({
 const isPasswordVisible = ref(false)
 const isLoading = ref(false)
 
+const normalizeRoles = (rawRoles) => {
+  if (!Array.isArray(rawRoles)) return []
+
+  return rawRoles
+    .map((role) => {
+      if (typeof role === "string") return role
+      return role?.authority || role?.roleName || role?.name || ""
+    })
+    .filter(Boolean)
+    .map((role) => (role.startsWith("ROLE_") ? role : `ROLE_${role}`))
+}
+
 const login = async () => {
   try {
     if (!form.value.email || !form.value.password) {
@@ -80,19 +92,40 @@ const login = async () => {
       password: form.value.password,
     })
 
-    console.log("✅ Login response:", res.data)
+    const normalizedRoles = normalizeRoles(res.data.roles || [])
 
     userStore.login({
       accountId: res.data.accountId,
       token: res.data.token,
       username: res.data.username,
       email: res.data.email,
-      roles: res.data.roles || [],
+      roles: normalizedRoles,
     })
+
+    // đảm bảo router guard đọc được
+    localStorage.setItem("token", res.data.token)
+    localStorage.setItem("accountId", String(res.data.accountId))
+    localStorage.setItem("username", res.data.username || "")
+    localStorage.setItem("email", res.data.email || "")
+    localStorage.setItem("roles", JSON.stringify(normalizedRoles))
+    if (normalizedRoles.length > 0) {
+      localStorage.setItem("userRole", normalizedRoles[0])
+    }
 
     window.dispatchEvent(new Event("auth-changed"))
 
     alert(res.data.message || "Đăng nhập thành công!")
+
+    if (normalizedRoles.includes("ROLE_ADMIN")) {
+      router.push({ name: "AdminDashboard" })
+      return
+    }
+
+    if (normalizedRoles.includes("ROLE_STAFF")) {
+      router.push({ name: "StaffPosSale" })
+      return
+    }
+
     router.push({ name: "Home" })
   } catch (error) {
     console.error("❌ Login error:", error)
