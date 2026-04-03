@@ -93,7 +93,6 @@ const router = createRouter({
         { path: 'statistics', component: Statistics, name: 'Statistics', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'payments', component: PaymentManager, name: 'AdminPayments', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
-        { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct' },
         { path: 'statistics', component: Statistics, name: 'Statistics' },
         { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
         { path: 'brand-material', component: AdminBrandMetarial, name: 'AdminBrandMaterial' },
