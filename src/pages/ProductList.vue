@@ -3,117 +3,145 @@
     <!-- Header Section -->
     <div class="mb-8">
       <h1 class="text-h4 font-weight-bold mb-2">Danh sách sản phẩm</h1>
-      <p class="text-subtitle-1 text-grey">Khám phá bộ sưu tập các sản phẩm chất lượng cao</p>
+      <p class="text-subtitle-1 text-grey">
+        Khám phá bộ sưu tập các sản phẩm chất lượng cao
+      </p>
     </div>
 
-    <!-- Products Grid -->
+    <!-- Main Content with Filter Sidebar -->
     <v-row>
-      <v-col
-        v-for="p in products"
-        :key="p.productID"
-        cols="12"
-        sm="6"
-        md="4"
-        lg="3"
-        class="d-flex"
-      >
-        <v-card
-          class="w-100 d-flex flex-column product-card"
-          :to="`/products/${p.productID}`"
-          variant="elevated"
-        >
-          <!-- Product Image -->
-          <div class="product-image-wrapper">
-            <v-img
-              :src="p.mainImage"
-              :alt="p.productName"
-              height="240"
-              cover
-              class="product-image"
-            />
-            <!-- Discount Badge -->
-            <div v-if="getProductDiscount(p)" class="discount-badge">
-              <span v-if="getProductDiscount(p).discountType === 'percent'">
-                -{{ getProductDiscount(p).discountValue }}%
-              </span>
-              <span v-else>
-                Giảm {{ formatCurrency(getProductDiscount(p).discountValue) }}
-              </span>
-            </div>
-          </div>
+      <!-- Filter Sidebar -->
+      <v-col cols="12" sm="4" md="3" lg="2" class="mb-6 mb-md-0">
+        <filter-sidebar @filter-changed="onFilterChanged" />
+      </v-col>
 
-          <!-- Card Content -->
-          <v-card-text class="pa-4 flex-grow-1 d-flex flex-column">
-            <h3 class="text-subtitle-1 font-weight-bold mb-1 line-clamp-2">
-              {{ p.productName }}
-            </h3>
-            <v-chip
-              v-if="isOutOfStock(p)"
-              size="x-small"
-              color="error"
-              variant="flat"
-              class="mb-2 out-of-stock-chip"
+      <!-- Products Grid -->
+      <v-col cols="12" sm="8" md="9" lg="10">
+        <v-row>
+          <v-col
+            v-for="p in filteredProducts"
+            :key="p.productID"
+            cols="12"
+            sm="6"
+            md="6"
+            lg="4"
+            xl="3"
+            class="d-flex"
+          >
+            <v-card
+              class="w-100 d-flex flex-column product-card"
+              :to="`/products/${p.productID}`"
+              variant="elevated"
             >
-              Hết hàng
-            </v-chip>
-            <!-- <p class="text-caption text-grey mb-3">
+              <!-- Product Image -->
+              <div class="product-image-wrapper">
+                <v-img
+                  :src="p.mainImage"
+                  :alt="p.productName"
+                  height="240"
+                  cover
+                  class="product-image"
+                />
+                <!-- Discount Badge -->
+                <div v-if="getProductDiscount(p)" class="discount-badge">
+                  <span v-if="getProductDiscount(p).discountType === 'percent'">
+                    -{{ getProductDiscount(p).discountValue }}%
+                  </span>
+                  <span v-else>
+                    Giảm
+                    {{ formatCurrency(getProductDiscount(p).discountValue) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Card Content -->
+              <v-card-text class="pa-4 flex-grow-1 d-flex flex-column">
+                <h3 class="text-subtitle-1 font-weight-bold mb-1 line-clamp-2">
+                  {{ p.productName }}
+                </h3>
+                <v-chip
+                  v-if="isOutOfStock(p)"
+                  size="x-small"
+                  color="error"
+                  variant="flat"
+                  class="mb-2 out-of-stock-chip"
+                >
+                  Hết hàng
+                </v-chip>
+                <!-- <p class="text-caption text-grey mb-3">
               {{ p.description?.substring(0, 50) }}...
             </p> -->
 
-            <!-- Colors -->
-            <div class="mb-3 flex-grow-1">
-              <div class="text-caption text-grey mb-2">Màu sắc:</div>
-              <div class="d-flex gap-2">
-                <button
-                  v-for="c in getDisplayColors(p)"
-                  :key="c.productColorID || c.colorName"
-                  class="color-btn"
-                  :style="{ background: c.colorCode }"
-                  :title="c.colorName"
-                />
-              </div>
-            </div>
+                <!-- Colors -->
+                <div class="mb-3 flex-grow-1">
+                  <div class="text-caption text-grey mb-2">Màu sắc:</div>
+                  <div class="d-flex gap-2">
+                    <button
+                      v-for="c in getDisplayColors(p)"
+                      :key="c.productColorID || c.colorName"
+                      class="color-btn"
+                      :style="{ background: c.colorCode }"
+                      :title="c.colorName"
+                    />
+                  </div>
+                </div>
 
-            <!-- Price -->
-            <div class="mb-4">
-              <div v-if="getProductDiscount(p)" class="price-section">
-                <div class="original-price">{{ formatPrice(p.price) }}đ</div>
-                <div class="discounted-price">{{ formatPrice(getDiscountedPrice(p)) }}đ</div>
-              </div>
-              <div v-else class="price-section">
-                <span class="text-h6 font-weight-bold text-primary">
-                  {{ formatPrice(p.price) }}đ
-                </span>
-              </div>
-            </div>
-          </v-card-text>
+                <!-- Price -->
+                <div class="mb-4">
+                  <div v-if="getProductDiscount(p)" class="price-section">
+                    <div class="original-price">
+                      {{ formatPrice(p.price) }}đ
+                    </div>
+                    <div class="discounted-price">
+                      {{ formatPrice(getDiscountedPrice(p)) }}đ
+                    </div>
+                  </div>
+                  <div v-else class="price-section">
+                    <span class="text-h6 font-weight-bold text-primary">
+                      {{ formatPrice(p.price) }}đ
+                    </span>
+                  </div>
+                </div>
+              </v-card-text>
 
-          <!-- Actions -->
-          <v-divider />
-          <v-card-actions class="pa-3">
-            <v-btn
-              color="primary"
-              size="small"
-              variant="flat"
-              block
-              :disabled="isOutOfStock(p)"
-              @click.stop.prevent="addToCart(p)"
-            >
-              <v-icon left>mdi-shopping-cart</v-icon>
-              {{ isOutOfStock(p) ? 'Hết hàng' : 'Thêm giỏ' }}
-            </v-btn>
-          </v-card-actions>
-        </v-card>
+              <!-- Actions -->
+              <v-divider />
+              <v-card-actions class="pa-3">
+                <v-btn
+                  color="primary"
+                  size="small"
+                  variant="flat"
+                  block
+                  :disabled="isOutOfStock(p)"
+                  @click.stop.prevent="addToCart(p)"
+                >
+                  <v-icon left>mdi-shopping-cart</v-icon>
+                  {{ isOutOfStock(p) ? "Hết hàng" : "Thêm giỏ" }}
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <!-- Empty State -->
+        <v-empty-state
+          v-if="filteredProducts.length === 0"
+          title="Không có sản phẩm"
+          text="Thử điều chỉnh lại bộ lọc"
+          icon="mdi-inbox"
+        />
+
+        <!-- No Results Found -->
+        <div
+          v-if="products.length > 0 && filteredProducts.length === 0"
+          class="text-center pa-8"
+        >
+          <p class="text-h6" style="color: #999">
+            Không tìm thấy sản phẩm phù hợp với bộ lọc của bạn
+          </p>
+        </div>
       </v-col>
     </v-row>
-
-    <!-- Empty State -->
-    <v-empty-state
-      v-if="products.length === 0"
-      title="Không có sản phẩm"
-      text="Vui lòng quay lại sau"
-      icon="mdi-inbox"
-    />
 
     <!-- Snackbar for notifications -->
     <v-snackbar
@@ -128,11 +156,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
+import FilterSidebar from "@/components/FilterSidebar.vue";
 import productApi from "@/api/productApi";
 import productColorApi from "@/api/productColorApi";
+import ReviewApi from "@/api/ReviewApi";
 import { getActiveProductDiscounts } from "@/api/productDiscountApi";
 
 const router = useRouter();
@@ -141,9 +171,76 @@ const userStore = useUserStore();
 
 const products = ref([]);
 const discountMap = ref(new Map());
+const productRatingsMap = ref(new Map());
 const showSnackbar = ref(false);
 const snackbarMessage = ref("");
 const snackbarColor = ref("success");
+
+// Filter state
+const activeFilters = ref({
+  priceRange: [0, 10000000],
+  brands: [],
+  colors: [],
+  materials: [],
+  sizes: [],
+  ratings: [],
+});
+
+// Computed filtered products
+const filteredProducts = computed(() => {
+  return products.value.filter((product) => {
+    const productPrice = Number(product.price) || 0;
+    if (
+      productPrice < activeFilters.value.priceRange[0] ||
+      productPrice > activeFilters.value.priceRange[1]
+    ) {
+      return false;
+    }
+
+    if (
+      activeFilters.value.brands.length > 0 &&
+      !activeFilters.value.brands.includes(Number(product.brandID))
+    ) {
+      return false;
+    }
+
+    if (
+      activeFilters.value.colors.length > 0 &&
+      !activeFilters.value.colors.includes(Number(product.colorID))
+    ) {
+      return false;
+    }
+
+    if (
+      activeFilters.value.materials.length > 0 &&
+      !activeFilters.value.materials.includes(Number(product.materialID))
+    ) {
+      return false;
+    }
+
+    if (
+      activeFilters.value.sizes.length > 0 &&
+      !activeFilters.value.sizes.includes(Number(product.sizeID))
+    ) {
+      return false;
+    }
+
+    if (activeFilters.value.ratings.length > 0) {
+      const productId = Number(product.productID);
+      const productRating = productRatingsMap.value.get(productId) || 0;
+
+      const matchedRating = activeFilters.value.ratings.some(
+        (star) => productRating >= star,
+      );
+
+      if (!matchedRating) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+});
 
 const loadProducts = async () => {
   try {
@@ -158,7 +255,10 @@ const loadProducts = async () => {
     (stockRes.data || []).forEach((pc) => {
       const productColorId = Number.parseInt(pc.productColorID ?? pc.id, 10);
       if (Number.isFinite(productColorId)) {
-        stockMap.set(productColorId, Number.parseInt(pc.stockQuantity, 10) || 0);
+        stockMap.set(
+          productColorId,
+          Number.parseInt(pc.stockQuantity, 10) || 0,
+        );
       }
     });
 
@@ -173,12 +273,55 @@ const loadProducts = async () => {
 
     products.value = (res.data || []).map((p) => ({
       ...p,
+      productID: Number(p.productID),
+      productColorID: Number(p.productColorID),
+      brandID: Number(p.brandID),
+      colorID: Number(p.colorID),
+      materialID: Number(p.materialID),
+      sizeID: Number(p.sizeID),
+      price: Number(p.price) || 0,
       stockQuantity: stockMap.get(Number.parseInt(p.productColorID, 10)) ?? 0,
     }));
+
+    // Load ratings for all products
+    await loadProductRatings();
   } catch (error) {
     console.error("Lỗi tải sản phẩm:", error);
     products.value = [];
   }
+};
+
+const loadProductRatings = async () => {
+  try {
+    const reviewsRes = await ReviewApi.getAllReviews();
+    const reviews = reviewsRes.data || [];
+
+    // Calculate average rating for each product
+    const productRatings = new Map();
+
+    reviews.forEach((review) => {
+      const productId = review.productID?.id || review.productID;
+      if (!productRatings.has(productId)) {
+        productRatings.set(productId, { total: 0, count: 0 });
+      }
+
+      const current = productRatings.get(productId);
+      current.total += review.rating;
+      current.count += 1;
+    });
+
+    // Convert to average ratings
+    productRatings.forEach((value, key) => {
+      const avgRating = value.count > 0 ? value.total / value.count : 0;
+      productRatingsMap.value.set(key, Math.round(avgRating));
+    });
+  } catch (error) {
+    console.error("Lỗi tải đánh giá sản phẩm:", error);
+  }
+};
+
+const onFilterChanged = (filters) => {
+  activeFilters.value = filters;
 };
 
 onMounted(async () => {
@@ -189,7 +332,7 @@ watch(
   () => route.query.search,
   async () => {
     await loadProducts();
-  }
+  },
 );
 
 const formatPrice = (price) => {
@@ -198,9 +341,9 @@ const formatPrice = (price) => {
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat("vi-VN", {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
   }).format(value);
 };
 
@@ -214,13 +357,14 @@ const getProductDiscount = (product) => {
 const getDiscountedPrice = (product) => {
   const discount = getProductDiscount(product);
   if (!discount) return product.price;
-  
+
   const price = Number.parseFloat(product.price) || 0;
-  
-  if (discount.discountType === 'percent') {
+
+  if (discount.discountType === "percent") {
     const discountPercent = Number.parseFloat(discount.discountValue) || 0;
     const discountAmount = price * (discountPercent / 100);
-    const maxDiscount = Number.parseFloat(discount.maxDiscountValue) || Infinity;
+    const maxDiscount =
+      Number.parseFloat(discount.maxDiscountValue) || Infinity;
     const actualDiscount = Math.min(discountAmount, maxDiscount);
     return Math.max(0, price - actualDiscount);
   } else {
@@ -273,7 +417,7 @@ async function resolveProductColorId(product) {
   const detailRes = await productApi.getDetail(productId);
   const fallbackColorId = Number.parseInt(
     detailRes?.data?.colors?.[0]?.productColorID,
-    10
+    10,
   );
 
   return Number.isFinite(fallbackColorId) && fallbackColorId > 0
@@ -404,7 +548,7 @@ async function addToCart(product) {
 }
 
 .color-btn:hover {
-  border-color: #CDBA96;
+  border-color: #cdba96;
   box-shadow: 0 0 8px rgba(205, 186, 150, 0.4);
   transform: scale(1.1);
 }
