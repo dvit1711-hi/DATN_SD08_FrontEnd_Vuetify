@@ -168,7 +168,7 @@ const sizes = ref([]);
 const loadingBrands = ref(false);
 
 const filters = ref({
-  priceRange: [0, 10000000],
+  priceRange: [0, 100000000],
   selectedBrands: [],
   selectedColors: [],
   selectedMaterials: [],
