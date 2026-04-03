@@ -248,7 +248,14 @@ const loadProducts = async () => {
     const [res, stockRes, discountRes] = await Promise.all([
       productApi.getAllCard(keyword),
       productColorApi.getAll(),
-      getActiveProductDiscounts(),
+      getActiveProductDiscounts().catch((error) => {
+        // Handle 401 error gracefully - return empty discounts
+        if (error?.response?.status === 401) {
+          console.warn("Không có quyền truy cập danh sách giảm giá, tiếp tục mà không loại giảm giá");
+          return { data: [] };
+        }
+        throw error;
+      }),
     ]);
 
     const stockMap = new Map();
