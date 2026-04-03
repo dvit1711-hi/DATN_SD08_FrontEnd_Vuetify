@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import UserLayout from '@/layouts/UserLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import StaffLayout from '@/layouts/StaffLayout.vue'
 import Menu from '@/pages/menu.vue'
 import Login from '@/pages/Login.vue'
 import ProductList from '@/pages/ProductList.vue'
@@ -23,6 +24,31 @@ import PurchaseHistory from '@/pages/PurchaseHistory.vue'
 import PaymentManager from '@/pages/admin/PaymentManager.vue'
 import ForgotPassword from '@/pages/ForgotPassword.vue'
 import AddStaffAccount from '@/pages/admin/AddStaffAccount.vue'
+import PosSale from '@/pages/admin/PosSale.vue'
+
+function getRoles(): string[] {
+  const roles = localStorage.getItem('roles')
+  const userRole = localStorage.getItem('userRole')
+
+  if (roles) {
+    try {
+      const parsed = JSON.parse(roles)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      return roles.split(',').map(r => r.trim())
+    }
+  }
+
+  if (userRole) {
+    return [userRole]
+  }
+
+  return []
+}
+
+function hasRole(role: string) {
+  return getRoles().includes(role)
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,26 +76,81 @@ const router = createRouter({
     {
       path: '/admin',
       component: AdminLayout,
+      meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] },
       children: [
-        { path: '', component: AdminProduct, name: 'AdminDashboard' },
-        { path: 'products', component: AdminProduct, name: 'AdminProducts' },
-        { path: 'products/detail/:id', name: 'AdminProductDetail', component: AdminProductDetail, props: true },
+        { path: '', component: AdminProduct, name: 'AdminDashboard', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'products', component: AdminProduct, name: 'AdminProducts', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'products/detail/:id', name: 'AdminProductDetail', component: AdminProductDetail, props: true, meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
 
-        { path: 'accounts', component: AccountList, name: 'AdminAccounts' },
-        { path: 'accounts/staff/add', component: AddStaffAccount, name: 'AddStaffAccount' },
-        { path: 'accounts/detail/:id', component: AccountDetail, name: 'AccountDetail' },
-        { path: 'accounts/edit/:id', component: AccountEdit, name: 'AccountEdit' },
+        { path: 'accounts', component: AccountList, name: 'AdminAccounts', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'accounts/staff/add', component: AddStaffAccount, name: 'AddStaffAccount', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'accounts/detail/:id', component: AccountDetail, name: 'AccountDetail', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'accounts/edit/:id', component: AccountEdit, name: 'AccountEdit', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
 
-        { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
-        { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct' },
-        { path: 'statistics', component: Statistics, name: 'Statistics' },
-        { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
+        { path: 'discounts', component: DiscountManager, name: 'DiscountManager', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'product-discounts', component: DiscountProduct, name: 'DiscountProduct', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'statistics', component: Statistics, name: 'Statistics', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'payments', component: PaymentManager, name: 'AdminPayments', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } }
+      ],
+    },
+
+    {
+      path: '/staff',
+      component: StaffLayout,
+      meta: { requiresAuth: true, roles: ['ROLE_STAFF'] },
+      children: [
+        { path: '', redirect: { name: 'StaffPosSale' } },
+        { path: 'pos', component: PosSale, name: 'StaffPosSale', meta: { requiresAuth: true, roles: ['ROLE_STAFF'] } }
       ],
     },
 
     { path: '/menu', component: Menu, name: 'Menu' },
     { path: '/footer', component: Footer, name: 'Footer' },
   ],
+})
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+  const roles = getRoles()
+
+  if (to.meta.requiresAuth && !token) {
+    return next({ name: 'Login' })
+  }
+
+  // đã đăng nhập mà vào login/register thì đẩy đúng trang
+  if ((to.name === 'Login' || to.name === 'Register') && token) {
+    if (roles.includes('ROLE_ADMIN')) {
+      return next({ name: 'AdminDashboard' })
+    }
+    if (roles.includes('ROLE_STAFF')) {
+      return next({ name: 'StaffPosSale' })
+    }
+    return next({ name: 'Home' })
+  }
+
+  const allowedRoles = to.meta.roles as string[] | undefined
+  if (allowedRoles && allowedRoles.length > 0) {
+    const ok = allowedRoles.some(role => roles.includes(role))
+    if (!ok) {
+      if (hasRole('ROLE_STAFF')) {
+        return next({ name: 'StaffPosSale' })
+      }
+      if (hasRole('ROLE_ADMIN')) {
+        return next({ name: 'AdminDashboard' })
+      }
+      return next({ name: 'Home' })
+    }
+  }
+
+  if (to.path.startsWith('/admin') && hasRole('ROLE_STAFF')) {
+    return next({ name: 'StaffPosSale' })
+  }
+
+  if (to.path.startsWith('/staff') && hasRole('ROLE_ADMIN')) {
+    return next({ name: 'AdminDashboard' })
+  }
+
+  next()
 })
 
 export default router
