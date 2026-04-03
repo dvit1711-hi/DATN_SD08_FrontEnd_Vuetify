@@ -22,7 +22,7 @@
         <v-range-slider
           v-model="filters.priceRange"
           :min="0"
-          :max="10000000"
+          :max="100000000"
           :step="50000"
           label="Giá"
           class="mb-3"
