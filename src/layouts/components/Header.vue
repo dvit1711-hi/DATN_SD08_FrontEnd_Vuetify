@@ -4,9 +4,9 @@
     <v-toolbar color="#cdba96" dark height="36" class="px-8">
       <div class="d-flex align-center" style="width: 100%; justify-content: space-between;">
         <div class="d-flex align-center gap-4">
-          <!-- Kênh admin -->
-          <router-link v-if="isLoggedIn && isAdmin" :to="{ name: 'AdminDashboard' }"
-            class="text-decoration-none text-caption" style="color: white;">
+          <!-- Kênh Người Bán - Chỉ hiển thị khi là Admin -->
+          <router-link v-if="isLoggedIn && isAdmin" :to="{ name: 'AdminDashboard' }" class="text-decoration-none text-caption"
+            style="color: white;">
             Kênh Người Bán
           </router-link>
 
@@ -20,7 +20,7 @@
         <div class="d-flex align-center gap-4">
           <v-menu offset-y>
             <template v-slot:activator="{ props }">
-              <div v-bind="props" class="d-flex align-center gap-2 text-caption text-white" style="cursor: pointer;">
+              <div v-bind="props" class="d-flex align-center gap-2 text-caption" style="cursor: pointer; color: #000000;">
                 <v-icon size="small">mdi-globe</v-icon>
                 <span>Tiếng Việt</span>
                 <v-icon size="small">mdi-chevron-down</v-icon>
@@ -67,9 +67,9 @@
           <router-link :to="{ name: 'Cart' }" class="d-flex flex-column align-center text-decoration-none gap-1"
             style="color: white;">
             <v-badge color="red" :content="cartCount" offset-x="-8" offset-y="8">
-              <v-icon size="28" style="color: white;">mdi-shopping-outline</v-icon>
+              <v-icon size="28" style="color: #000000;">mdi-shopping-outline</v-icon>
             </v-badge>
-            <span class="text-caption" style="color: white;">Giỏ Hàng</span>
+            <span class="text-caption" style="color: #000000;">Giỏ Hàng</span>
           </router-link>
 
           <!-- User Menu -->
@@ -77,8 +77,8 @@
             <template v-slot:activator="{ props }">
               <div v-bind="props" class="d-flex align-center gap-2 cursor-pointer">
                 <v-avatar v-if="userAvatar" size="32" :image="userAvatar" />
-                <v-icon v-else size="32" class="text-white">mdi-account-circle</v-icon>
-                <span class="text-white text-caption">{{ username }}</span>
+                <v-icon v-else size="32" style="color: #000000;">mdi-account-circle</v-icon>
+                <span class="text-caption" style="color: #000000;">{{ username }}</span>
               </div>
             </template>
             <v-list density="compact">
@@ -118,9 +118,9 @@
           </v-list>
         </v-menu>
 
-        <router-link :to="{ name: 'ProductList' }" class="text-decoration-none text-body2 font-weight-medium"
+        <router-link :to="{ name: 'Promotion' }" class="text-decoration-none text-body2 font-weight-medium"
           style="color: #FF6633;">
-          🔥 Khuyến Mãi
+          🎉 Khuyến Mãi & Mã Giảm Giá
         </router-link>
       </div>
     </v-toolbar>
