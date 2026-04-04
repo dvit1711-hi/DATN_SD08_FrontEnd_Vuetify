@@ -118,9 +118,9 @@
           </v-list>
         </v-menu>
 
-        <router-link :to="{ name: 'ProductList' }" class="text-decoration-none text-body2 font-weight-medium"
+        <router-link :to="{ name: 'Promotion' }" class="text-decoration-none text-body2 font-weight-medium"
           style="color: #FF6633;">
-          🔥 Khuyến Mãi
+          🎉 Khuyến Mãi & Mã Giảm Giá
         </router-link>
       </div>
     </v-toolbar>

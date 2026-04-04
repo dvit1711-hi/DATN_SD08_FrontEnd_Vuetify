@@ -27,6 +27,7 @@ import AdminBrandMetarial from '@/pages/admin/AdminBrandMetarial.vue'
 import AdminColorSize from '@/pages/admin/AdminColorSize.vue'
 import AddStaffAccount from '@/pages/admin/AddStaffAccount.vue'
 import PosSale from '@/pages/admin/PosSale.vue'
+import Promotion from '@/pages/Promotion.vue'
 
 function getRoles(): string[] {
   const roles = localStorage.getItem('roles')
@@ -63,6 +64,7 @@ const router = createRouter({
         { path: 'products', component: ProductList, name: 'ProductList' },
         { path: 'review', component: Review, name: 'Review' },
         { path: 'products/:id', component: ProductDetail, name: 'ProductDetail' },
+        { path: 'promotion', component: Promotion, name: 'Promotion' },
         { path: 'cart', component: () => import('@/pages/Cart.vue'), name: 'Cart' },
         { path: 'checkout', component: () => import('@/pages/Checkout.vue'), name: 'Checkout' },
         { path: 'purchase-history', component: PurchaseHistory, name: 'PurchaseHistory' },
