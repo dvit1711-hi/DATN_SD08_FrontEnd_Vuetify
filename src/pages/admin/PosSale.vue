@@ -54,6 +54,11 @@
 
                         <v-text-field v-model="guest.shippingAddress" label="Địa chỉ giao hàng" variant="outlined"
                             density="comfortable" class="mt-2" />
+
+                        <v-btn color="primary" variant="tonal" class="mt-2" block
+                            :disabled="!getCurrentOrderId(currentOrder)" @click="saveOrderInfo">
+                            Lưu thông tin đơn
+                        </v-btn>
                     </v-card-text>
                 </v-card>
 
@@ -80,10 +85,31 @@
 
                                     <v-card-text>
                                         <div class="mb-2">
-                                            Giá:
-                                            <strong class="text-red-darken-1">
-                                                {{ formatCurrency(product.price) }}
-                                            </strong>
+                                            <template v-if="product.discounted">
+                                                <div class="text-caption text-grey text-decoration-line-through">
+                                                    Giá gốc: {{ formatCurrency(product.originalPrice) }}
+                                                </div>
+
+                                                <div class="d-flex align-center ga-2">
+                                                    <strong class="text-red-darken-1">
+                                                        {{ formatCurrency(product.finalPrice || product.price) }}
+                                                    </strong>
+
+                                                    <v-chip size="x-small" color="error" variant="flat"
+                                                        v-if="product.discountLabel">
+                                                        {{ product.discountLabel }}
+                                                    </v-chip>
+                                                </div>
+                                            </template>
+
+                                            <template v-else>
+                                                <div>
+                                                    Giá:
+                                                    <strong class="text-red-darken-1">
+                                                        {{ formatCurrency(product.price) }}
+                                                    </strong>
+                                                </div>
+                                            </template>
                                         </div>
                                         <div>
                                             Tồn kho:
@@ -109,6 +135,35 @@
             </v-col>
 
             <v-col cols="12" md="5">
+                <v-card rounded="lg" class="mb-4">
+                    <v-card-title class="d-flex justify-space-between align-center">
+                        <span>Đơn hàng chờ</span>
+                        <v-btn color="primary" @click="createPendingOrder" :disabled="pendingOrders.length >= 10">
+                            Thêm đơn chờ
+                        </v-btn>
+                    </v-card-title>
+
+                    <v-card-text>
+                        <div v-if="pendingOrders.length" class="d-flex flex-wrap ga-2">
+                            <v-chip v-for="order in pendingOrders" :key="getCurrentOrderId(order)"
+                                :color="getCurrentOrderId(order) === getCurrentOrderId(currentOrder) ? 'primary' : ''"
+                                :variant="getCurrentOrderId(order) === getCurrentOrderId(currentOrder) ? 'flat' : 'outlined'"
+                                @click="switchOrder(order)">
+                                #{{ getCurrentOrderId(order) }} - {{ order.customerName || "Khách lẻ" }}
+                                <v-icon end size="18" @click.stop="closePendingOrder(order)">
+                                    mdi-close-circle
+                                </v-icon>
+                            </v-chip>
+                        </div>
+
+                        <div v-else class="text-grey">Chưa có đơn hàng chờ</div>
+
+                        <div class="text-caption text-medium-emphasis mt-2">
+                            Đã dùng {{ pendingOrders.length }}/10 đơn hàng chờ
+                        </div>
+                    </v-card-text>
+                </v-card>
+
                 <v-card rounded="lg" class="mb-4">
                     <v-card-title class="d-flex justify-space-between align-center">
                         <span>Đơn hàng hiện tại</span>
@@ -212,7 +267,7 @@
                         </v-btn>
 
                         <v-btn class="mt-2" color="secondary" size="large" block variant="tonal"
-                            :disabled="!getCurrentOrderId(currentOrder)" @click="printReceipt">
+                            :disabled="!getCurrentOrderId(currentOrder)" @click="printReceipt()">
                             In hóa đơn
                         </v-btn>
                     </v-card-text>
@@ -239,6 +294,7 @@ const productKeyword = ref("")
 const customerKeyword = ref("")
 const products = ref([])
 const customers = ref([])
+const pendingOrders = ref([])
 const currentOrder = ref(null)
 const selectedCustomer = ref(null)
 const customerMode = ref("guest")
@@ -362,10 +418,80 @@ function getItemSizeName(item) {
     return item.sizeName || "-"
 }
 
+function resetOrderForm() {
+    selectedCustomer.value = null
+    customerMode.value = "guest"
+    couponCode.value = ""
+
+    guest.value = {
+        customerName: "",
+        customerPhone: "",
+        note: "",
+        shippingAddress: "",
+    }
+
+    checkoutForm.value = {
+        method: "CASH",
+        cashReceived: null,
+    }
+}
+
+function syncFormFromOrder(order) {
+    if (!order) {
+        resetOrderForm()
+        return
+    }
+
+    guest.value.customerName = order.customerName || ""
+    guest.value.customerPhone = order.customerPhone || ""
+    guest.value.note = order.note || ""
+    guest.value.shippingAddress = order.shippingAddress || ""
+
+    couponCode.value = order.couponCode || ""
+    customerMode.value = order.customerId ? "account" : "guest"
+}
+
 function selectCustomer(customer) {
     selectedCustomer.value = customer
+    customerMode.value = "account"
     guest.value.customerName = getCustomerName(customer)
     guest.value.customerPhone = getCustomerPhone(customer)
+}
+
+async function saveOrderInfo() {
+    try {
+        const orderId = getCurrentOrderId(currentOrder.value)
+        if (!orderId) {
+            showMessage("Bạn cần tạo đơn chờ trước", "warning")
+            return
+        }
+
+        loading.value = true
+
+        const payload = {
+            accountId:
+                customerMode.value === "account"
+                    ? (selectedCustomer.value
+                        ? getCustomerId(selectedCustomer.value)
+                        : (currentOrder.value?.customerId || null))
+                    : null,
+            customerName: guest.value.customerName || null,
+            customerPhone: guest.value.customerPhone || null,
+            note: guest.value.note || null,
+            shippingAddress: guest.value.shippingAddress || null,
+        }
+
+        const { data } = await posApi.updateOrderInfo(orderId, payload)
+        currentOrder.value = data
+        syncFormFromOrder(data)
+        await loadPendingOrders(orderId)
+
+        showMessage("Đã lưu thông tin đơn hàng")
+    } catch (error) {
+        showMessage(error.response?.data?.message || "Không lưu được thông tin đơn hàng", "error")
+    } finally {
+        loading.value = false
+    }
 }
 
 async function loadProducts() {
@@ -396,9 +522,100 @@ async function searchCustomers() {
     }
 }
 
+async function loadPendingOrders(preferredOrderId = null) {
+    try {
+        const { data } = await posApi.getPendingOrders()
+        pendingOrders.value = data || []
+
+        const targetId = preferredOrderId || getCurrentOrderId(currentOrder.value)
+
+        if (targetId) {
+            const matched = pendingOrders.value.find(
+                (x) => getCurrentOrderId(x) === targetId
+            )
+            if (matched) {
+                currentOrder.value = matched
+                syncFormFromOrder(matched)
+                return
+            }
+        }
+
+        currentOrder.value = pendingOrders.value.length ? pendingOrders.value[0] : null
+        syncFormFromOrder(currentOrder.value)
+    } catch (error) {
+        showMessage(error.response?.data?.message || "Không tải được đơn hàng chờ", "error")
+    }
+}
+
+async function createPendingOrder() {
+    try {
+        if (pendingOrders.value.length >= 10) {
+            showMessage("Chỉ được tạo tối đa 10 đơn hàng chờ", "warning")
+            return
+        }
+
+        loading.value = true
+
+        const payload = {
+            accountId:
+                customerMode.value === "account" && selectedCustomer.value
+                    ? getCustomerId(selectedCustomer.value)
+                    : null,
+            customerName: guest.value.customerName || null,
+            customerPhone: guest.value.customerPhone || null,
+            note: guest.value.note || null,
+            shippingAddress: guest.value.shippingAddress || null,
+        }
+
+        const { data } = await posApi.createOfflineOrder(payload)
+        currentOrder.value = data
+        syncFormFromOrder(data)
+
+        await loadPendingOrders(getCurrentOrderId(data))
+        showMessage("Tạo đơn hàng chờ thành công")
+    } catch (error) {
+        showMessage(error.response?.data?.message || "Không thể tạo đơn hàng chờ", "error")
+    } finally {
+        loading.value = false
+    }
+}
+
+async function switchOrder(order) {
+    try {
+        loading.value = true
+        const { data } = await posApi.getOrder(getCurrentOrderId(order))
+        currentOrder.value = data
+        syncFormFromOrder(data)
+    } catch (error) {
+        showMessage(error.response?.data?.message || "Không tải được đơn hàng", "error")
+    } finally {
+        loading.value = false
+    }
+}
+
+async function closePendingOrder(order) {
+    try {
+        loading.value = true
+        const orderId = getCurrentOrderId(order)
+
+        await posApi.cancelPendingOrder(orderId)
+        await loadPendingOrders()
+
+        showMessage("Đã đóng đơn hàng chờ")
+    } catch (error) {
+        showMessage(error.response?.data?.message || "Không đóng được đơn hàng chờ", "error")
+    } finally {
+        loading.value = false
+    }
+}
+
 async function ensureOrderCreated() {
     const existedOrderId = getCurrentOrderId(currentOrder.value)
     if (existedOrderId) return existedOrderId
+
+    if (pendingOrders.value.length >= 10) {
+        throw new Error("Bạn đã đạt tối đa 10 đơn hàng chờ")
+    }
 
     const payload = {
         accountId:
@@ -413,6 +630,9 @@ async function ensureOrderCreated() {
 
     const { data } = await posApi.createOfflineOrder(payload)
     currentOrder.value = data
+    syncFormFromOrder(data)
+    await loadPendingOrders(getCurrentOrderId(data))
+
     return getCurrentOrderId(data)
 }
 
@@ -428,9 +648,10 @@ async function handleAddItem(product) {
 
         const { data } = await posApi.getOrder(orderId)
         currentOrder.value = data
+        await loadPendingOrders(orderId)
         showMessage("Thêm sản phẩm vào đơn thành công")
     } catch (error) {
-        showMessage(error.response?.data?.message || "Không thể thêm sản phẩm", "error")
+        showMessage(error.response?.data?.message || error.message || "Không thể thêm sản phẩm", "error")
     } finally {
         loading.value = false
     }
@@ -449,6 +670,7 @@ async function changeQty(item, newQty) {
 
         const { data } = await posApi.getOrder(orderId)
         currentOrder.value = data
+        await loadPendingOrders(orderId)
     } catch (error) {
         showMessage(error.response?.data?.message || "Không cập nhật được số lượng", "error")
     } finally {
@@ -466,6 +688,7 @@ async function removeItem(item) {
 
         const { data } = await posApi.getOrder(orderId)
         currentOrder.value = data
+        await loadPendingOrders(orderId)
         showMessage("Đã xóa sản phẩm khỏi đơn")
     } catch (error) {
         showMessage(error.response?.data?.message || "Không xóa được sản phẩm", "error")
@@ -482,18 +705,14 @@ async function handleApplyCoupon() {
             return
         }
 
-        if (!couponCode.value) {
-            showMessage("Hãy nhập mã giảm giá", "warning")
-            return
-        }
-
         loading.value = true
         const { data } = await posApi.applyCoupon(orderId, {
-            couponCode: couponCode.value,
+            couponCode: couponCode.value || "",
         })
 
         currentOrder.value = data
-        showMessage("Áp mã giảm giá thành công")
+        await loadPendingOrders(orderId)
+        showMessage(couponCode.value ? "Áp mã giảm giá thành công" : "Đã bỏ mã giảm giá")
     } catch (error) {
         showMessage(error.response?.data?.message || "Không áp dụng được mã giảm giá", "error")
     } finally {
@@ -523,9 +742,9 @@ async function handleCheckout() {
                     : null,
         })
 
-        currentOrder.value = data
+        printReceipt(data)
+        await loadPendingOrders()
         showMessage("Thanh toán thành công")
-        printReceipt()
     } catch (error) {
         showMessage(error.response?.data?.message || "Thanh toán thất bại", "error")
     } finally {
@@ -533,11 +752,13 @@ async function handleCheckout() {
     }
 }
 
-function printReceipt() {
-    const orderId = getCurrentOrderId(currentOrder.value)
-    if (!currentOrder.value || !orderId) return
+function printReceipt(order = currentOrder.value) {
+    const orderId = getCurrentOrderId(order)
+    if (!order || !orderId) return
 
-    const htmlItems = orderItems.value
+    const items = order.items || order.orderDetails || []
+
+    const htmlItems = items
         .map((item, index) => {
             return `
         <tr>
@@ -552,6 +773,10 @@ function printReceipt() {
       `
         })
         .join("")
+
+    const orderSubtotal = Number(order.subtotal || 0)
+    const orderDiscount = Number(order.discountAmount || 0)
+    const orderTotal = Number(order.totalAmount || 0)
 
     const html = `
     <html>
@@ -570,9 +795,9 @@ function printReceipt() {
       <body>
         <h2>HOA DON BAN HANG</h2>
         <p><strong>Ma don:</strong> #${orderId}</p>
-        <p><strong>Khach hang:</strong> ${currentOrder.value.customerName || guest.value.customerName || "Khach le"}</p>
-        <p><strong>So dien thoai:</strong> ${currentOrder.value.customerPhone || guest.value.customerPhone || ""}</p>
-        <p><strong>Trang thai:</strong> ${currentOrder.value.status || ""}</p>
+        <p><strong>Khach hang:</strong> ${order.customerName || "Khach le"}</p>
+        <p><strong>So dien thoai:</strong> ${order.customerPhone || ""}</p>
+        <p><strong>Trang thai:</strong> ${order.status || ""}</p>
         <p><strong>Phuong thuc thanh toan:</strong> ${checkoutForm.value.method}</p>
 
         <table>
@@ -593,9 +818,9 @@ function printReceipt() {
         </table>
 
         <div class="summary">
-          <div><span>Tam tinh:</span><strong>${formatCurrency(subtotal.value)}</strong></div>
-          <div><span>Giam gia:</span><strong>${formatCurrency(discountAmount.value)}</strong></div>
-          <div><span>Tong tien:</span><strong>${formatCurrency(totalAmount.value)}</strong></div>
+          <div><span>Tam tinh:</span><strong>${formatCurrency(orderSubtotal)}</strong></div>
+          <div><span>Giam gia:</span><strong>${formatCurrency(orderDiscount)}</strong></div>
+          <div><span>Tong tien:</span><strong>${formatCurrency(orderTotal)}</strong></div>
           ${checkoutForm.value.method === "CASH"
             ? `<div><span>Tien khach dua:</span><strong>${formatCurrency(checkoutForm.value.cashReceived || 0)}</strong></div>
                <div><span>Tien thua:</span><strong>${formatCurrency(changeAmount.value)}</strong></div>`
@@ -616,7 +841,7 @@ function printReceipt() {
 
 onMounted(async () => {
     await loadProducts()
-    await searchCustomers()
+    await loadPendingOrders()
 })
 </script>
 

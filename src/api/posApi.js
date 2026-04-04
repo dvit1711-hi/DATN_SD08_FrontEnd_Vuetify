@@ -8,15 +8,10 @@ const apiClient = axios.create({
 })
 
 apiClient.interceptors.request.use((config) => {
-  const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    sessionStorage.getItem("token")
-
+  const token = localStorage.getItem("token")
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
-
   return config
 })
 
@@ -29,12 +24,24 @@ export default {
     return apiClient.get("/api/pos/customers", { params: { keyword } })
   },
 
+  getPendingOrders() {
+    return apiClient.get("/api/pos/orders/pending")
+  },
+
   createOfflineOrder(payload) {
     return apiClient.post("/api/pos/orders", payload)
   },
 
   getOrder(orderId) {
     return apiClient.get(`/api/pos/orders/${orderId}`)
+  },
+
+  updateOrderInfo(orderId, payload) {
+    return apiClient.put(`/api/pos/orders/${orderId}`, payload)
+  },
+
+  cancelPendingOrder(orderId) {
+    return apiClient.delete(`/api/pos/orders/${orderId}`)
   },
 
   addItem(orderId, payload) {
