@@ -213,7 +213,7 @@ const loadProducts = async () => {
 
 const loadBrands = async () => {
   try {
-    const res = await axios.get("http://localhost:8080/api/brands");
+    const res = await axios.get("http://localhost:8080/api/brands/active");
     brands.value = res.data || [];
   } catch (err) {
     console.error("Lỗi tải thương hiệu:", err);
@@ -222,7 +222,7 @@ const loadBrands = async () => {
 
 const loadMaterials = async () => {
   try {
-    const res = await materialApi.getAll();
+    const res = await axios.get("http://localhost:8080/api/materials/active");
     materials.value = res.data || [];
   } catch (err) {
     console.error("Lỗi tải chất liệu:", err);
