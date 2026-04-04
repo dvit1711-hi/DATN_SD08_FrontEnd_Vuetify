@@ -222,7 +222,7 @@ const loadBrands = async () => {
 
 const loadMaterials = async () => {
   try {
-    const res = await axios.get("http://localhost:8080/api/materials/active");
+    const res = await axios.get("http://localhost:8080/api/material/active");
     materials.value = res.data || [];
   } catch (err) {
     console.error("Lỗi tải chất liệu:", err);
