@@ -193,6 +193,79 @@
       <v-progress-circular indeterminate color="primary" size="48" />
     </div>
 
+    <v-dialog v-model="showMBBankDialog" max-width="860" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center ga-2">
+          <v-icon color="primary">mdi-bank</v-icon>
+          Thanh toán online
+        </v-card-title>
+        <v-divider />
+
+        <v-card-text v-if="mbBankPaymentInfo">
+          <p class="text-body-2 mb-3 text-grey">
+            Vui lòng chuyển khoản đúng số tiền và nội dung bên dưới để admin xác nhận nhanh hơn.
+          </p>
+
+          <v-row class="payment-popup-layout" dense>
+            <v-col cols="12" md="5">
+              <div class="qr-preview">
+                <v-img
+                  :src="mbBankPaymentInfo.qrUrl"
+                  alt="MB Bank QR"
+                  class="qr-image"
+                  contain
+                />
+              </div>
+            </v-col>
+
+            <v-col cols="12" md="7">
+              <v-list density="compact" class="mb-4">
+                <v-list-item>
+                  <v-list-item-title class="text-caption text-grey">Ngân hàng</v-list-item-title>
+                  <v-list-item-subtitle class="text-body-1 font-weight-medium">{{ mbBankPaymentInfo.bankName }} ({{ mbBankPaymentInfo.bankCode }})</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-title class="text-caption text-grey">Số tài khoản</v-list-item-title>
+                  <v-list-item-subtitle class="text-body-1 font-weight-medium">{{ mbBankPaymentInfo.accountNumber }}</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-title class="text-caption text-grey">Chủ tài khoản</v-list-item-title>
+                  <v-list-item-subtitle class="text-body-1 font-weight-medium">{{ mbBankPaymentInfo.accountName }}</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-title class="text-caption text-grey">Số tiền</v-list-item-title>
+                  <v-list-item-subtitle class="text-body-1 font-weight-bold text-primary">{{ formatPrice(mbBankPaymentInfo.amount) }}đ</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-title class="text-caption text-grey">Nội dung chuyển khoản</v-list-item-title>
+                  <v-list-item-subtitle class="text-body-1 font-weight-bold">{{ mbBankPaymentInfo.transferContent }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+
+              <div class="d-flex ga-2 flex-wrap">
+                <v-btn variant="outlined" prepend-icon="mdi-content-copy" @click="copyToClipboard(mbBankPaymentInfo.accountNumber, 'Số tài khoản')">
+                  Sao chép số tài khoản
+                </v-btn>
+                <v-btn variant="outlined" prepend-icon="mdi-content-copy" @click="copyToClipboard(mbBankPaymentInfo.transferContent, 'Nội dung chuyển khoản')">
+                  Sao chép nội dung
+                </v-btn>
+              </div>
+            </v-col>
+          </v-row>
+        </v-card-text>
+
+        <v-card-text v-else class="d-flex align-center justify-center py-8">
+          <v-progress-circular indeterminate color="primary" size="36" />
+        </v-card-text>
+
+        <v-divider />
+        <v-card-actions class="justify-end">
+          <v-btn variant="text" :loading="isClosingOnlineDialog" @click="closeOnlinePaymentDialog">Đóng</v-btn>
+          <v-btn color="primary" :loading="isConfirmingTransfer" @click="confirmOnlineTransfer">Xác Nhận Thanh Toán</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar v-model="showSnackbar" :color="snackbarColor" timeout="3000" top>
       {{ snackbarMessage }}
     </v-snackbar>
@@ -226,11 +299,17 @@ const userClaimedCoupons = ref([])
 const selectedCoupon = ref(null)
 const isApplyingCoupon = ref(false)
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
+const showMBBankDialog = ref(false)
+const mbBankPaymentInfo = ref(null)
+const pendingOnlineOrderId = ref(null)
+const isConfirmingTransfer = ref(false)
+const isClosingOnlineDialog = ref(false)
+const ONLINE_CONFIRMED_ORDERS_KEY = 'onlineTransferConfirmedOrderIds'
+const HIDDEN_CANCELLED_ONLINE_ORDERS_KEY = 'hiddenCancelledOnlineOrderIds'
 
 const paymentMethods = [
   { label: 'Thanh toán khi nhận hàng (COD)', value: 'COD', description: 'Admin sẽ xác nhận thanh toán sau khi giao hàng.' },
-  { label: 'Chuyển khoản ngân hàng', value: 'BANK_TRANSFER', description: 'Bạn chuyển khoản và admin xác nhận khi nhận tiền.' },
-  { label: 'Ví điện tử', value: 'E_WALLET', description: 'Bạn thanh toán qua ví điện tử, admin xác nhận thủ công.' },
+  { label: 'Thanh toán online (QR)', value: 'BANK_TRANSFER', description: 'Hệ thống tạo mã QR chuyển khoản theo đơn hàng để bạn thanh toán nhanh.' },
 ]
 const selectedPaymentMethod = ref('COD')
 
@@ -490,21 +569,55 @@ const placeOrder = async () => {
   }
 
   const cartItemIds = checkoutItems.value.map((x) => x.cartItemID)
+  const paymentMethodForCheckout = selectedPaymentMethod.value
+  const shouldShowBankQr = selectedPaymentMethod.value === 'BANK_TRANSFER'
 
   isCheckingOut.value = true
   try {
     const res = await paymentApi.checkoutSelected(
       accountId,
-      selectedPaymentMethod.value,
+      paymentMethodForCheckout,
       cartItemIds,
       userStore.token,
       couponCode.value,
     )
+    const orderId =
+      res.data?.id ||
+      res.data?.orderID ||
+      res.data?.orderId ||
+      res.data?.data?.id ||
+      res.data?.data?.orderId
+
     sessionStorage.removeItem('selectedCartItemIds')
     window.dispatchEvent(new Event('cart-changed'))
-    snackbarMessage.value = `Đặt hàng thành công. Mã đơn #${res.data?.id || res.data?.orderID || ''}`.trim()
+
+    if (shouldShowBankQr) {
+      if (!orderId) {
+        snackbarMessage.value = 'Đặt đơn thành công nhưng chưa đọc được mã đơn để tạo QR. Vui lòng thử lại.'
+        snackbarColor.value = 'warning'
+        showSnackbar.value = true
+        return
+      }
+
+      try {
+        const mbRes = await paymentApi.getMBBankInfo(orderId, userStore.token)
+        mbBankPaymentInfo.value = mbRes.data || null
+        pendingOnlineOrderId.value = orderId
+        showMBBankDialog.value = true
+        return
+      } catch (qrError) {
+        console.error('Lỗi tải QR MB Bank:', qrError)
+        snackbarMessage.value = `Đơn #${orderId} đã tạo nhưng chưa tải được QR. Vui lòng bấm đặt hàng lại hoặc liên hệ admin.`
+        snackbarColor.value = 'warning'
+        showSnackbar.value = true
+        return
+      }
+    }
+
+    snackbarMessage.value = `Đặt hàng thành công. Mã đơn #${orderId || ''}`.trim()
     snackbarColor.value = 'success'
     showSnackbar.value = true
+
     setTimeout(() => {
       router.push({ name: 'PurchaseHistory' })
     }, 600)
@@ -520,6 +633,136 @@ const placeOrder = async () => {
 
 const goBackCart = () => {
   router.push({ name: 'Cart' })
+}
+
+const goToPurchaseHistory = () => {
+  showMBBankDialog.value = false
+  router.push({ name: 'PurchaseHistory' })
+}
+
+const closeOnlinePaymentDialog = async () => {
+  if (!pendingOnlineOrderId.value || isClosingOnlineDialog.value) {
+    showMBBankDialog.value = false
+    return
+  }
+
+  const accountId = Number.parseInt(userStore.accountId, 10)
+  if (!Number.isFinite(accountId) || accountId <= 0) {
+    showMBBankDialog.value = false
+    return
+  }
+
+  isClosingOnlineDialog.value = true
+  try {
+    await paymentApi.cancelOrderByUser(accountId, pendingOnlineOrderId.value, userStore.token)
+    markCancelledOnlineOrderHidden(pendingOnlineOrderId.value)
+    removeOnlineConfirmedOrderId(pendingOnlineOrderId.value)
+    pendingOnlineOrderId.value = null
+    mbBankPaymentInfo.value = null
+    showMBBankDialog.value = false
+    router.push({ name: 'Cart' })
+  } catch (error) {
+    console.error('Lỗi hủy đơn online khi đóng popup:', error)
+    snackbarMessage.value = error?.response?.data?.message || 'Không thể đóng thanh toán online lúc này. Vui lòng thử lại.'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+  } finally {
+    isClosingOnlineDialog.value = false
+  }
+}
+
+const confirmOnlineTransfer = async () => {
+  if (!pendingOnlineOrderId.value || isConfirmingTransfer.value) {
+    goToPurchaseHistory()
+    return
+  }
+
+  const confirmedOrderId = pendingOnlineOrderId.value
+  isConfirmingTransfer.value = true
+  try {
+    markOnlineOrderConfirmed(confirmedOrderId)
+    snackbarMessage.value = `Đơn #${confirmedOrderId} đang chờ admin xác nhận thanh toán`
+    snackbarColor.value = 'success'
+    showSnackbar.value = true
+    pendingOnlineOrderId.value = null
+    mbBankPaymentInfo.value = null
+    goToPurchaseHistory()
+  } catch (error) {
+    console.error('Lỗi xác nhận chuyển khoản:', error)
+    snackbarMessage.value = error?.response?.data?.message || 'Chưa thể xác nhận chuyển khoản, vui lòng thử lại'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+  } finally {
+    isConfirmingTransfer.value = false
+  }
+}
+
+const copyToClipboard = async (value, label) => {
+  try {
+    await navigator.clipboard.writeText(String(value || ''))
+    snackbarMessage.value = `${label} đã được sao chép`
+    snackbarColor.value = 'success'
+    showSnackbar.value = true
+  } catch (error) {
+    snackbarMessage.value = `Không thể sao chép ${label.toLowerCase()}`
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+  }
+}
+
+const getOnlineConfirmedOrderIds = () => {
+  try {
+    const raw = localStorage.getItem(ONLINE_CONFIRMED_ORDERS_KEY)
+    const parsed = JSON.parse(raw || '[]')
+    return Array.isArray(parsed) ? parsed.map((x) => Number.parseInt(x, 10)).filter(Number.isFinite) : []
+  } catch {
+    return []
+  }
+}
+
+const saveOnlineConfirmedOrderIds = (ids) => {
+  localStorage.setItem(ONLINE_CONFIRMED_ORDERS_KEY, JSON.stringify(ids))
+}
+
+const getHiddenCancelledOnlineOrderIds = () => {
+  try {
+    const raw = localStorage.getItem(HIDDEN_CANCELLED_ONLINE_ORDERS_KEY)
+    const parsed = JSON.parse(raw || '[]')
+    return Array.isArray(parsed) ? parsed.map((x) => Number.parseInt(x, 10)).filter(Number.isFinite) : []
+  } catch {
+    return []
+  }
+}
+
+const saveHiddenCancelledOnlineOrderIds = (ids) => {
+  localStorage.setItem(HIDDEN_CANCELLED_ONLINE_ORDERS_KEY, JSON.stringify(ids))
+}
+
+const markOnlineOrderConfirmed = (orderId) => {
+  const numericOrderId = Number.parseInt(orderId, 10)
+  if (!Number.isFinite(numericOrderId)) return
+  const ids = getOnlineConfirmedOrderIds()
+  if (!ids.includes(numericOrderId)) {
+    ids.push(numericOrderId)
+    saveOnlineConfirmedOrderIds(ids)
+  }
+}
+
+const removeOnlineConfirmedOrderId = (orderId) => {
+  const numericOrderId = Number.parseInt(orderId, 10)
+  if (!Number.isFinite(numericOrderId)) return
+  const ids = getOnlineConfirmedOrderIds().filter((id) => id !== numericOrderId)
+  saveOnlineConfirmedOrderIds(ids)
+}
+
+const markCancelledOnlineOrderHidden = (orderId) => {
+  const numericOrderId = Number.parseInt(orderId, 10)
+  if (!Number.isFinite(numericOrderId)) return
+  const ids = getHiddenCancelledOnlineOrderIds()
+  if (!ids.includes(numericOrderId)) {
+    ids.push(numericOrderId)
+    saveHiddenCancelledOnlineOrderIds(ids)
+  }
 }
 
 onMounted(async () => {
@@ -558,5 +801,23 @@ onMounted(async () => {
 
 .rounded-lg {
   border-radius: 8px;
+}
+
+.payment-popup-layout {
+  align-items: flex-start;
+}
+
+.qr-preview {
+  width: min(100%, 320px);
+  aspect-ratio: 1 / 1;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.qr-image {
+  width: 100%;
+  height: 100%;
 }
 </style>

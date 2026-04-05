@@ -64,6 +64,18 @@ export default {
     return axios.get(`${API}/orders`, config)
   },
 
+  getMBBankInfo(orderId, token) {
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.get(`${API}/orders/${orderId}/mb-bank-info`, config)
+  },
+
   confirmPayment(orderId, token) {
     const config = token
       ? {

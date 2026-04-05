@@ -115,6 +115,8 @@ const orders = ref([])
 const isLoading = ref(false)
 const cancellingOrderId = ref(null)
 const fallbackImage = 'https://via.placeholder.com/64x64?text=No+Image'
+const ONLINE_CONFIRMED_ORDERS_KEY = 'onlineTransferConfirmedOrderIds'
+const HIDDEN_CANCELLED_ONLINE_ORDERS_KEY = 'hiddenCancelledOnlineOrderIds'
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
@@ -170,6 +172,26 @@ const getPaymentMethodLabel = (method) => {
   return 'Không xác định'
 }
 
+const getOnlineConfirmedOrderIds = () => {
+  try {
+    const raw = localStorage.getItem(ONLINE_CONFIRMED_ORDERS_KEY)
+    const parsed = JSON.parse(raw || '[]')
+    return Array.isArray(parsed) ? parsed.map((x) => Number.parseInt(x, 10)).filter(Number.isFinite) : []
+  } catch {
+    return []
+  }
+}
+
+const getHiddenCancelledOnlineOrderIds = () => {
+  try {
+    const raw = localStorage.getItem(HIDDEN_CANCELLED_ONLINE_ORDERS_KEY)
+    const parsed = JSON.parse(raw || '[]')
+    return Array.isArray(parsed) ? parsed.map((x) => Number.parseInt(x, 10)).filter(Number.isFinite) : []
+  } catch {
+    return []
+  }
+}
+
 const loadOrders = async () => {
   if (!isLoggedIn.value) {
     orders.value = []
@@ -185,7 +207,25 @@ const loadOrders = async () => {
   isLoading.value = true
   try {
     const res = await paymentApi.getOrdersByAccount(accountId, userStore.token)
-    orders.value = (res.data || []).sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+    const allOrders = res.data || []
+    const confirmedOnlineOrderIds = new Set(getOnlineConfirmedOrderIds())
+    const hiddenCancelledOnlineOrderIds = new Set(getHiddenCancelledOnlineOrderIds())
+    orders.value = allOrders
+      .filter((order) => {
+        const orderId = Number.parseInt(order?.orderId, 10)
+        if (Number.isFinite(orderId) && hiddenCancelledOnlineOrderIds.has(orderId)) {
+          return false
+        }
+
+        const method = String(order?.paymentMethod || '').toUpperCase()
+        const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+        if (method !== 'BANK_TRANSFER' || paymentStatus !== 'UNPAID') {
+          return true
+        }
+
+        return Number.isFinite(orderId) && confirmedOnlineOrderIds.has(orderId)
+      })
+      .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
   } catch (error) {
     console.error('Lỗi tải lịch sử mua hàng:', error)
     orders.value = []
