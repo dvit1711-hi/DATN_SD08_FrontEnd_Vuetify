@@ -197,7 +197,7 @@
       <v-card>
         <v-card-title class="d-flex align-center ga-2">
           <v-icon color="primary">mdi-bank</v-icon>
-          Thanh toán online
+          Thanh toán ngân hàng
         </v-card-title>
         <v-divider />
 
