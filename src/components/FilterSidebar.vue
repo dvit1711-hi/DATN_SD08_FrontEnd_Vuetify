@@ -203,7 +203,7 @@ const applyFilters = () => {
 
 const resetFilters = () => {
   filters.value = {
-    priceRange: [0, 10000000],
+    priceRange: [0, 100000000],
     selectedBrands: [],
     selectedColors: [],
     selectedMaterials: [],
@@ -217,10 +217,10 @@ const loadFilterData = async () => {
   try {
     loadingBrands.value = true;
     const [brandRes, colorRes, materialRes, sizeRes] = await Promise.all([
-      brandApi.getAll(),
-      colorApi.getAll(),
-      materialApi.getAll(),
-      sizeApi.getAll(),
+      brandApi.getAllActive(),
+      colorApi.getAllActive(),
+      materialApi.getAllActive(),
+      sizeApi.getAllActive(),
     ]);
 
     brands.value = (brandRes.data || []).map((b) => ({

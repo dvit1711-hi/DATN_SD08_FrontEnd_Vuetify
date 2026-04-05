@@ -26,6 +26,7 @@
             <h2 class="mb-4">Trang chủ</h2>
             <p>Đây là trang chủ sau khi đăng nhập.</p>
         </div>
+        <!-- <router-link to="/products">Đi đến trang giới thiệu</router-link> -->
     </div>
 </template>
 

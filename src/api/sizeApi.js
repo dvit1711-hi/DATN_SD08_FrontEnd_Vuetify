@@ -6,6 +6,9 @@ export default {
   getAll() {
     return axios.get(API);
   },
+  getAllActive() {
+    return axios.get(`${API}/active`);
+  },
 
   getById(id) {
     return axios.get(`${API}/${id}`);
