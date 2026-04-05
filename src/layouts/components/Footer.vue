@@ -30,9 +30,14 @@ const icons = [
 :deep(.footer-custom) {
   background-color: #F5DEB3 !important;
   border-top: 1px solid rgba(205, 186, 150, 0.2) !important;
+  color: #000000 !important;
 }
 
 :deep(.footer-text) {
+  color: #000000 !important;
+}
+
+:deep(.text-body-small) {
   color: #000000 !important;
 }
 
@@ -42,5 +47,9 @@ const icons = [
 
 :deep(.v-btn:hover) {
   color: #8B4513 !important;
+}
+
+:deep(.v-divider) {
+  border-color: rgba(0, 0, 0, 0.12) !important;
 }
 </style>

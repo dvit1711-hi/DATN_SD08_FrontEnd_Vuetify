@@ -181,6 +181,23 @@ onMounted(() => {
     cursor: pointer;
 }
 
+/* Sidebar text color */
+:deep(.v-list-item__content) {
+    color: #C9A982 !important;
+}
+
+:deep(.v-list-item) {
+    color: #C9A982 !important;
+}
+
+:deep(.v-list-item-title) {
+    color: #C9A982 !important;
+}
+
+:deep(.v-icon) {
+    color: #C9A982 !important;
+}
+
 .page-content {
     flex: 1;
     min-width: 0;

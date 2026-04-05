@@ -90,25 +90,77 @@
               {{ selectedPaymentMethodDescription }}
             </p>
 
-            <v-text-field
-              v-model="couponCode"
-              label="Mã giảm giá"
-              variant="outlined"
-              density="comfortable"
-              class="mt-4"
-              clearable
-              @blur="previewCoupon"
-            />
+            <!-- Show user's claimed coupons with auto-select highest discount -->
+            <v-card v-if="userClaimedCoupons.length > 0" class="mb-4" variant="outlined">
+              <v-card-title class="text-subtitle-2 font-weight-bold">
+                <v-icon>mdi-gift</v-icon> Mã Giảm Giá Của Bạn
+              </v-card-title>
+              <v-divider />
+              <v-card-text class="pa-4">
+                <div v-for="coupon in userClaimedCoupons" :key="coupon.id" class="coupon-select-item mb-3 pa-3 rounded-lg" :class="{ selected: selectedCoupon?.id === coupon.id }" @click="selectCouponForCheckout(coupon)">
+                  <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center ga-3 flex-grow-1">
+                      <v-icon :color="selectedCoupon?.id === coupon.id ? 'primary' : 'grey'">
+                        {{ selectedCoupon?.id === coupon.id ? 'mdi-check-circle' : 'mdi-circle-outline' }}
+                      </v-icon>
+                      <div class="flex-grow-1">
+                        <div class="font-weight-bold text-body-2">{{ coupon.discountCoupon.couponCode }}</div>
+                        <div class="text-caption text-grey">
+                          Giảm {{ coupon.discountCoupon.discountType === 'percent' ? coupon.discountCoupon.discountValue + '%' : formatPrice(coupon.discountCoupon.discountValue) + 'đ' }}
+                          <span v-if="coupon.discountCoupon.minOrderValue > 0">
+                            (Đơn tối thiểu: {{ formatPrice(coupon.discountCoupon.minOrderValue) }}đ)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="text-h6 font-weight-bold text-success">
+                      {{ coupon.discountCoupon.discountType === 'percent' ? coupon.discountCoupon.discountValue + '%' : formatPrice(coupon.discountCoupon.discountValue) + 'đ' }}
+                    </div>
+                  </div>
+                </div>
 
-            <v-btn
-              variant="flat"
-              color="primary"
-              size="small"
-              :disabled="!couponCode || isCheckingOut"
-              @click="previewCoupon"
-            >
-              Áp dụng mã
-            </v-btn>
+                <v-divider class="my-3" />
+
+                <v-btn
+                  v-if="selectedCoupon"
+                  block
+                  color="primary"
+                  size="small"
+                  :loading="isApplyingCoupon"
+                  @click="applySelectedCoupon"
+                >
+                  Áp dụng mã: {{ selectedCoupon.discountCoupon.couponCode }}
+                </v-btn>
+                <v-btn
+                  v-else
+                  block
+                  variant="outlined"
+                  size="small"
+                  disabled
+                >
+                  Chọn một mã để áp dụng
+                </v-btn>
+              </v-card-text>
+            </v-card>
+
+            <!-- Manual coupon input -->
+            <div class="d-flex gap-2">
+              <v-text-field
+                v-model="manualCouponCode"
+                label="Hoặc nhập mã giảm giá khác"
+                variant="outlined"
+                density="comfortable"
+                clearable
+              />
+              <v-btn
+                color="primary"
+                :disabled="!manualCouponCode || isApplyingCoupon"
+                :loading="isApplyingCoupon"
+                @click="applyManualCoupon"
+              >
+                Áp dụng
+              </v-btn>
+            </div>
 
             <v-btn
               block
@@ -154,6 +206,7 @@ import { useUserStore } from '@/stores/user'
 import accountApi from '@/api/accountApi'
 import cartApi from '@/api/cartApi'
 import { getAllDiscountCoupons } from '@/api/discountApi'
+import userDiscountCouponApi from '@/api/userDiscountCouponApi'
 import paymentApi from '@/api/paymentApi'
 
 const router = useRouter()
@@ -167,7 +220,11 @@ const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const userAddress = ref(null)
 const couponCode = ref('')
+const manualCouponCode = ref('')
 const discountAmount = ref(0)
+const userClaimedCoupons = ref([])
+const selectedCoupon = ref(null)
+const isApplyingCoupon = ref(false)
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
 
 const paymentMethods = [
@@ -291,6 +348,71 @@ const loadUserAddress = async () => {
   }
 }
 
+const loadUserClaimedCoupons = async () => {
+  const accountId = Number.parseInt(userStore.accountId, 10)
+  if (!Number.isFinite(accountId) || accountId <= 0) {
+    userClaimedCoupons.value = []
+    return
+  }
+
+  try {
+    const res = await userDiscountCouponApi.getClaimedDiscountCoupons(accountId)
+    const claimed = (res.data || []).filter(uc => uc.status === 'claimed')
+    userClaimedCoupons.value = claimed
+    
+    // Auto-select coupon with highest discount percentage
+    if (claimed.length > 0) {
+      let maxCoupon = claimed[0]
+      let maxPercent = 0
+      
+      for (const coupon of claimed) {
+        const value = Number(coupon.discountCoupon?.discountValue) || 0
+        const isPercent = (coupon.discountCoupon?.discountType || '').toLowerCase() === 'percent'
+        const percent = isPercent ? value : 0
+        
+        if (percent > maxPercent) {
+          maxPercent = percent
+          maxCoupon = coupon
+        }
+      }
+      
+      selectedCoupon.value = maxCoupon
+      // Auto-apply the highest discount coupon
+      couponCode.value = maxCoupon.discountCoupon.couponCode
+      await previewCoupon()
+    }
+  } catch (error) {
+    console.error('Lỗi tải mã giảm giá đã nhận:', error)
+    userClaimedCoupons.value = []
+  }
+}
+
+const selectCouponForCheckout = (coupon) => {
+  selectedCoupon.value = selectedCoupon.value?.id === coupon.id ? null : coupon
+}
+
+const applySelectedCoupon = async () => {
+  if (!selectedCoupon.value) return
+  isApplyingCoupon.value = true
+  try {
+    couponCode.value = selectedCoupon.value.discountCoupon.couponCode
+    await previewCoupon()
+  } finally {
+    isApplyingCoupon.value = false
+  }
+}
+
+const applyManualCoupon = async () => {
+  if (!manualCouponCode.value) return
+  isApplyingCoupon.value = true
+  try {
+    couponCode.value = manualCouponCode.value
+    await previewCoupon()
+  } finally {
+    isApplyingCoupon.value = false
+  }
+}
+
 const loadCheckoutItems = async () => {
   const raw = sessionStorage.getItem('selectedCartItemIds')
   if (!raw) {
@@ -401,7 +523,7 @@ const goBackCart = () => {
 }
 
 onMounted(async () => {
-  await Promise.all([loadCheckoutItems(), loadUserAddress()])
+  await Promise.all([loadCheckoutItems(), loadUserAddress(), loadUserClaimedCoupons()])
 })
 </script>
 
@@ -413,5 +535,28 @@ onMounted(async () => {
 
 .min-w-220 {
   min-width: 220px;
+}
+
+.coupon-select-item {
+  border: 2px solid #e0e0e0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #fafafa;
+}
+
+.coupon-select-item:hover {
+  border-color: #1976d2;
+  background-color: #f0f7ff;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.12);
+}
+
+.coupon-select-item.selected {
+  border-color: #1976d2;
+  background-color: #e3f2fd;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.24);
+}
+
+.rounded-lg {
+  border-radius: 8px;
 }
 </style>

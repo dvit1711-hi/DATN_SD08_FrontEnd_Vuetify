@@ -248,7 +248,14 @@ const loadProducts = async () => {
     const [res, stockRes, discountRes] = await Promise.all([
       productApi.getAllCard(keyword),
       productColorApi.getAll(),
-      getActiveProductDiscounts(),
+      getActiveProductDiscounts().catch((error) => {
+        // Handle 401 error gracefully - return empty discounts
+        if (error?.response?.status === 401) {
+          console.warn("Không có quyền truy cập danh sách giảm giá, tiếp tục mà không loại giảm giá");
+          return { data: [] };
+        }
+        throw error;
+      }),
     ]);
 
     const stockMap = new Map();
@@ -527,7 +534,7 @@ async function addToCart(product) {
 
 .original-price {
   font-size: 14px;
-  color: #999;
+  color: #000000;
   text-decoration: line-through;
   font-weight: 500;
 }
@@ -542,14 +549,14 @@ async function addToCart(product) {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2px solid rgba(205, 186, 150, 0.3);
+  border: 2px solid rgba(0, 0, 0, 0.3);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .color-btn:hover {
-  border-color: #cdba96;
-  box-shadow: 0 0 8px rgba(205, 186, 150, 0.4);
+  border-color: #000000;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
   transform: scale(1.1);
 }
 

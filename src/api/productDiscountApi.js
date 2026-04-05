@@ -10,6 +10,35 @@ const api = axios.create({
   },
 });
 
+// Add request interceptor to include Bearer token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add response interceptor to handle 401 errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('accountId');
+      localStorage.removeItem('username');
+      localStorage.removeItem('email');
+      localStorage.removeItem('roles');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('cartId');
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Get all product discounts
 export const getAllProductDiscounts = () => 
     api.get('/product-discounts');

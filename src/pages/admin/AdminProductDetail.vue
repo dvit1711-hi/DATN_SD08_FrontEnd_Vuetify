@@ -16,6 +16,7 @@
         v-for="variant in sortedVariants"
         :key="variant.productColorID"
         class="color-card card mb-3"
+        :class="{ 'inactive-card': variant.status === 'INACTIVE' }"
       >
         <div class="color-header">
           <div class="color-item">
@@ -53,6 +54,19 @@
 
         <p class="stock-text">Giá: {{ formatPrice(variant.price) }}đ</p>
         <p class="stock-text">Stock quantity: {{ variant.stockQuantity }}</p>
+
+        <p class="stock-text">
+          Trạng thái:
+          <v-chip
+            :color="variant.status === 'ACTIVE' ? 'success' : 'grey'"
+            size="small"
+            variant="tonal"
+            class="ms-2"
+          >
+            {{ variant.status || "ACTIVE" }}
+          </v-chip>
+        </p>
+
         <p>Ảnh:</p>
 
         <div class="image-gallery">
@@ -150,6 +164,15 @@
             label="Stock Quantity"
             variant="outlined"
             density="compact"
+            class="mb-3"
+          />
+
+          <v-select
+            v-model="editData.status"
+            :items="statusOptions"
+            label="Trạng thái"
+            variant="outlined"
+            density="compact"
           />
         </v-card-text>
 
@@ -214,6 +237,15 @@
             label="Stock Quantity"
             variant="outlined"
             density="compact"
+            class="mb-3"
+          />
+
+          <v-select
+            v-model="newVariant.status"
+            :items="statusOptions"
+            label="Trạng thái"
+            variant="outlined"
+            density="compact"
           />
         </v-card-text>
 
@@ -230,6 +262,10 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
+      {{ snackbarMessage }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -243,17 +279,22 @@ export default {
       product: null,
       colors: [],
       sizes: [],
+      statusOptions: ["ACTIVE", "INACTIVE"],
       newVariant: {
         colorID: null,
         sizeID: null,
         price: 0,
         stockQuantity: 0,
+        status: "ACTIVE",
       },
       selectedFiles: {},
       dialogEdit: false,
       editingVariantId: null,
       editData: {},
       dialogAddVariant: false,
+      snackbar: false,
+      snackbarMessage: "",
+      snackbarColor: "success",
     };
   },
   computed: {
@@ -270,6 +311,12 @@ export default {
     this.loadSizes();
   },
   methods: {
+    showSnackbar(message, color = "success") {
+      this.snackbarMessage = message;
+      this.snackbarColor = color;
+      this.snackbar = true;
+    },
+
     formatPrice(price) {
       return new Intl.NumberFormat("vi-VN").format(Number(price) || 0);
     },
@@ -280,46 +327,54 @@ export default {
         .then((res) => {
           this.product = res.data;
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          this.showSnackbar("Không tải được chi tiết sản phẩm", "error");
+        });
     },
 
     loadColors() {
-      axios.get("http://localhost:8080/api/color").then((res) => {
-        this.colors = (res.data || []).map((c) => ({
-          ...c,
-          value: Number(c.colorID ?? c.colorID),
-        }));
-        console.log("colors:", this.colors);
-      });
+      axios
+        .get("http://localhost:8080/api/color/active")
+        .then((res) => {
+          this.colors = res.data || [];
+        })
+        .catch((err) => {
+          console.error(err);
+          this.showSnackbar("Không tải được danh sách màu", "error");
+        });
     },
+
     loadSizes() {
-      axios.get("http://localhost:8080/api/size").then((res) => {
-        this.sizes = (res.data || []).map((s) => ({
-          ...s,
-          value: Number(s.sizeID ?? s.id),
-        }));
-        console.log("sizes:", this.sizes);
-      });
+      axios
+        .get("http://localhost:8080/api/size/active")
+        .then((res) => {
+          this.sizes = res.data || [];
+        })
+        .catch((err) => {
+          console.error(err);
+          this.showSnackbar("Không tải được danh sách size", "error");
+        });
     },
 
     addProductColor() {
       if (!this.newVariant.colorID) {
-        alert("Chọn màu!");
+        this.showSnackbar("Chọn màu!", "warning");
         return;
       }
 
       if (!this.newVariant.sizeID) {
-        alert("Chọn size!");
+        this.showSnackbar("Chọn size!", "warning");
         return;
       }
 
       if (this.newVariant.price == null || this.newVariant.price < 0) {
-        alert("Giá phải >= 0");
+        this.showSnackbar("Giá phải >= 0", "warning");
         return;
       }
 
       if (this.newVariant.stockQuantity < 0) {
-        alert("Stock phải >= 0");
+        this.showSnackbar("Stock phải >= 0", "warning");
         return;
       }
 
@@ -328,17 +383,25 @@ export default {
           `http://localhost:8080/api/product-color/${this.id}/color`,
           this.newVariant,
         )
-        .then(() => {
+        .then((res) => {
           this.newVariant = {
             colorID: null,
             sizeID: null,
             price: 0,
             stockQuantity: 0,
+            status: "ACTIVE",
           };
           this.dialogAddVariant = false;
+          this.showSnackbar(res?.data || "Thêm biến thể thành công");
           this.loadProductDetail();
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          this.showSnackbar(
+            err?.response?.data || "Thêm biến thể thất bại",
+            "error",
+          );
+        });
     },
 
     openAddVariantDialog() {
@@ -352,6 +415,7 @@ export default {
         sizeID: null,
         price: 0,
         stockQuantity: 0,
+        status: "ACTIVE",
       };
     },
 
@@ -374,11 +438,18 @@ export default {
           imageUrl: `/images/${file.name}`,
           isMain: false,
         })
-        .then(() => {
+        .then((res) => {
           this.selectedFiles[productColorId] = null;
+          this.showSnackbar(res?.data || "Thêm ảnh thành công");
           this.loadProductDetail();
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          this.showSnackbar(
+            err?.response?.data || "Thêm ảnh thất bại",
+            "error",
+          );
+        });
     },
 
     deleteProductColor(productColorId) {
@@ -386,23 +457,36 @@ export default {
 
       axios
         .delete(`http://localhost:8080/api/product-color/${productColorId}`)
-        .then(() => this.loadProductDetail())
-        .catch((err) => console.error(err));
-    },
-
-    deleteAllImages(productColorId) {
-      if (!confirm("Bạn có chắc muốn xóa tất cả ảnh của biến thể này không?"))
-        return;
-
-      axios
-        .delete(
-          `http://localhost:8080/api/image/product-color/${productColorId}`,
-        )
-        .then(() => {
+        .then((res) => {
+          this.showSnackbar(res?.data || "Xử lý biến thể thành công");
           this.loadProductDetail();
         })
         .catch((err) => {
           console.error(err);
+          this.showSnackbar(
+            err?.response?.data || "Xóa biến thể thất bại",
+            "error",
+          );
+        });
+    },
+
+    deleteAllImages(productColorId) {
+      if (!confirm("Bạn có chắc muốn xóa tất cả ảnh của biến thể này không?")) {
+        return;
+      }
+
+      axios
+        .delete(`http://localhost:8080/api/image/product-color/${productColorId}`)
+        .then((res) => {
+          this.showSnackbar(res?.data || "Xóa ảnh thành công");
+          this.loadProductDetail();
+        })
+        .catch((err) => {
+          console.error(err);
+          this.showSnackbar(
+            err?.response?.data || "Xóa ảnh thất bại",
+            "error",
+          );
         });
     },
 
@@ -415,6 +499,7 @@ export default {
         sizeName: variant.sizeName,
         price: variant.price,
         stockQuantity: variant.stockQuantity,
+        status: variant.status || "ACTIVE",
       };
       this.dialogEdit = true;
     },
@@ -427,22 +512,22 @@ export default {
 
     saveEdit() {
       if (!this.editData.colorID) {
-        alert("Chọn màu!");
+        this.showSnackbar("Chọn màu!", "warning");
         return;
       }
 
       if (!this.editData.sizeID) {
-        alert("Chọn size!");
+        this.showSnackbar("Chọn size!", "warning");
         return;
       }
 
       if (this.editData.price == null || this.editData.price < 0) {
-        alert("Giá phải >= 0");
+        this.showSnackbar("Giá phải >= 0", "warning");
         return;
       }
 
       if (this.editData.stockQuantity < 0) {
-        alert("Stock phải >= 0");
+        this.showSnackbar("Stock phải >= 0", "warning");
         return;
       }
 
@@ -454,17 +539,22 @@ export default {
             sizeID: this.editData.sizeID,
             price: this.editData.price,
             stockQuantity: this.editData.stockQuantity,
+            status: this.editData.status,
           },
         )
-        .then(() => {
+        .then((res) => {
           this.dialogEdit = false;
           this.editingVariantId = null;
           this.editData = {};
+          this.showSnackbar(res?.data || "Cập nhật biến thể thành công");
           this.loadProductDetail();
         })
         .catch((err) => {
           console.error(err);
-          alert("Cập nhật thất bại");
+          this.showSnackbar(
+            err?.response?.data || "Cập nhật thất bại",
+            "error",
+          );
         });
     },
   },
@@ -539,6 +629,12 @@ export default {
   border-radius: 12px;
   background: #f9f9f9;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.inactive-card {
+  opacity: 0.78;
+  border: 1px solid #bdbdbd;
+  background: #f1f1f1;
 }
 
 .color-header {
