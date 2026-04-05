@@ -297,24 +297,42 @@ export default {
       snackbarColor: "success",
     };
   },
+
   computed: {
     sortedVariants() {
       if (!this.product?.colors) return [];
       return [...this.product.colors].sort(
-        (a, b) => b.productColorID - a.productColorID,
+        (a, b) => b.productColorID - a.productColorID
       );
     },
   },
+
   mounted() {
     this.loadProductDetail();
     this.loadColors();
     this.loadSizes();
   },
+
   methods: {
     showSnackbar(message, color = "success") {
       this.snackbarMessage = message;
       this.snackbarColor = color;
       this.snackbar = true;
+    },
+
+    getResponseMessage(data, fallback) {
+      // Nếu là string, trả về trực tiếp
+      if (typeof data === "string") return data;
+      
+      // Nếu không có dữ liệu hoặc null, trả về fallback
+      if (!data) return fallback;
+      
+      // Kiểm tra các trường hợp phổ biến từ ApiResponse backend
+      if (typeof data.message === "string") return data.message;
+      if (typeof data.error === "string") return data.error;
+      
+      // Nếu là object, trả về fallback thay vì stringify
+      return fallback;
     },
 
     formatPrice(price) {
@@ -329,7 +347,11 @@ export default {
         })
         .catch((err) => {
           console.error(err);
-          this.showSnackbar("Không tải được chi tiết sản phẩm", "error");
+          const message = this.getResponseMessage(
+            err?.response?.data || err?.message || err,
+            "Không tải được chi tiết sản phẩm"
+          );
+          this.showSnackbar(message, "error");
         });
     },
 
@@ -341,7 +363,11 @@ export default {
         })
         .catch((err) => {
           console.error(err);
-          this.showSnackbar("Không tải được danh sách màu", "error");
+          const message = this.getResponseMessage(
+            err?.response?.data || err?.message || err,
+            "Không tải được danh sách màu"
+          );
+          this.showSnackbar(message, "error");
         });
     },
 
@@ -353,7 +379,11 @@ export default {
         })
         .catch((err) => {
           console.error(err);
-          this.showSnackbar("Không tải được danh sách size", "error");
+          const message = this.getResponseMessage(
+            err?.response?.data || err?.message || err,
+            "Không tải được danh sách size"
+          );
+          this.showSnackbar(message, "error");
         });
     },
 
@@ -381,7 +411,7 @@ export default {
       axios
         .post(
           `http://localhost:8080/api/product-color/${this.id}/color`,
-          this.newVariant,
+          this.newVariant
         )
         .then((res) => {
           this.newVariant = {
@@ -392,15 +422,20 @@ export default {
             status: "ACTIVE",
           };
           this.dialogAddVariant = false;
-          this.showSnackbar(res?.data || "Thêm biến thể thành công");
+          const message = this.getResponseMessage(
+            res?.data,
+            "Thêm biến thể thành công"
+          );
+          this.showSnackbar(message);
           this.loadProductDetail();
         })
         .catch((err) => {
           console.error(err);
-          this.showSnackbar(
-            err?.response?.data || "Thêm biến thể thất bại",
-            "error",
+          const message = this.getResponseMessage(
+            err?.response?.data || err?.message || err,
+            "Thêm biến thể thất bại"
           );
+          this.showSnackbar(message, "error");
         });
     },
 
@@ -440,15 +475,20 @@ export default {
         })
         .then((res) => {
           this.selectedFiles[productColorId] = null;
-          this.showSnackbar(res?.data || "Thêm ảnh thành công");
+          const message = this.getResponseMessage(
+            res?.data,
+            "Thêm ảnh thành công"
+          );
+          this.showSnackbar(message);
           this.loadProductDetail();
         })
         .catch((err) => {
           console.error(err);
-          this.showSnackbar(
-            err?.response?.data || "Thêm ảnh thất bại",
-            "error",
+          const message = this.getResponseMessage(
+            err?.response?.data || err?.message || err,
+            "Thêm ảnh thất bại"
           );
+          this.showSnackbar(message, "error");
         });
     },
 
@@ -458,15 +498,20 @@ export default {
       axios
         .delete(`http://localhost:8080/api/product-color/${productColorId}`)
         .then((res) => {
-          this.showSnackbar(res?.data || "Xử lý biến thể thành công");
+          const message = this.getResponseMessage(
+            res?.data,
+            "Xử lý biến thể thành công"
+          );
+          this.showSnackbar(message);
           this.loadProductDetail();
         })
         .catch((err) => {
           console.error(err);
-          this.showSnackbar(
-            err?.response?.data || "Xóa biến thể thất bại",
-            "error",
+          const message = this.getResponseMessage(
+            err?.response?.data || err?.message || err,
+            "Xóa biến thể thất bại"
           );
+          this.showSnackbar(message, "error");
         });
     },
 
@@ -478,15 +523,20 @@ export default {
       axios
         .delete(`http://localhost:8080/api/image/product-color/${productColorId}`)
         .then((res) => {
-          this.showSnackbar(res?.data || "Xóa ảnh thành công");
+          const message = this.getResponseMessage(
+            res?.data,
+            "Xóa ảnh thành công"
+          );
+          this.showSnackbar(message);
           this.loadProductDetail();
         })
         .catch((err) => {
           console.error(err);
-          this.showSnackbar(
-            err?.response?.data || "Xóa ảnh thất bại",
-            "error",
+          const message = this.getResponseMessage(
+            err?.response?.data || err?.message || err,
+            "Xóa ảnh thất bại"
           );
+          this.showSnackbar(message, "error");
         });
     },
 
@@ -540,21 +590,26 @@ export default {
             price: this.editData.price,
             stockQuantity: this.editData.stockQuantity,
             status: this.editData.status,
-          },
+          }
         )
         .then((res) => {
           this.dialogEdit = false;
           this.editingVariantId = null;
           this.editData = {};
-          this.showSnackbar(res?.data || "Cập nhật biến thể thành công");
+          const message = this.getResponseMessage(
+            res?.data,
+            "Cập nhật biến thể thành công"
+          );
+          this.showSnackbar(message);
           this.loadProductDetail();
         })
         .catch((err) => {
           console.error(err);
-          this.showSnackbar(
-            err?.response?.data || "Cập nhật thất bại",
-            "error",
+          const message = this.getResponseMessage(
+            err?.response?.data || err?.message || err,
+            "Cập nhật thất bại"
           );
+          this.showSnackbar(message, "error");
         });
     },
   },
