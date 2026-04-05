@@ -2,6 +2,7 @@ import axios from "axios"
 
 const apiClient = axios.create({
   baseURL: "http://localhost:8080",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -9,9 +10,12 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("token")
+  console.log("token frontend:", token)
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
   return config
 })
 
@@ -58,6 +62,10 @@ export default {
 
   applyCoupon(orderId, payload) {
     return apiClient.post(`/api/pos/orders/${orderId}/coupon`, payload)
+  },
+
+  getAvailablePromotions(orderId) {
+    return apiClient.get(`/api/pos/orders/${orderId}/promotions`)
   },
 
   checkout(orderId, payload) {
