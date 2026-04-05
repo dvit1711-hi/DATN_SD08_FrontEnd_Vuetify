@@ -227,13 +227,79 @@
 
                         <v-divider class="my-4" />
 
-                        <v-text-field v-model="couponCode" label="Mã giảm giá" variant="outlined" density="comfortable">
-                            <template #append>
-                                <v-btn color="primary" variant="tonal" @click="handleApplyCoupon">
-                                    Áp dụng
-                                </v-btn>
-                            </template>
-                        </v-text-field>
+                        <v-card variant="outlined" class="mb-4">
+                            <v-card-title>Ưu đãi đơn hàng</v-card-title>
+
+                            <v-card-text>
+                                <div v-if="promotionOptions.length">
+                                    <v-card v-for="promo in promotionOptions" :key="promo.couponCode" variant="outlined"
+                                        class="mb-3">
+                                        <v-card-text>
+                                            <div class="d-flex justify-space-between align-center mb-1">
+                                                <div class="font-weight-bold">
+                                                    {{ promo.name || promo.couponCode }}
+                                                </div>
+
+                                                <v-chip v-if="promo.applied" color="success" size="small"
+                                                    variant="flat">
+                                                    Đang áp dụng
+                                                </v-chip>
+                                                <v-chip v-else-if="promo.eligible" color="primary" size="small"
+                                                    variant="tonal">
+                                                    Có thể áp dụng
+                                                </v-chip>
+                                                <v-chip v-else color="grey" size="small" variant="outlined">
+                                                    Chưa đủ điều kiện
+                                                </v-chip>
+                                            </div>
+
+                                            <div class="text-body-2 text-grey-darken-1 mb-1">
+                                                {{ promo.description || "Không có mô tả" }}
+                                            </div>
+
+                                            <div class="text-caption mb-2">
+                                                Giảm dự kiến:
+                                                <strong>{{ formatCurrency(promo.estimatedDiscount) }}</strong>
+                                            </div>
+
+                                            <div v-if="!promo.eligible && Number(promo.missingAmount || 0) > 0"
+                                                class="text-warning text-caption mb-2">
+                                                Cần mua thêm {{ formatCurrency(promo.missingAmount) }} để áp dụng
+                                            </div>
+
+                                            <div class="d-flex justify-end ga-2">
+                                                <v-btn v-if="promo.eligible && !promo.applied" color="primary"
+                                                    variant="tonal" @click="applyPromotion(promo)">
+                                                    Áp dụng
+                                                </v-btn>
+
+                                                <v-btn v-if="promo.applied" color="error" variant="text"
+                                                    @click="removePromotion">
+                                                    Bỏ áp dụng
+                                                </v-btn>
+                                            </div>
+                                        </v-card-text>
+                                    </v-card>
+                                </div>
+
+                                <div v-else class="text-grey">Chưa có ưu đãi khả dụng</div>
+
+                                <v-expansion-panels class="mt-3">
+                                    <v-expansion-panel title="Nhập mã đặc biệt">
+                                        <v-expansion-panel-text>
+                                            <v-text-field v-model="couponCode" label="Mã giảm giá" variant="outlined"
+                                                density="comfortable">
+                                                <template #append>
+                                                    <v-btn color="primary" variant="tonal" @click="handleApplyCoupon">
+                                                        Áp dụng
+                                                    </v-btn>
+                                                </template>
+                                            </v-text-field>
+                                        </v-expansion-panel-text>
+                                    </v-expansion-panel>
+                                </v-expansion-panels>
+                            </v-card-text>
+                        </v-card>
 
                         <div class="d-flex justify-space-between mb-2">
                             <span>Tạm tính:</span>
@@ -299,6 +365,7 @@ const currentOrder = ref(null)
 const selectedCustomer = ref(null)
 const customerMode = ref("guest")
 const couponCode = ref("")
+const promotionOptions = ref([])
 
 const guest = ref({
     customerName: "",
@@ -422,6 +489,7 @@ function resetOrderForm() {
     selectedCustomer.value = null
     customerMode.value = "guest"
     couponCode.value = ""
+    promotionOptions.value = []
 
     guest.value = {
         customerName: "",
@@ -522,6 +590,24 @@ async function searchCustomers() {
     }
 }
 
+async function loadPromotions() {
+    try {
+        const orderId = getCurrentOrderId(currentOrder.value)
+        if (!orderId) {
+            promotionOptions.value = []
+            return
+        }
+
+        const { data } = await posApi.getAvailablePromotions(orderId)
+        console.log("Promotions data:", data)
+        promotionOptions.value = Array.isArray(data) ? data : []
+    } catch (error) {
+        console.error("loadPromotions error:", error)
+        showMessage(error.response?.data?.message || "Không tải được ưu đãi", "error")
+        promotionOptions.value = []
+    }
+}
+
 async function loadPendingOrders(preferredOrderId = null) {
     try {
         const { data } = await posApi.getPendingOrders()
@@ -536,12 +622,14 @@ async function loadPendingOrders(preferredOrderId = null) {
             if (matched) {
                 currentOrder.value = matched
                 syncFormFromOrder(matched)
+                await loadPromotions()
                 return
             }
         }
 
         currentOrder.value = pendingOrders.value.length ? pendingOrders.value[0] : null
         syncFormFromOrder(currentOrder.value)
+        await loadPromotions()
     } catch (error) {
         showMessage(error.response?.data?.message || "Không tải được đơn hàng chờ", "error")
     }
@@ -586,6 +674,7 @@ async function switchOrder(order) {
         const { data } = await posApi.getOrder(getCurrentOrderId(order))
         currentOrder.value = data
         syncFormFromOrder(data)
+        await loadPromotions()
     } catch (error) {
         showMessage(error.response?.data?.message || "Không tải được đơn hàng", "error")
     } finally {
@@ -715,6 +804,50 @@ async function handleApplyCoupon() {
         showMessage(couponCode.value ? "Áp mã giảm giá thành công" : "Đã bỏ mã giảm giá")
     } catch (error) {
         showMessage(error.response?.data?.message || "Không áp dụng được mã giảm giá", "error")
+    } finally {
+        loading.value = false
+    }
+}
+
+async function applyPromotion(promo) {
+    try {
+        const orderId = getCurrentOrderId(currentOrder.value)
+        if (!orderId) return
+
+        loading.value = true
+        const { data } = await posApi.applyCoupon(orderId, {
+            couponCode: promo.couponCode,
+        })
+
+        currentOrder.value = data
+        couponCode.value = promo.couponCode
+        await loadPendingOrders(orderId)
+        await loadPromotions()
+        showMessage("Áp dụng ưu đãi thành công")
+    } catch (error) {
+        showMessage(error.response?.data?.message || "Không áp dụng được ưu đãi", "error")
+    } finally {
+        loading.value = false
+    }
+}
+
+async function removePromotion() {
+    try {
+        const orderId = getCurrentOrderId(currentOrder.value)
+        if (!orderId) return
+
+        loading.value = true
+        const { data } = await posApi.applyCoupon(orderId, {
+            couponCode: "",
+        })
+
+        currentOrder.value = data
+        couponCode.value = ""
+        await loadPendingOrders(orderId)
+        await loadPromotions()
+        showMessage("Đã bỏ ưu đãi")
+    } catch (error) {
+        showMessage(error.response?.data?.message || "Không bỏ được ưu đãi", "error")
     } finally {
         loading.value = false
     }
