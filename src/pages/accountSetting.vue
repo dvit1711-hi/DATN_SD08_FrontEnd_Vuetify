@@ -9,20 +9,20 @@
                         <div class="d-flex flex-wrap gap-2">
                             <VBtn color="primary" type="button" @click="refInputEl?.click()">
                                 <VIcon icon="bx-cloud-upload" class="d-sm-none" />
-                                <span class="d-none d-sm-block">Upload new photo</span>
+                                <span class="d-none d-sm-block">Tải ảnh mới</span>
                             </VBtn>
 
                             <input ref="refInputEl" type="file" name="file" accept=".jpeg,.png,.jpg,.gif" hidden
                                 @change="changeAvatar" />
 
                             <VBtn type="button" color="error" variant="tonal" @click="resetAvatar">
-                                <span class="d-none d-sm-block">Reset</span>
+                                <span class="d-none d-sm-block">Làm mới</span>
                                 <VIcon icon="bx-refresh" class="d-sm-none" />
                             </VBtn>
                         </div>
 
                         <p class="text-body-1 mb-0">
-                            Allowed JPG, GIF or PNG. Max size of 800K
+                            Chỉ chấp nhận JPG, GIF hoặc PNG. Kích thước tối đa 800KB.
                         </p>
                     </div>
                 </VCardText>
@@ -33,7 +33,7 @@
                     <VForm class="mt-6" @submit.prevent="saveChanges">
                         <VRow>
                             <VCol md="6" cols="12">
-                                <VTextField label="Username" v-model="form.username" />
+                                <VTextField label="Tên đăng nhập" v-model="form.username" />
                             </VCol>
 
                             <!-- Chỉ hiển thị email, không cho sửa -->
@@ -42,39 +42,73 @@
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Phone Number" v-model="form.phoneNumber" />
+                                <VTextField label="Số điện thoại" v-model="form.phoneNumber" />
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Unit Number" v-model="form.unitNumber" />
+                                <VTextField label="Số căn / số nhà" v-model="form.unitNumber" />
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Street Number" v-model="form.streetNumber" />
+                                <VTextField label="Số đường" v-model="form.streetNumber" />
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Address Line 1" v-model="form.addressLine1" />
+                                <VTextField label="Tên đường" v-model="form.addressLine1" />
+                            </VCol>
+
+                            <VCol cols="12" md="4">
+                                <VSelect
+                                    v-model="form.provinceId"
+                                    :items="ghnProvinces"
+                                    item-title="provinceName"
+                                    item-value="provinceId"
+                                    label="Tỉnh / Thành phố"
+                                    :loading="isLoadingProvinces"
+                                    :disabled="isLoadingProvinces"
+                                    variant="outlined"
+                                    @update:model-value="onProvinceChange"
+                                />
+                            </VCol>
+
+                            <VCol cols="12" md="4">
+                                <VSelect
+                                    v-model="form.districtId"
+                                    :items="ghnDistricts"
+                                    item-title="districtName"
+                                    item-value="districtId"
+                                    label="Quận / Huyện"
+                                    :loading="isLoadingDistricts"
+                                    :disabled="!form.provinceId || isLoadingDistricts"
+                                    variant="outlined"
+                                    @update:model-value="onDistrictChange"
+                                />
+                            </VCol>
+
+                            <VCol cols="12" md="4">
+                                <VSelect
+                                    v-model="form.wardCode"
+                                    :items="ghnWards"
+                                    item-title="wardName"
+                                    item-value="wardCode"
+                                    label="Phường / Xã"
+                                    :loading="isLoadingWards"
+                                    :disabled="!form.districtId || isLoadingWards"
+                                    variant="outlined"
+                                    @update:model-value="onWardChange"
+                                />
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Address Line 2" v-model="form.addressLine2" />
+                                <VTextField label="Mã bưu chính / Ghi chú khu vực(Không bắt buộc)" v-model="form.postalCode" />
                             </VCol>
 
-                            <VCol cols="12" md="6">
-                                <VTextField label="City" v-model="form.city" />
-                            </VCol>
-
-                            <VCol cols="12" md="6">
-                                <VTextField label="Region" v-model="form.region" />
-                            </VCol>
-
-                            <VCol cols="12" md="6">
-                                <VTextField label="Postal Code" v-model="form.postalCode" />
-                            </VCol>
+                            
 
                             <VCol cols="12" class="d-flex flex-wrap gap-4">
-                                <VBtn color="primary" type="submit">Save changes</VBtn>
+                                <VBtn color="primary" type="submit" prepend-icon="bx-check">
+                                    Lưu thay đổi
+                                </VBtn>
                             </VCol>
                         </VRow>
                     </VForm>
@@ -88,6 +122,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import accountApi from '@/api/accountApi'
+import paymentApi from '@/api/paymentApi'
 
 const router = useRouter()
 
@@ -95,6 +130,12 @@ const account = ref({})
 const address = ref({})
 const refInputEl = ref(null)
 const displayEmail = ref('')
+const isLoadingProvinces = ref(false)
+const isLoadingDistricts = ref(false)
+const isLoadingWards = ref(false)
+const ghnProvinces = ref([])
+const ghnDistricts = ref([])
+const ghnWards = ref([])
 
 const form = ref({
     accountId: null,
@@ -107,8 +148,102 @@ const form = ref({
     addressLine2: '',
     city: '',
     region: '',
-    postalCode: ''
+    postalCode: '',
+    provinceId: null,
+    districtId: null,
+    wardCode: ''
 })
+
+const normalizeText = value => String(value || '').trim().toLowerCase()
+
+const loadGhnProvinces = async () => {
+    isLoadingProvinces.value = true
+    try {
+        const res = await paymentApi.getGhnProvinces()
+        ghnProvinces.value = Array.isArray(res.data) ? res.data : []
+    } catch (error) {
+        console.error('Lỗi load tỉnh GHN:', error)
+        ghnProvinces.value = []
+    } finally {
+        isLoadingProvinces.value = false
+    }
+}
+
+const onProvinceChange = async () => {
+    form.value.districtId = null
+    form.value.wardCode = ''
+    ghnDistricts.value = []
+    ghnWards.value = []
+
+    const provinceId = Number.parseInt(form.value.provinceId, 10)
+    if (!Number.isFinite(provinceId) || provinceId <= 0) return
+
+    isLoadingDistricts.value = true
+    try {
+        const res = await paymentApi.getGhnDistricts(provinceId)
+        ghnDistricts.value = Array.isArray(res.data) ? res.data : []
+    } catch (error) {
+        console.error('Lỗi load quận GHN:', error)
+        ghnDistricts.value = []
+    } finally {
+        isLoadingDistricts.value = false
+    }
+}
+
+const onDistrictChange = async () => {
+    form.value.wardCode = ''
+    form.value.addressLine2 = ''
+    ghnWards.value = []
+
+    const districtId = Number.parseInt(form.value.districtId, 10)
+    if (!Number.isFinite(districtId) || districtId <= 0) return
+
+    isLoadingWards.value = true
+    try {
+        const res = await paymentApi.getGhnWards(districtId)
+        ghnWards.value = Array.isArray(res.data) ? res.data : []
+    } catch (error) {
+        console.error('Lỗi load phường GHN:', error)
+        ghnWards.value = []
+    } finally {
+        isLoadingWards.value = false
+    }
+}
+
+const onWardChange = () => {
+    const wardName = ghnWards.value.find(item => item.wardCode === form.value.wardCode)?.wardName || ''
+    form.value.addressLine2 = wardName
+}
+
+const applyExistingAddressSelection = async () => {
+    const provinceName = normalizeText(form.value.city)
+    const districtName = normalizeText(form.value.region)
+    const wardValue = normalizeText(form.value.addressLine2)
+
+    if (!provinceName || ghnProvinces.value.length === 0) return
+
+    const matchedProvince = ghnProvinces.value.find(item => normalizeText(item.provinceName) === provinceName)
+    if (!matchedProvince) return
+
+    form.value.provinceId = matchedProvince.provinceId
+    await onProvinceChange()
+
+    if (!districtName || ghnDistricts.value.length === 0) return
+
+    const matchedDistrict = ghnDistricts.value.find(item => normalizeText(item.districtName) === districtName)
+    if (!matchedDistrict) return
+
+    form.value.districtId = matchedDistrict.districtId
+    await onDistrictChange()
+
+    if (!wardValue || ghnWards.value.length === 0) return
+
+    const matchedWard = ghnWards.value.find(item => normalizeText(item.wardCode) === wardValue || normalizeText(item.wardName) === wardValue)
+    if (matchedWard) {
+        form.value.wardCode = matchedWard.wardCode
+        form.value.addressLine2 = matchedWard.wardName
+    }
+}
 
 const loadAccount = async () => {
     try {
@@ -146,10 +281,14 @@ const loadAccount = async () => {
             addressLine2: addressData.addressLine2 || addressData.address_line2 || '',
             city: addressData.city || '',
             region: addressData.region || '',
-            postalCode: addressData.postalCode || addressData.postal_code || ''
+            postalCode: addressData.postalCode || addressData.postal_code || '',
+            provinceId: null,
+            districtId: null,
+            wardCode: ''
         }
 
         displayEmail.value = accountData.email || storedEmail || ''
+        await applyExistingAddressSelection()
     } catch (err) {
         console.error('Lỗi load account:', err)
         alert('Không tải được thông tin tài khoản!')
@@ -163,9 +302,17 @@ const saveChanges = async () => {
             return
         }
 
-        console.log("Payload gửi lên:", form.value)
+        const payload = {
+            ...form.value,
+            city: ghnProvinces.value.find(item => item.provinceId === form.value.provinceId)?.provinceName || form.value.city,
+            region: ghnDistricts.value.find(item => item.districtId === form.value.districtId)?.districtName || form.value.region,
+            addressLine2: ghnWards.value.find(item => item.wardCode === form.value.wardCode)?.wardName || form.value.addressLine2,
+            postalCode: form.value.postalCode,
+        }
 
-        await accountApi.updateAccountFull(form.value)
+        console.log("Payload gửi lên:", payload)
+
+        await accountApi.updateAccountFull(payload)
 
         localStorage.setItem("username", form.value.username || "")
         window.dispatchEvent(new Event("auth-changed"))
@@ -231,5 +378,8 @@ const resetAvatar = () => {
     }
 }
 
-onMounted(loadAccount)
+onMounted(async () => {
+    await loadGhnProvinces()
+    await loadAccount()
+})
 </script>

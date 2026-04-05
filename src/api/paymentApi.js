@@ -21,12 +21,13 @@ export default {
     return this.checkout(accountId, 'COD', token)
   },
 
-  checkoutSelected(accountId, method, cartItemIds, token, couponCode) {
+  checkoutSelected(accountId, method, cartItemIds, token, couponCode, shippingFee) {
     const data = {
       accountId,
       method,
       cartItemIds,
       couponCode: couponCode || null,
+      shippingFee: Number(shippingFee) > 0 ? Number(shippingFee) : null,
     }
 
     const config = token
@@ -38,6 +39,58 @@ export default {
       : undefined
 
     return axios.post(`${API}/checkout/selected`, data, config)
+  },
+
+  getGhnShippingFee(payload, token) {
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.post(`${API}/shipping-fee/ghn`, payload, config)
+  },
+
+  getGhnProvinces(token) {
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.get(`${API}/ghn/provinces`, config)
+  },
+
+  getGhnDistricts(provinceId, token) {
+    const config = {
+      params: { provinceId },
+    }
+
+    if (token) {
+      config.headers = {
+        Authorization: `Bearer ${token}`,
+      }
+    }
+
+    return axios.get(`${API}/ghn/districts`, config)
+  },
+
+  getGhnWards(districtId, token) {
+    const config = {
+      params: { districtId },
+    }
+
+    if (token) {
+      config.headers = {
+        Authorization: `Bearer ${token}`,
+      }
+    }
+
+    return axios.get(`${API}/ghn/wards`, config)
   },
 
   getOrdersByAccount(accountId, token) {

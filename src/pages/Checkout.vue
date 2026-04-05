@@ -59,21 +59,152 @@
               <span class="text-body-2 text-black">Giảm giá</span>
               <span class="font-weight-medium text-success">-{{ formatPrice(discountAmount) }}đ</span>
             </div>
+            <div class="d-flex justify-space-between mb-4">
+              <span class="text-body-2 text-black">Phí vận chuyển</span>
+              <span class="font-weight-medium">{{ formatPrice(shippingFee) }}đ</span>
+            </div>
             <v-divider class="mb-4" />
             <div class="d-flex justify-space-between align-center mb-4">
               <span class="text-subtitle-1 font-weight-bold">Tổng cộng</span>
               <span class="text-h6 font-weight-bold">{{ formatPrice(finalTotal) }}đ</span>
             </div>
 
-            <v-alert
-              type="info"
-              variant="tonal"
-              density="comfortable"
-              class="mb-4"
-              icon="mdi-map-marker"
-              title="Địa chỉ nhận hàng"
-              :text="formatAddress(userAddress)"
-            />
+            <v-card class="mb-4" variant="outlined">
+              <v-card-title class="text-subtitle-2 font-weight-bold d-flex align-center ga-2">
+                <v-icon icon="mdi-map-marker-path" />
+                Địa chỉ nhận hàng
+              </v-card-title>
+              <v-divider />
+              <v-card-text class="pt-4">
+                <v-radio-group
+                  v-model="addressMode"
+                  inline
+                  density="comfortable"
+                  hide-details
+                  class="mb-3"
+                >
+                  <v-radio label="Địa chỉ đã lưu" value="saved" />
+                  <v-radio label="Thêm địa chỉ mới" value="new" />
+                </v-radio-group>
+
+                <template v-if="addressMode === 'saved'">
+                  <v-select
+                    v-model="selectedAddressId"
+                    :items="savedAddressOptions"
+                    item-title="label"
+                    item-value="id"
+                    label="Chọn địa chỉ đã lưu"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    :loading="isLoadingSavedAddresses"
+                    :disabled="isLoadingSavedAddresses || savedAddressOptions.length === 0"
+                    @update:model-value="onSavedAddressChange"
+                  />
+                  <div class="text-caption text-grey mt-2">{{ selectedSavedAddressLabel }}</div>
+                </template>
+
+                <template v-else>
+                  <v-row dense>
+                    <v-col cols="12" sm="4">
+                      <v-text-field
+                        v-model="newAddressForm.unitNumber"
+                        label="Số nhà"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details
+                      />
+                    </v-col>
+                    <v-col cols="12" sm="4">
+                      <v-text-field
+                        v-model="newAddressForm.streetNumber"
+                        label="Số đường"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details
+                      />
+                    </v-col>
+                    <v-col cols="12" sm="4">
+                      <v-text-field
+                        v-model="newAddressForm.addressLine1"
+                        label="Tên đường"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details
+                      />
+                    </v-col>
+                    <v-col cols="12">
+                      <v-text-field
+                        v-model="newAddressForm.postalCode"
+                        label="Mã bưu chính (không bắt buộc)"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details
+                      />
+                    </v-col>
+                  </v-row>
+                </template>
+
+                <v-divider class="my-4" />
+                <v-row dense>
+                  <v-col cols="12">
+                    <v-select
+                      v-model="shippingInput.provinceId"
+                      :items="ghnProvinces"
+                      item-title="provinceName"
+                      item-value="provinceId"
+                      label="Tỉnh/Thành phố"
+                      variant="outlined"
+                      density="comfortable"
+                      hide-details
+                      :loading="isLoadingProvinces"
+                      @update:model-value="onProvinceChange"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="shippingInput.toDistrictId"
+                      :items="ghnDistricts"
+                      item-title="districtName"
+                      item-value="districtId"
+                      label="Quận/Huyện"
+                      variant="outlined"
+                      density="comfortable"
+                      hide-details
+                      :loading="isLoadingDistricts"
+                      :disabled="!shippingInput.provinceId"
+                      @update:model-value="onDistrictChange"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="shippingInput.toWardCode"
+                      :items="ghnWards"
+                      item-title="wardName"
+                      item-value="wardCode"
+                      label="Phường/Xã"
+                      variant="outlined"
+                      density="comfortable"
+                      hide-details
+                      :loading="isLoadingWards"
+                      :disabled="!shippingInput.toDistrictId"
+                    />
+                  </v-col>
+                </v-row>
+
+                <v-btn
+                  v-if="addressMode === 'new'"
+                  class="mt-4"
+                  color="primary"
+                  block
+                  :loading="isSavingNewAddress"
+                  :disabled="isSavingNewAddress"
+                  @click="saveNewAddress"
+                >
+                  Lưu địa chỉ mới và sử dụng
+                </v-btn>
+              </v-card-text>
+            </v-card>
 
             <v-select
               v-model="selectedPaymentMethod"
@@ -273,10 +404,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import accountApi from '@/api/accountApi'
+import addressApi from '@/api/addressApi'
 import cartApi from '@/api/cartApi'
 import { getAllDiscountCoupons } from '@/api/discountApi'
 import userDiscountCouponApi from '@/api/userDiscountCouponApi'
@@ -292,6 +423,17 @@ const showSnackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const userAddress = ref(null)
+const savedAddresses = ref([])
+const selectedAddressId = ref(null)
+const addressMode = ref('saved')
+const newAddressForm = ref({
+  unitNumber: '',
+  streetNumber: '',
+  addressLine1: '',
+  postalCode: '',
+})
+const isLoadingSavedAddresses = ref(false)
+const isSavingNewAddress = ref(false)
 const couponCode = ref('')
 const manualCouponCode = ref('')
 const discountAmount = ref(0)
@@ -304,6 +446,23 @@ const mbBankPaymentInfo = ref(null)
 const pendingOnlineOrderId = ref(null)
 const isConfirmingTransfer = ref(false)
 const isClosingOnlineDialog = ref(false)
+const shippingFee = ref(0)
+const isCalculatingShipping = ref(false)
+const isLoadingProvinces = ref(false)
+const isLoadingDistricts = ref(false)
+const isLoadingWards = ref(false)
+const ghnProvinces = ref([])
+const ghnDistricts = ref([])
+const ghnWards = ref([])
+const shippingInput = ref({
+  provinceId: null,
+  toDistrictId: '',
+  toWardCode: '',
+  weight: 1000,
+  length: 20,
+  width: 20,
+  height: 20,
+})
 const ONLINE_CONFIRMED_ORDERS_KEY = 'onlineTransferConfirmedOrderIds'
 const HIDDEN_CANCELLED_ONLINE_ORDERS_KEY = 'hiddenCancelledOnlineOrderIds'
 
@@ -316,9 +475,15 @@ const selectedPaymentMethod = ref('COD')
 const selectedPaymentMethodDescription = computed(() => {
   return paymentMethods.find((m) => m.value === selectedPaymentMethod.value)?.description || ''
 })
+const savedAddressOptions = computed(() => savedAddresses.value.map((address) => ({
+  ...address,
+  label: formatAddress(address),
+})))
+const selectedSavedAddress = computed(() => savedAddresses.value.find((address) => Number(address.id) === Number(selectedAddressId.value)) || null)
+const selectedSavedAddressLabel = computed(() => formatAddress(selectedSavedAddress.value) || 'Chưa chọn địa chỉ')
 const totalQuantity = computed(() => checkoutItems.value.reduce((sum, item) => sum + item.quantity, 0))
 const totalPrice = computed(() => checkoutItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
-const finalTotal = computed(() => Math.max(0, totalPrice.value - discountAmount.value))
+const finalTotal = computed(() => Math.max(0, totalPrice.value - discountAmount.value) + Math.max(0, Number(shippingFee.value) || 0))
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
 
@@ -401,9 +566,8 @@ const formatAddress = (address) => {
     address.streetNumber,
     address.addressLine1,
     address.addressLine2,
-    address.city,
     address.region,
-    address.postalCode,
+    address.city,
   ]
     .map((x) => (x == null ? '' : String(x).trim()))
     .filter((x) => x.length > 0)
@@ -411,19 +575,30 @@ const formatAddress = (address) => {
   return parts.length > 0 ? parts.join(', ') : 'Bạn chưa cập nhật địa chỉ nhận hàng'
 }
 
-const loadUserAddress = async () => {
-  const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    userAddress.value = null
-    return
-  }
+const normalizeText = (value) => String(value || '').trim().toLowerCase()
 
-  try {
-    const res = await accountApi.getById(accountId)
-    userAddress.value = res.data?.address || null
-  } catch (error) {
-    console.error('Lỗi tải địa chỉ người dùng:', error)
-    userAddress.value = null
+const findProvinceByName = (provinceName) => ghnProvinces.value.find((item) => normalizeText(item.provinceName) === normalizeText(provinceName)) || null
+
+const findDistrictByName = (districtName) => ghnDistricts.value.find((item) => normalizeText(item.districtName) === normalizeText(districtName)) || null
+
+const applySavedAddressToGhn = async (address) => {
+  if (!address) return
+
+  const province = findProvinceByName(address.city)
+  if (!province) return
+
+  shippingInput.value.provinceId = province.provinceId
+  await onProvinceChange()
+
+  const district = findDistrictByName(address.region)
+  if (!district) return
+
+  shippingInput.value.toDistrictId = district.districtId
+  await onDistrictChange()
+
+  const ward = ghnWards.value.find((item) => normalizeText(item.wardName) === normalizeText(address.addressLine2)) || null
+  if (ward) {
+    shippingInput.value.toWardCode = ward.wardCode
   }
 }
 
@@ -544,6 +719,239 @@ const loadCheckoutItems = async () => {
   }
 }
 
+const loadSavedAddresses = async () => {
+  const accountId = Number.parseInt(userStore.accountId, 10)
+  if (!Number.isFinite(accountId) || accountId <= 0) {
+    savedAddresses.value = []
+    selectedAddressId.value = null
+    userAddress.value = null
+    return
+  }
+
+  isLoadingSavedAddresses.value = true
+  try {
+    const res = await addressApi.getByAccountId(accountId, userStore.token)
+    savedAddresses.value = Array.isArray(res.data) ? res.data : []
+
+    if (savedAddresses.value.length > 0) {
+      selectedAddressId.value = savedAddresses.value[0].id
+      userAddress.value = savedAddresses.value[0]
+    } else {
+      selectedAddressId.value = null
+      userAddress.value = null
+    }
+  } catch (error) {
+    console.error('Lỗi tải danh sách địa chỉ đã lưu:', error)
+    savedAddresses.value = []
+    selectedAddressId.value = null
+    userAddress.value = null
+  } finally {
+    isLoadingSavedAddresses.value = false
+  }
+}
+
+const onSavedAddressChange = async () => {
+  const selected = selectedSavedAddress.value
+  userAddress.value = selected
+  shippingFee.value = 0
+
+  if (!selected) return
+  await applySavedAddressToGhn(selected)
+}
+
+const saveNewAddress = async () => {
+  const accountId = Number.parseInt(userStore.accountId, 10)
+  if (!Number.isFinite(accountId) || accountId <= 0) {
+    snackbarMessage.value = 'Không xác định được tài khoản để lưu địa chỉ'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+    return
+  }
+
+  const provinceName = ghnProvinces.value.find((x) => Number(x.provinceId) === Number(shippingInput.value.provinceId))?.provinceName || ''
+  const districtName = ghnDistricts.value.find((x) => Number(x.districtId) === Number(shippingInput.value.toDistrictId))?.districtName || ''
+  const wardName = ghnWards.value.find((x) => String(x.wardCode) === String(shippingInput.value.toWardCode))?.wardName || ''
+
+  if (!newAddressForm.value.unitNumber || !newAddressForm.value.streetNumber || !newAddressForm.value.addressLine1 || !provinceName || !districtName || !wardName) {
+    snackbarMessage.value = 'Vui lòng nhập đủ số nhà, số đường, tên đường và chọn đầy đủ tỉnh/huyện/xã'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+
+  isSavingNewAddress.value = true
+  try {
+    await addressApi.create(
+      {
+        unitNumber: newAddressForm.value.unitNumber,
+        streetNumber: newAddressForm.value.streetNumber,
+        addressLine1: newAddressForm.value.addressLine1,
+        addressLine2: wardName,
+        city: provinceName,
+        region: districtName,
+        postalCode: String(newAddressForm.value.postalCode || '').trim() || null,
+        accountID: accountId,
+      },
+      userStore.token,
+    )
+
+    await loadSavedAddresses()
+    addressMode.value = 'saved'
+    await onSavedAddressChange()
+    snackbarMessage.value = 'Đã lưu địa chỉ mới'
+    snackbarColor.value = 'success'
+    showSnackbar.value = true
+  } catch (error) {
+    console.error('Lỗi lưu địa chỉ mới:', error)
+    snackbarMessage.value = error?.response?.data?.message || 'Không thể lưu địa chỉ mới'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+  } finally {
+    isSavingNewAddress.value = false
+  }
+}
+
+watch(
+  () => [shippingInput.value.toDistrictId, shippingInput.value.toWardCode],
+  async ([districtId, wardCode]) => {
+    if (!districtId || !wardCode || isCalculatingShipping.value) return
+    await calculateGhnShippingFee(true)
+  },
+)
+
+watch(
+  () => addressMode.value,
+  (mode) => {
+    if (mode === 'saved') {
+      newAddressForm.value = {
+        unitNumber: '',
+        streetNumber: '',
+        addressLine1: '',
+        postalCode: '',
+      }
+    }
+  },
+)
+
+
+const loadGhnProvinces = async () => {
+  isLoadingProvinces.value = true
+  try {
+    const res = await paymentApi.getGhnProvinces(userStore.token)
+    ghnProvinces.value = Array.isArray(res.data) ? res.data : []
+  } catch (error) {
+    console.error('Lỗi tải danh sách tỉnh GHN:', error)
+    ghnProvinces.value = []
+    snackbarMessage.value = 'Không thể tải danh sách tỉnh/thành GHN'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+  } finally {
+    isLoadingProvinces.value = false
+  }
+}
+
+const onProvinceChange = async () => {
+  shippingInput.value.toDistrictId = ''
+  shippingInput.value.toWardCode = ''
+  ghnDistricts.value = []
+  ghnWards.value = []
+
+  const provinceId = Number.parseInt(shippingInput.value.provinceId, 10)
+  if (!Number.isFinite(provinceId) || provinceId <= 0) {
+    return
+  }
+
+  isLoadingDistricts.value = true
+  try {
+    const res = await paymentApi.getGhnDistricts(provinceId, userStore.token)
+    ghnDistricts.value = Array.isArray(res.data) ? res.data : []
+  } catch (error) {
+    console.error('Lỗi tải danh sách quận GHN:', error)
+    ghnDistricts.value = []
+    snackbarMessage.value = 'Không thể tải danh sách quận/huyện GHN'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+  } finally {
+    isLoadingDistricts.value = false
+  }
+}
+
+const onDistrictChange = async () => {
+  shippingInput.value.toWardCode = ''
+  ghnWards.value = []
+
+  const districtId = Number.parseInt(shippingInput.value.toDistrictId, 10)
+  if (!Number.isFinite(districtId) || districtId <= 0) {
+    return
+  }
+
+  isLoadingWards.value = true
+  try {
+    const res = await paymentApi.getGhnWards(districtId, userStore.token)
+    ghnWards.value = Array.isArray(res.data) ? res.data : []
+  } catch (error) {
+    console.error('Lỗi tải danh sách phường GHN:', error)
+    ghnWards.value = []
+    snackbarMessage.value = 'Không thể tải danh sách phường/xã GHN'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+  } finally {
+    isLoadingWards.value = false
+  }
+}
+
+const calculateGhnShippingFee = async (silent = false) => {
+  const toDistrictId = Number.parseInt(shippingInput.value.toDistrictId, 10)
+  const toWardCode = String(shippingInput.value.toWardCode || '').trim()
+
+  if (!Number.isFinite(toDistrictId) || toDistrictId <= 0) {
+    if (!silent) {
+      snackbarMessage.value = 'Vui lòng nhập mã quận/huyện GHN hợp lệ'
+      snackbarColor.value = 'warning'
+      showSnackbar.value = true
+    }
+    return
+  }
+
+  if (!toWardCode) {
+    if (!silent) {
+      snackbarMessage.value = 'Vui lòng nhập mã phường/xã GHN'
+      snackbarColor.value = 'warning'
+      showSnackbar.value = true
+    }
+    return
+  }
+
+  isCalculatingShipping.value = true
+  try {
+    const payload = {
+      toDistrictId,
+      toWardCode,
+      weight: Number.parseInt(shippingInput.value.weight, 10) || 1000,
+      length: Number.parseInt(shippingInput.value.length, 10) || 20,
+      width: Number.parseInt(shippingInput.value.width, 10) || 20,
+      height: Number.parseInt(shippingInput.value.height, 10) || 20,
+      insuranceValue: Number(totalPrice.value) || 0,
+    }
+
+    const res = await paymentApi.getGhnShippingFee(payload, userStore.token)
+    shippingFee.value = Number(res.data?.shippingFee) || 0
+    if (!silent) {
+      snackbarMessage.value = 'Đã cập nhật phí ship từ GHN'
+      snackbarColor.value = 'success'
+      showSnackbar.value = true
+    }
+  } catch (error) {
+    console.error('Lỗi tính phí GHN:', error)
+    shippingFee.value = 0
+    snackbarMessage.value = error?.response?.data?.message || 'Không thể tính phí ship GHN. Vui lòng kiểm tra mã khu vực'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+  } finally {
+    isCalculatingShipping.value = false
+  }
+}
+
 const placeOrder = async () => {
   if (checkoutItems.value.length === 0 || isCheckingOut.value) return
 
@@ -580,6 +988,7 @@ const placeOrder = async () => {
       cartItemIds,
       userStore.token,
       couponCode.value,
+      shippingFee.value,
     )
     const orderId =
       res.data?.id ||
@@ -766,7 +1175,8 @@ const markCancelledOnlineOrderHidden = (orderId) => {
 }
 
 onMounted(async () => {
-  await Promise.all([loadCheckoutItems(), loadUserAddress(), loadUserClaimedCoupons()])
+  await Promise.all([loadCheckoutItems(), loadUserClaimedCoupons(), loadGhnProvinces(), loadSavedAddresses()])
+  await onSavedAddressChange()
 })
 </script>
 
