@@ -34,7 +34,7 @@
 
             <div class="d-flex flex-column align-end ga-2">
               <div class="text-body-2 text-grey">Thành tiền</div>
-              <div class="text-subtitle-1 font-weight-bold text-primary">
+              <div class="text-subtitle-1 font-weight-bold text-black">
                 {{ formatPrice(item.price * item.quantity) }}đ
               </div>
             </div>
@@ -234,7 +234,7 @@
                 </v-list-item>
                 <v-list-item>
                   <v-list-item-title class="text-caption text-grey">Số tiền</v-list-item-title>
-                  <v-list-item-subtitle class="text-body-1 font-weight-bold text-primary">{{ formatPrice(mbBankPaymentInfo.amount) }}đ</v-list-item-subtitle>
+                  <v-list-item-subtitle class="text-body-1 font-weight-bold text-black">{{ formatPrice(mbBankPaymentInfo.amount) }}đ</v-list-item-subtitle>
                 </v-list-item>
                 <v-list-item>
                   <v-list-item-title class="text-caption text-grey">Nội dung chuyển khoản</v-list-item-title>

@@ -5,7 +5,7 @@
         <h1 class="text-h4 font-weight-bold mb-2">Lịch sử mua hàng</h1>
         <p class="text-subtitle-1 text-grey">Theo dõi trạng thái đơn và thanh toán của bạn</p>
       </div>
-      <v-btn color="primary" variant="outlined" prepend-icon="mdi-refresh" @click="loadOrders">
+      <v-btn color="black" variant="outlined" prepend-icon="mdi-refresh" @click="loadOrders">
         Làm mới
       </v-btn>
     </div>
@@ -45,10 +45,10 @@
                 <v-chip v-if="order.couponCode" size="small" color="orange" variant="tonal">
                   Mã: {{ order.couponCode }}
                 </v-chip>
-                <v-chip size="small" color="secondary" variant="tonal">
+                <v-chip size="small" color="orange" variant="tonal">
                   {{ getPaymentMethodLabel(order.paymentMethod) }}
                 </v-chip>
-                <div class="font-weight-bold text-primary">{{ formatPrice(order.totalAmount) }}đ</div>
+                <div class="font-weight-bold text-black">{{ formatPrice(order.totalAmount) }}đ</div>
               </div>
             </div>
           </v-expansion-panel-title>
