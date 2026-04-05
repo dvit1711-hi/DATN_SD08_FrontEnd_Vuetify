@@ -99,7 +99,7 @@
 
                 <div class="d-flex flex-column align-end ga-2">
                   <div class="text-body-2 text-grey">Thành tiền</div>
-                  <div class="text-subtitle-1 font-weight-bold text-primary">
+                  <div class="text-subtitle-1 font-weight-bold text-black">
                     {{ formatPrice(item.price * item.quantity) }}đ
                   </div>
                   <v-btn
@@ -134,7 +134,7 @@
               <v-divider class="mb-4" />
               <div class="d-flex justify-space-between align-center">
                 <span class="text-subtitle-1 font-weight-bold">Tổng cộng</span>
-                <span class="text-h6 font-weight-bold text-primary">{{ formatPrice(selectedTotalPrice) }}đ</span>
+                <span class="text-h6 font-weight-bold text-black">{{ formatPrice(selectedTotalPrice) }}đ</span>
               </div>
 
               <v-btn
