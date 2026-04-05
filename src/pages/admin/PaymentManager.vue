@@ -32,7 +32,7 @@
         </template>
 
         <template #item.paymentMethod="{ item }">
-          <v-chip size="small" color="secondary" variant="tonal">
+          <v-chip size="small" color="orange" variant="tonal">
             {{ item.paymentMethod || 'UNKNOWN' }}
           </v-chip>
         </template>
