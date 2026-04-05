@@ -295,14 +295,27 @@ onMounted(async () => {
     });
 
     if (product.value?.colors?.length) {
-      const firstAvailable =
-        product.value.colors.find((v) => (Number.parseInt(v.stockQuantity, 10) || 0) > 0) ||
-        product.value.colors[0];
+  const requestedVariantId = Number.parseInt(route.query.variant, 10);
 
-      selectedVariant.value = firstAvailable;
-      images.value = selectedVariant.value?.images || [];
-      mainImage.value = images.value[0] || "";
-    }
+  let initialVariant = null;
+
+  if (Number.isFinite(requestedVariantId) && requestedVariantId > 0) {
+    initialVariant = product.value.colors.find(
+      (v) => Number(v.productColorID) === requestedVariantId
+    );
+  }
+
+  if (!initialVariant) {
+    initialVariant =
+      product.value.colors.find(
+        (v) => (Number.parseInt(v.stockQuantity, 10) || 0) > 0
+      ) || product.value.colors[0];
+  }
+
+  selectedVariant.value = initialVariant;
+  images.value = selectedVariant.value?.images || [];
+  mainImage.value = images.value[0] || "";
+}
 
     await loadReviews(productID);
   } catch (error) {
@@ -310,9 +323,23 @@ onMounted(async () => {
   }
 });
 
-watch(selectedStarFilter, () => {
-  currentPage.value = 1;
-});
+watch(
+  () => route.query.variant,
+  (newVariantId) => {
+    if (!product.value?.colors?.length) return;
+
+    const variantId = Number.parseInt(newVariantId, 10);
+    if (!Number.isFinite(variantId) || variantId <= 0) return;
+
+    const matchedVariant = product.value.colors.find(
+      (v) => Number(v.productColorID) === variantId
+    );
+
+    if (matchedVariant) {
+      changeVariant(matchedVariant);
+    }
+  }
+);
 
 function changeVariant(variant) {
   selectedVariant.value = variant;

@@ -30,7 +30,10 @@
           >
             <v-card
               class="w-100 d-flex flex-column product-card"
-              :to="`/products/${p.productID}`"
+              :to="{
+                path: `/products/${p.productID}`,
+                query: { variant: p.productColorID },
+              }"
               variant="elevated"
             >
               <!-- Product Image -->
@@ -251,7 +254,9 @@ const loadProducts = async () => {
       getActiveProductDiscounts().catch((error) => {
         // Handle 401 error gracefully - return empty discounts
         if (error?.response?.status === 401) {
-          console.warn("Không có quyền truy cập danh sách giảm giá, tiếp tục mà không loại giảm giá");
+          console.warn(
+            "Không có quyền truy cập danh sách giảm giá, tiếp tục mà không loại giảm giá",
+          );
           return { data: [] };
         }
         throw error;
