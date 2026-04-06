@@ -10,17 +10,43 @@
 
     <!-- Main Content with Filter Sidebar -->
     <v-row>
+      
       <!-- Filter Sidebar -->
       <v-col cols="12" sm="4" md="3" lg="2" class="mb-6 mb-md-0">
         <filter-sidebar @filter-changed="onFilterChanged" />
       </v-col>
+      
 
       <!-- Products Grid -->
       <v-col cols="12" sm="8" md="9" lg="10">
+        <div
+        class="d-flex justify-space-between align-center mb-4 flex-wrap gap-3"
+      >
+        <div class="text-subtitle-1 font-weight-medium">
+          {{ filteredProducts.length }} sản phẩm
+        </div>
+
+        <v-select
+          v-model="sortBy"
+          :items="[
+            { title: 'Mặc định', value: 'default' },
+            { title: 'Giá tăng dần', value: 'priceAsc' },
+            { title: 'Giá giảm dần', value: 'priceDesc' },
+          ]"
+          item-title="title"
+          item-value="value"
+          label="Sắp xếp"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          style="max-width: 220px"
+        />
+      </div>
         <v-row>
+          
           <v-col
             v-for="p in filteredProducts"
-            :key="p.productID"
+            :key="p.productColorID"
             cols="12"
             sm="6"
             md="6"
@@ -178,6 +204,7 @@ const productRatingsMap = ref(new Map());
 const showSnackbar = ref(false);
 const snackbarMessage = ref("");
 const snackbarColor = ref("success");
+const sortBy = ref("default");
 
 // Filter state
 const activeFilters = ref({
@@ -191,8 +218,9 @@ const activeFilters = ref({
 
 // Computed filtered products
 const filteredProducts = computed(() => {
-  return products.value.filter((product) => {
+  const filtered = products.value.filter((product) => {
     const productPrice = Number(product.price) || 0;
+
     if (
       productPrice < activeFilters.value.priceRange[0] ||
       productPrice > activeFilters.value.priceRange[1]
@@ -243,6 +271,29 @@ const filteredProducts = computed(() => {
 
     return true;
   });
+
+  const sorted = [...filtered];
+
+  switch (sortBy.value) {
+    case "priceAsc":
+      sorted.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+      break;
+
+    case "priceDesc":
+      sorted.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+      break;
+
+    case "bestSeller":
+      sorted.sort(
+        (a, b) => Number(b.soldQuantity || 0) - Number(a.soldQuantity || 0),
+      );
+      break;
+
+    default:
+      break;
+  }
+
+  return sorted;
 });
 
 const loadProducts = async () => {
