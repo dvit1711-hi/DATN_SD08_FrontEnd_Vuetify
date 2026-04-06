@@ -252,46 +252,70 @@
 
                 <v-divider class="my-3" />
 
-                <v-btn
-                  v-if="selectedCoupon"
-                  block
-                  color="primary"
-                  size="small"
-                  :loading="isApplyingCoupon"
-                  @click="applySelectedCoupon"
-                >
-                  Áp dụng mã: {{ selectedCoupon.discountCoupon.couponCode }}
-                </v-btn>
-                <v-btn
-                  v-else
-                  block
-                  variant="outlined"
-                  size="small"
-                  disabled
-                >
-                  Chọn một mã để áp dụng
-                </v-btn>
+                <div class="d-flex gap-2">
+                  <v-btn
+                    v-if="selectedCoupon"
+                    flex-grow-1
+                    color="primary"
+                    size="small"
+                    :loading="isApplyingCoupon"
+                    @click="applySelectedCoupon"
+                  >
+                    Áp dụng: {{ selectedCoupon.discountCoupon.couponCode }}
+                  </v-btn>
+                  <v-btn
+                    flex-grow-1
+                    variant="outlined"
+                    size="small"
+                    @click="() => { selectedCoupon = null; couponCode = ''; discountAmount = 0 }"
+                  >
+                    Không dùng mã
+                  </v-btn>
+                </div>
               </v-card-text>
             </v-card>
 
             <!-- Manual coupon input -->
-            <div class="d-flex gap-2">
-              <v-text-field
-                v-model="manualCouponCode"
-                label="Hoặc nhập mã giảm giá khác"
-                variant="outlined"
-                density="comfortable"
-                clearable
-              />
-              <v-btn
-                color="primary"
-                :disabled="!manualCouponCode || isApplyingCoupon"
-                :loading="isApplyingCoupon"
-                @click="applyManualCoupon"
-              >
-                Áp dụng
-              </v-btn>
-            </div>
+            <v-card class="mb-4" variant="outlined">
+              <v-card-title class="text-subtitle-2 font-weight-bold">Mã Giảm Giá Khác</v-card-title>
+              <v-divider />
+              <v-card-text>
+                <div class="d-flex gap-2">
+                  <v-text-field
+                    v-model="manualCouponCode"
+                    label="Nhập mã giảm giá (tùy chọn)"
+                    variant="outlined"
+                    density="comfortable"
+                    clearable
+                    hint="Để trống nếu không có mã"
+                  />
+                  <v-btn
+                    color="primary"
+                    :disabled="!manualCouponCode || isApplyingCoupon"
+                    :loading="isApplyingCoupon"
+                    class="mt-1"
+                    @click="applyManualCoupon"
+                  >
+                    Áp dụng
+                  </v-btn>
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <!-- Current discount status -->
+            <v-card v-if="discountAmount > 0" class="mb-4" variant="outlined" color="success">
+              <v-card-text class="d-flex align-center justify-space-between">
+                <div>
+                  <div class="text-subtitle-2 font-weight-bold">Mã giảm giá đã áp dụng</div>
+                  <div class="text-body-2 text-grey">{{ couponCode }}</div>
+                </div>
+                <div class="text-h6 font-weight-bold text-success">-{{ formatPrice(discountAmount) }}đ</div>
+              </v-card-text>
+            </v-card>
+
+            <v-alert v-if="discountAmount === 0" class="mb-4" color="info" title="Thông báo">
+              Bạn đang đặt hàng không sử dụng mã giảm giá. Có thể áp dụng mã khác ở trên nếu có.
+            </v-alert>
 
             <v-btn
               block
@@ -489,6 +513,85 @@ const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
 
 const todayText = () => new Date().toISOString().slice(0, 10)
 
+// Check if coupon is valid and applicable
+const isCouponValid = (coupon) => {
+  if (!coupon) return false
+  
+  if (coupon.active === false) return false
+  
+  const now = todayText()
+  if (coupon.startDate && coupon.startDate > now) return false
+  if (coupon.endDate && coupon.endDate < now) return false
+  
+  const quantity = Number.parseInt(coupon.quantity, 10) || 0
+  if (quantity <= 0) return false
+  
+  const value = Number(coupon.discountValue) || 0
+  if (value <= 0) return false
+  
+  return true
+}
+
+// Check if coupon meets minimum order value requirement
+const meetsMinOrderValue = (coupon) => {
+  const minOrderValue = Number(coupon.minOrderValue) || 0
+  return totalPrice.value >= minOrderValue
+}
+
+// Calculate discount amount for a valid coupon
+const calculateDiscount = (coupon) => {
+  const value = Number(coupon.discountValue) || 0
+  let discount = 0
+  const type = String(coupon.discountType || '').toLowerCase()
+  
+  if (type === 'percent') {
+    discount = (totalPrice.value * value) / 100
+    const maxDiscountValue = Number(coupon.maxDiscountValue) || 0
+    if (maxDiscountValue > 0) {
+      discount = Math.min(discount, maxDiscountValue)
+    }
+  } else if (type === 'fixed') {
+    discount = value
+  }
+  
+  return Math.min(Math.max(discount, 0), totalPrice.value)
+}
+
+// Find alternative coupon when current one fails
+const findAlternativeCoupon = async () => {
+  try {
+    const res = await getAllDiscountCoupons()
+    const coupons = res.data || []
+    
+    // Filter valid coupons sorted by discount percentage (highest first)
+    const validCoupons = coupons
+      .filter(c => isCouponValid(c))
+      .sort((a, b) => {
+        const aDiscount = Number(a.discountValue) || 0
+        const bDiscount = Number(b.discountValue) || 0
+        const aIsPercent = (a.discountType || '').toLowerCase() === 'percent'
+        const bIsPercent = (b.discountType || '').toLowerCase() === 'percent'
+        
+        // Prefer percent discounts, then sort by value
+        if (aIsPercent && !bIsPercent) return -1
+        if (!aIsPercent && bIsPercent) return 1
+        return bDiscount - aDiscount
+      })
+    
+    // Find first coupon that meets minimum order value
+    for (const coupon of validCoupons) {
+      if (meetsMinOrderValue(coupon)) {
+        return coupon
+      }
+    }
+    
+    return null
+  } catch (error) {
+    console.error('Lỗi tìm mã giảm giá thay thế:', error)
+    return null
+  }
+}
+
 const previewCoupon = async () => {
   const code = String(couponCode.value || '').trim()
   if (!code) {
@@ -505,26 +608,31 @@ const previewCoupon = async () => {
       throw new Error('Mã giảm giá không tồn tại')
     }
 
-    if (coupon.active === false) {
-      throw new Error('Mã giảm giá đã bị tắt')
+    if (!isCouponValid(coupon)) {
+      throw new Error('Mã giảm giá không hợp lệ hoặc đã hết hạn')
     }
 
-    const now = todayText()
-    if (coupon.startDate && coupon.startDate > now) {
-      throw new Error('Mã giảm giá chưa đến thời gian áp dụng')
-    }
-    if (coupon.endDate && coupon.endDate < now) {
-      throw new Error('Mã giảm giá đã hết hạn')
-    }
-
-    const quantity = Number.parseInt(coupon.quantity, 10) || 0
-    if (quantity <= 0) {
-      throw new Error('Mã giảm giá đã hết lượt sử dụng')
-    }
-
-    const minOrderValue = Number(coupon.minOrderValue) || 0
-    if (totalPrice.value < minOrderValue) {
-      throw new Error('Đơn hàng chưa đạt giá trị tối thiểu để dùng mã giảm giá')
+    // Check if meets minimum order value
+    if (!meetsMinOrderValue(coupon)) {
+      // Try to find alternative coupon
+      const alternativeCoupon = await findAlternativeCoupon()
+      
+      if (alternativeCoupon) {
+        couponCode.value = alternativeCoupon.couponCode
+        discountAmount.value = calculateDiscount(alternativeCoupon)
+        snackbarMessage.value = `Mã "${code}" không đủ điều kiện. Tự động sử dụng mã "${alternativeCoupon.couponCode}" thay thế`
+        snackbarColor.value = 'info'
+        showSnackbar.value = true
+        return
+      } else {
+        // No alternative found, clear discount and show info
+        discountAmount.value = 0
+        couponCode.value = ''
+        snackbarMessage.value = `Mã "${code}" không đủ giá trị tối thiểu (${formatPrice(coupon.minOrderValue)}đ). Không tìm thấy mã thay thế phù hợp.`
+        snackbarColor.value = 'info'
+        showSnackbar.value = true
+        return
+      }
     }
 
     const value = Number(coupon.discountValue) || 0
@@ -532,26 +640,13 @@ const previewCoupon = async () => {
       throw new Error('Giá trị giảm giá không hợp lệ')
     }
 
-    let discount = 0
-    const type = String(coupon.discountType || '').toLowerCase()
-    if (type === 'percent') {
-      discount = (totalPrice.value * value) / 100
-      const maxDiscountValue = Number(coupon.maxDiscountValue) || 0
-      if (maxDiscountValue > 0) {
-        discount = Math.min(discount, maxDiscountValue)
-      }
-    } else if (type === 'fixed') {
-      discount = value
-    } else {
-      throw new Error('Loại mã giảm giá không hợp lệ')
-    }
-
-    discountAmount.value = Math.min(Math.max(discount, 0), totalPrice.value)
+    discountAmount.value = calculateDiscount(coupon)
     snackbarMessage.value = 'Áp dụng mã giảm giá thành công'
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
     discountAmount.value = 0
+    couponCode.value = ''
     snackbarMessage.value = error?.message || 'Mã giảm giá không hợp lệ'
     snackbarColor.value = 'warning'
     showSnackbar.value = true
@@ -614,26 +709,40 @@ const loadUserClaimedCoupons = async () => {
     const claimed = (res.data || []).filter(uc => uc.status === 'claimed')
     userClaimedCoupons.value = claimed
     
-    // Auto-select coupon with highest discount percentage
+    // Auto-select coupon with highest discount percentage and try to apply it
     if (claimed.length > 0) {
-      let maxCoupon = claimed[0]
-      let maxPercent = 0
-      
-      for (const coupon of claimed) {
-        const value = Number(coupon.discountCoupon?.discountValue) || 0
-        const isPercent = (coupon.discountCoupon?.discountType || '').toLowerCase() === 'percent'
-        const percent = isPercent ? value : 0
+      // Sort by discount percentage (percent coupons first, then by value)
+      const sorted = [...claimed].sort((a, b) => {
+        const aValue = Number(a.discountCoupon?.discountValue) || 0
+        const bValue = Number(b.discountCoupon?.discountValue) || 0
+        const aIsPercent = (a.discountCoupon?.discountType || '').toLowerCase() === 'percent'
+        const bIsPercent = (b.discountCoupon?.discountType || '').toLowerCase() === 'percent'
         
-        if (percent > maxPercent) {
-          maxPercent = percent
-          maxCoupon = coupon
+        if (aIsPercent && !bIsPercent) return -1
+        if (!aIsPercent && bIsPercent) return 1
+        return bValue - aValue
+      })
+      
+      // Try to apply coupons in order, use first one that meets conditions
+      let appliedCoupon = null
+      for (const coupon of sorted) {
+        const dc = coupon.discountCoupon
+        if (isCouponValid(dc) && meetsMinOrderValue(dc)) {
+          appliedCoupon = coupon
+          break
         }
       }
       
-      selectedCoupon.value = maxCoupon
-      // Auto-apply the highest discount coupon
-      couponCode.value = maxCoupon.discountCoupon.couponCode
-      await previewCoupon()
+      if (appliedCoupon) {
+        selectedCoupon.value = appliedCoupon
+        couponCode.value = appliedCoupon.discountCoupon.couponCode
+        await previewCoupon()
+      } else {
+        // No applies coupon that meets conditions, select first but don't apply
+        selectedCoupon.value = sorted[0]
+        discountAmount.value = 0
+        couponCode.value = ''
+      }
     }
   } catch (error) {
     console.error('Lỗi tải mã giảm giá đã nhận:', error)
@@ -657,10 +766,19 @@ const applySelectedCoupon = async () => {
 }
 
 const applyManualCoupon = async () => {
-  if (!manualCouponCode.value) return
+  const code = String(manualCouponCode.value || '').trim()
+  if (!code) {
+    snackbarMessage.value = 'Vui lòng nhập mã giảm giá'
+    snackbarColor.value = 'warning'
+    showSnackbar.value = true
+    return
+  }
+  
   isApplyingCoupon.value = true
   try {
-    couponCode.value = manualCouponCode.value
+    couponCode.value = code
+    // Clear manual input after attempt
+    manualCouponCode.value = ''
     await previewCoupon()
   } finally {
     isApplyingCoupon.value = false
@@ -979,6 +1097,8 @@ const placeOrder = async () => {
   const cartItemIds = checkoutItems.value.map((x) => x.cartItemID)
   const paymentMethodForCheckout = selectedPaymentMethod.value
   const shouldShowBankQr = selectedPaymentMethod.value === 'BANK_TRANSFER'
+  // Allow empty coupon code - system will handle it as no discount
+  const finalCouponCode = String(couponCode.value || '').trim()
 
   isCheckingOut.value = true
   try {
@@ -987,7 +1107,7 @@ const placeOrder = async () => {
       paymentMethodForCheckout,
       cartItemIds,
       userStore.token,
-      couponCode.value,
+      finalCouponCode, // Can be empty string
       shippingFee.value,
     )
     const orderId =
