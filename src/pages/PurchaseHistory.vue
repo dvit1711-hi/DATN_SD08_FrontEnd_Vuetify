@@ -54,6 +54,34 @@
           </v-expansion-panel-title>
 
           <v-expansion-panel-text>
+            <v-card variant="tonal" color="grey-lighten-4" class="mb-3 tracking-card">
+              <v-card-title class="text-subtitle-1 py-3">Theo dõi đơn hàng</v-card-title>
+              <v-card-text class="pt-0">
+                <div class="tracking-scroll">
+                  <div class="tracking-row" :style="trackingWidthStyle(order)">
+                    <div
+                      v-for="(step, index) in getTrackingSteps(order)"
+                      :key="`${order.orderId}-${step.code}-${index}`"
+                      class="tracking-step"
+                    >
+                      <div class="tracking-icon" :class="`tracking-icon--${step.state}`">
+                        <v-icon size="18">{{ step.icon }}</v-icon>
+                      </div>
+
+                      <div
+                        v-if="index < getTrackingSteps(order).length - 1"
+                        class="tracking-connector"
+                        :class="connectorClass(getTrackingSteps(order)[index + 1])"
+                      />
+
+                      <div class="tracking-label">{{ step.label }}</div>
+                      <div class="tracking-time">{{ step.time }}</div>
+                    </div>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+
             <v-alert
               type="info"
               variant="tonal"
@@ -114,9 +142,13 @@ const userStore = useUserStore()
 const orders = ref([])
 const isLoading = ref(false)
 const cancellingOrderId = ref(null)
+const uiShippingStartedOrderIds = ref(new Set())
+const uiDeliveredOrderIds = ref(new Set())
 const fallbackImage = 'https://via.placeholder.com/64x64?text=No+Image'
 const ONLINE_CONFIRMED_ORDERS_KEY = 'onlineTransferConfirmedOrderIds'
 const HIDDEN_CANCELLED_ONLINE_ORDERS_KEY = 'hiddenCancelledOnlineOrderIds'
+const ADMIN_ONLINE_SHIPPING_STARTED_KEY = 'adminOnlineShippingStartedOrderIds'
+const ADMIN_UI_DELIVERED_ORDER_IDS_KEY = 'adminUiDeliveredOrderIds'
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
@@ -128,7 +160,13 @@ const formatOrderAddress = (shippingAddress) => {
 
 const formatDate = (value) => {
   if (!value) return 'Không có dữ liệu'
-  return new Date(value).toLocaleString('vi-VN')
+
+  if (typeof value === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(value)) {
+    return value
+  }
+
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN')
 }
 
 const getPaymentStatusLabel = (status) => {
@@ -141,24 +179,38 @@ const getPaymentStatusLabel = (status) => {
 
 const getOrderStatusLabel = (status) => {
   const normalized = String(status || '').toUpperCase()
-  if (normalized === 'PENDING_PAYMENT') return 'Chờ thanh toán'
-  if (normalized === 'PAID') return 'Đã thanh toán'
+  if (normalized === 'PENDING_PAYMENT') return 'Chờ xác nhận'
+  if (normalized === 'SHIPPING') return 'Đang giao hàng'
+  if (normalized === 'PAID') return 'Hoàn thành'
   if (normalized === 'CANCELLED') return 'Đã hủy'
   return 'Không xác định'
 }
 
 const getDisplayStatus = (order) => {
-  const payment = getPaymentStatusLabel(order?.paymentStatus)
-  const orderStatus = getOrderStatusLabel(order?.orderStatus)
+  const orderStatus = String(order?.orderStatus || '').toUpperCase()
+  const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+  const uiShippingStarted = isUiShippingStartedOrder(order)
+  const uiDelivered = isUiDeliveredOrder(order)
 
-  if (payment === 'Đã thanh toán' || orderStatus === 'Đã thanh toán') {
-    return { label: 'Đã thanh toán', color: 'success' }
-  }
-  if (orderStatus === 'Đã hủy') {
+  if (orderStatus === 'CANCELLED' || paymentStatus === 'CANCELLED') {
     return { label: 'Đã hủy', color: 'error' }
   }
-  if (payment === 'Chưa thanh toán' || orderStatus === 'Chờ thanh toán') {
-    return { label: 'Chờ thanh toán', color: 'warning' }
+  if (orderStatus === 'PAID') {
+    return { label: 'Hoàn thành', color: 'success' }
+  }
+  if (orderStatus === 'SHIPPING') {
+    if (uiDelivered) return { label: 'Đã giao hàng', color: 'warning' }
+    if (uiShippingStarted) return { label: 'Đang giao hàng', color: 'primary' }
+    return { label: 'Chờ giao hàng', color: 'warning' }
+  }
+  if (isOnlinePaymentMethod(order) && orderStatus === 'PENDING_PAYMENT' && paymentStatus === 'PAID') {
+    return { label: 'Chờ giao hàng', color: 'warning' }
+  }
+  if (paymentStatus === 'PAID' && isCodPaymentMethod(order)) {
+    return { label: 'Xác nhận thanh toán', color: 'warning' }
+  }
+  if (paymentStatus === 'UNPAID' || orderStatus === 'PENDING_PAYMENT') {
+    return { label: 'Chờ xác nhận', color: 'warning' }
   }
 
   return { label: 'Không xác định', color: 'info' }
@@ -170,6 +222,142 @@ const getPaymentMethodLabel = (method) => {
   if (normalized === 'BANK_TRANSFER') return 'Chuyển khoản ngân hàng'
   if (normalized === 'E_WALLET') return 'Ví điện tử'
   return 'Không xác định'
+}
+
+const isOnlinePaymentMethod = (order) => {
+  const method = String(order?.paymentMethod || '').toUpperCase()
+  return method === 'BANK_TRANSFER' || method === 'E_WALLET' || method === 'BANKING'
+}
+
+const isCodPaymentMethod = (order) => {
+  const method = String(order?.paymentMethod || '').toUpperCase()
+  return method === 'COD' || method === 'CASH'
+}
+
+const loadIdSet = (key) => {
+  try {
+    const raw = localStorage.getItem(key)
+    const parsed = JSON.parse(raw || '[]')
+    return new Set(
+      Array.isArray(parsed)
+        ? parsed.map((value) => Number.parseInt(value, 10)).filter(Number.isFinite)
+        : []
+    )
+  } catch {
+    return new Set()
+  }
+}
+
+const reloadUiTimelineState = () => {
+  uiShippingStartedOrderIds.value = loadIdSet(ADMIN_ONLINE_SHIPPING_STARTED_KEY)
+  uiDeliveredOrderIds.value = loadIdSet(ADMIN_UI_DELIVERED_ORDER_IDS_KEY)
+}
+
+const isUiShippingStartedOrder = (order) => {
+  const orderId = Number.parseInt(order?.orderId, 10)
+  return Number.isFinite(orderId) && uiShippingStartedOrderIds.value.has(orderId)
+}
+
+const isUiDeliveredOrder = (order) => {
+  const orderId = Number.parseInt(order?.orderId, 10)
+  return Number.isFinite(orderId) && uiDeliveredOrderIds.value.has(orderId)
+}
+
+const getTrackingSteps = (order) => {
+  const orderStatus = String(order?.orderStatus || '').toUpperCase()
+  const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+  const createdTime = formatDate(order?.orderDate)
+  const uiShippingStarted = isUiShippingStartedOrder(order)
+  const uiDelivered = isUiDeliveredOrder(order)
+  const codFinalActionPending = isCodPaymentMethod(order) && paymentStatus === 'PAID' && uiDelivered && orderStatus !== 'PAID'
+
+  const onlineSteps = [
+    { code: 'WAIT_CONFIRM', label: 'Chờ xác nhận', icon: 'mdi-text-box-check-outline', time: '-' },
+    { code: 'TRANSFER_CONFIRM', label: 'Xác nhận thanh toán', icon: 'mdi-bank-check', time: '-' },
+    { code: 'WAIT_SHIP', label: 'Chờ giao hàng', icon: 'mdi-package-variant-closed-check', time: '-' },
+    { code: 'SHIPPING', label: 'Đang giao hàng', icon: 'mdi-truck-delivery-outline', time: '-' },
+    { code: 'DELIVERED', label: 'Đã giao hàng', icon: 'mdi-truck-check-outline', time: '-' },
+    { code: 'COMPLETED', label: 'Hoàn thành', icon: 'mdi-check-decagram-outline', time: '-' },
+  ]
+
+  const codSteps = [
+    { code: 'WAIT_CONFIRM', label: 'Chờ xác nhận', icon: 'mdi-text-box-check-outline', time: '-' },
+    { code: 'WAIT_SHIP', label: 'Chờ giao hàng', icon: 'mdi-package-variant-closed-check', time: '-' },
+    { code: 'SHIPPING', label: 'Đang giao hàng', icon: 'mdi-truck-delivery-outline', time: '-' },
+    { code: 'DELIVERED', label: 'Đã giao hàng', icon: 'mdi-truck-check-outline', time: '-' },
+    { code: 'TRANSFER_CONFIRM', label: 'Xác nhận thanh toán', icon: 'mdi-bank-check', time: '-' },
+    { code: 'COMPLETED', label: 'Hoàn thành', icon: 'mdi-check-decagram-outline', time: '-' },
+  ]
+
+  const baseSteps = isOnlinePaymentMethod(order) ? onlineSteps : codSteps
+
+  if (orderStatus === 'CANCELLED' || paymentStatus === 'CANCELLED') {
+    return [
+      { ...baseSteps[0], state: 'done', time: createdTime },
+      {
+        code: 'CANCELLED',
+        label: 'Đã hủy',
+        icon: 'mdi-close-octagon-outline',
+        time: createdTime,
+        state: 'cancelled',
+      },
+    ]
+  }
+
+  let activeIndex = 0
+
+  if (isOnlinePaymentMethod(order)) {
+    if (orderStatus === 'PAID') {
+      activeIndex = 5
+    } else if (paymentStatus === 'UNPAID' && orderStatus === 'PENDING_PAYMENT') {
+      activeIndex = 0
+    } else if (paymentStatus === 'PAID' && !uiShippingStarted) {
+      activeIndex = 2
+    } else if (paymentStatus === 'PAID' && uiShippingStarted && !uiDelivered) {
+      activeIndex = 3
+    } else if (paymentStatus === 'PAID' && uiDelivered) {
+      activeIndex = 4
+    }
+  } else {
+    if (orderStatus === 'PAID') {
+      activeIndex = 5
+    } else if (paymentStatus === 'UNPAID' && orderStatus === 'PENDING_PAYMENT') {
+      activeIndex = 0
+    } else if (paymentStatus === 'PAID' && orderStatus === 'SHIPPING' && uiShippingStarted && !uiDelivered) {
+      activeIndex = 2
+    } else if (paymentStatus === 'PAID' && orderStatus === 'SHIPPING' && uiDelivered) {
+      activeIndex = 4
+    } else if (orderStatus === 'SHIPPING' && uiShippingStarted && !uiDelivered && paymentStatus === 'UNPAID') {
+      activeIndex = 2
+    } else if (uiDelivered && paymentStatus === 'UNPAID') {
+      activeIndex = 4
+    }
+  }
+
+  return baseSteps.map((step, index) => {
+    let state = 'pending'
+    if (index < activeIndex) state = 'done'
+    if (index === activeIndex) state = codFinalActionPending ? 'current' : index === baseSteps.length - 1 ? 'done' : 'current'
+
+    return {
+      ...step,
+      state,
+      time: index === 0 || (index === baseSteps.length - 1 && (state === 'done' || codFinalActionPending)) ? createdTime : '-',
+    }
+  })
+}
+
+const connectorClass = (nextStep) => {
+  if (!nextStep) return 'tracking-connector--pending'
+  if (nextStep.state === 'done') return 'tracking-connector--done'
+  if (nextStep.state === 'current') return 'tracking-connector--current'
+  if (nextStep.state === 'cancelled') return 'tracking-connector--cancelled'
+  return 'tracking-connector--pending'
+}
+
+const trackingWidthStyle = (order) => {
+  const count = Math.max(getTrackingSteps(order).length, 1)
+  return { minWidth: `${count * 160}px` }
 }
 
 const getOnlineConfirmedOrderIds = () => {
@@ -206,6 +394,7 @@ const loadOrders = async () => {
 
   isLoading.value = true
   try {
+    reloadUiTimelineState()
     const res = await paymentApi.getOrdersByAccount(accountId, userStore.token)
     const allOrders = res.data || []
     const confirmedOnlineOrderIds = new Set(getOnlineConfirmedOrderIds())
@@ -266,3 +455,90 @@ const goProducts = () => router.push({ name: 'ProductList' })
 
 onMounted(loadOrders)
 </script>
+
+<style scoped>
+.tracking-card {
+  border-radius: 12px;
+}
+
+.tracking-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.tracking-row {
+  display: flex;
+  gap: 10px;
+}
+
+.tracking-step {
+  position: relative;
+  flex: 1;
+  min-width: 150px;
+  text-align: center;
+}
+
+.tracking-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+
+.tracking-icon--done {
+  background: #22a745;
+}
+
+.tracking-icon--current {
+  background: #f7b500;
+}
+
+.tracking-icon--pending {
+  background: #cfd8dc;
+  color: #607d8b;
+}
+
+.tracking-icon--cancelled {
+  background: #ff5722;
+}
+
+.tracking-connector {
+  position: absolute;
+  top: 15px;
+  left: calc(50% + 24px);
+  width: calc(100% - 8px);
+  height: 7px;
+  border-radius: 999px;
+}
+
+.tracking-connector--done {
+  background: #22a745;
+}
+
+.tracking-connector--current {
+  background: #f7b500;
+}
+
+.tracking-connector--pending {
+  background: #d9dee3;
+}
+
+.tracking-connector--cancelled {
+  background: #ff5722;
+}
+
+.tracking-label {
+  margin-top: 8px;
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+
+.tracking-time {
+  margin-top: 2px;
+  color: #6f6f6f;
+  font-size: 0.75rem;
+}
+</style>

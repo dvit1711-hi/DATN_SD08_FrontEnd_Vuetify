@@ -164,4 +164,40 @@ export default {
 
     return axios.put(`${API}/orders/${orderId}/cancel`, null, config)
   },
+
+  revertOrderStatusByAdmin(orderId, reason, token) {
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.put(`${API}/orders/${orderId}/revert`, { reason }, config)
+  },
+
+  startShippingByAdmin(orderId, token) {
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.put(`${API}/orders/${orderId}/start-shipping`, null, config)
+  },
+
+  completeDeliveryByAdmin(orderId, token) {
+    const config = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined
+
+    return axios.put(`${API}/orders/${orderId}/complete-delivery`, null, config)
+  },
 }
