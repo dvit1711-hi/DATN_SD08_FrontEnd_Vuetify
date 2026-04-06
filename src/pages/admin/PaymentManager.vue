@@ -10,8 +10,15 @@
       </v-btn>
     </div>
 
+    <v-card rounded="xl" elevation="0" class="pa-4 mb-6">
+      <v-text-field v-model="searchKeyword" label="Tìm kiếm" placeholder="Tìm theo mã đơn, tên khách hàng, phương thức, trạng thái..." prepend-inner-icon="mdi-magnify" variant="outlined" density="comfortable" clearable @input="searchKeyword = $event" />
+      <div v-if="searchKeyword" class="text-caption text-medium-emphasis mt-2">
+        Tìm thấy <strong>{{ filteredOrders.length }}</strong> kết quả
+      </div>
+    </v-card>
+
     <v-card rounded="xl" elevation="0" class="pa-2">
-      <v-data-table :headers="headers" :items="orders" :loading="isLoading" item-key="orderId" class="elevation-0">
+      <v-data-table :headers="headers" :items="filteredOrders" :loading="isLoading" item-key="orderId" class="elevation-0">
         <template #item.orderInfo="{ item }">
           <div>
             <div class="font-weight-bold">#{{ item.orderId }}</div>
@@ -210,6 +217,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import paymentApi from '@/api/paymentApi'
 
 const orders = ref([])
+const searchKeyword = ref('')
 const isLoading = ref(false)
 const confirmingOrderId = ref(null)
 const cancellingOrderId = ref(null)
@@ -276,6 +284,29 @@ const formatDate = (value) => {
   const parsed = new Date(value)
   return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN')
 }
+
+const filteredOrders = computed(() => {
+  if (!searchKeyword.value.trim()) return orders.value
+  
+  const keyword = searchKeyword.value.toLowerCase().trim()
+  return orders.value.filter((order) => {
+    const orderId = String(order.orderId || '').toLowerCase()
+    const accountUsername = String(order.accountUsername || 'khách vãng lai').toLowerCase()
+    const paymentMethod = String(order.paymentMethod || '').toLowerCase()
+    const paymentStatus = getPaymentStatusLabel(order.paymentStatus).toLowerCase()
+    const orderStatus = getOrderStatusLabel(order).toLowerCase()
+    const totalAmount = String(order.totalAmount || '').toLowerCase()
+    
+    return (
+      orderId.includes(keyword) ||
+      accountUsername.includes(keyword) ||
+      paymentMethod.includes(keyword) ||
+      paymentStatus.includes(keyword) ||
+      orderStatus.includes(keyword) ||
+      totalAmount.includes(keyword)
+    )
+  })
+})
 
 const orderTimelineSteps = computed(() => {
   return buildTimelineSteps(selectedOrder.value)
@@ -413,11 +444,58 @@ const clearUiShippingStarted = (orderId) => {
   persistIdSet(ONLINE_SHIPPING_STARTED_KEY, next)
 }
 
+const isGuestOrder = (order) => {
+  return !order?.accountUsername && !order?.accountId
+}
+
 const buildTimelineSteps = (order) => {
   if (!order) return []
 
   const createdTime = formatDate(order.orderDate)
 
+  // Guest orders: simple 2-step flow
+  if (isGuestOrder(order)) {
+    const guestSteps = [
+      { code: 'WAIT_CONFIRM', label: 'Chờ xác nhận', icon: 'mdi-text-box-check-outline', time: '-' },
+      { code: 'COMPLETED', label: 'Hoàn thành', icon: 'mdi-check-decagram-outline', time: '-' },
+    ]
+
+    if (isCancelledOrder(order)) {
+      return [
+        { ...guestSteps[0], state: 'done', time: createdTime },
+        {
+          code: 'CANCELLED',
+          label: 'Đã hủy',
+          icon: 'mdi-close-octagon-outline',
+          state: 'cancelled',
+          time: createdTime,
+        },
+      ]
+    }
+
+    const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+    const orderStatus = String(order?.orderStatus || '').toUpperCase()
+
+    let activeIndex = 0
+    if (orderStatus === 'PAID' || paymentStatus === 'PAID') {
+      activeIndex = 1
+    }
+
+    return guestSteps.map((step, index) => {
+      let state = 'pending'
+      if (index < activeIndex) state = 'done'
+      if (index === activeIndex) state = 'current'
+      if (index === guestSteps.length - 1 && activeIndex >= guestSteps.length - 1) state = 'done'
+
+      return {
+        ...step,
+        state,
+        time: index === 0 || (index === 1 && activeIndex >= 1) ? createdTime : '-',
+      }
+    })
+  }
+
+  // Regular account orders: full flow
   const onlineSteps = [
     { code: 'WAIT_CONFIRM', label: 'Chờ xác nhận', icon: 'mdi-text-box-check-outline', time: '-' },
     { code: 'TRANSFER_CONFIRM', label: 'Xác nhận thanh toán', icon: 'mdi-bank-check', time: '-' },
@@ -659,6 +737,7 @@ const applyOrderPatch = (order, patch) => {
 }
 
 const loadOrders = async () => {
+  searchKeyword.value = ''
   isLoading.value = true
   try {
     const token = localStorage.getItem('token')
