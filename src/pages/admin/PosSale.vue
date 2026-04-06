@@ -95,8 +95,8 @@
                                                         {{ formatCurrency(product.finalPrice || product.price) }}
                                                     </strong>
 
-                                                    <v-chip size="x-small" color="error" variant="flat"
-                                                        v-if="product.discountLabel">
+                                                    <v-chip v-if="product.discountLabel" size="x-small" color="error"
+                                                        variant="flat">
                                                         {{ product.discountLabel }}
                                                     </v-chip>
                                                 </div>
@@ -177,6 +177,14 @@
                         <div class="mb-2"><strong>Trạng thái:</strong> {{ currentOrder?.status || "-" }}</div>
                         <div class="mb-2"><strong>Loại đơn:</strong> {{ currentOrder?.orderType || "OFFLINE" }}</div>
                         <div class="mb-2">
+                            <strong>PT thanh toán:</strong>
+                            {{ getPaymentMethodLabel(currentOrder?.paymentMethod) }}
+                        </div>
+                        <div class="mb-2">
+                            <strong>TT thanh toán:</strong>
+                            {{ getPaymentStatusLabel(currentOrder?.paymentStatus) }}
+                        </div>
+                        <div class="mb-2">
                             <strong>Khách hàng:</strong>
                             {{ currentOrder?.customerName || guest.customerName || "Khách lẻ" }}
                         </div>
@@ -231,73 +239,71 @@
                             <v-card-title>Ưu đãi đơn hàng</v-card-title>
 
                             <v-card-text>
-                                <div v-if="promotionOptions.length">
-                                    <v-card v-for="promo in promotionOptions" :key="promo.couponCode" variant="outlined"
-                                        class="mb-3">
-                                        <v-card-text>
-                                            <div class="d-flex justify-space-between align-center mb-1">
-                                                <div class="font-weight-bold">
-                                                    {{ promo.name || promo.couponCode }}
-                                                </div>
+                                <div class="mb-3">
+                                    <div class="text-subtitle-2 font-weight-medium mb-2">Chọn ưu đãi có sẵn</div>
 
-                                                <v-chip v-if="promo.applied" color="success" size="small"
-                                                    variant="flat">
-                                                    Đang áp dụng
-                                                </v-chip>
-                                                <v-chip v-else-if="promo.eligible" color="primary" size="small"
-                                                    variant="tonal">
-                                                    Có thể áp dụng
-                                                </v-chip>
-                                                <v-chip v-else color="grey" size="small" variant="outlined">
-                                                    Chưa đủ điều kiện
-                                                </v-chip>
-                                            </div>
+                                    <v-select v-model="selectedPromotionCode" :items="promotionComboItems"
+                                        item-title="title" item-value="value" label="Chọn ưu đãi" variant="outlined"
+                                        density="comfortable" clearable return-object
+                                        :disabled="!getCurrentOrderId(currentOrder)"
+                                        no-data-text="Chưa có ưu đãi khả dụng">
+                                        <template #item="{ props, item }">
+                                            <v-list-item v-bind="props" :subtitle="item.raw.subtitle">
+                                                <template #append>
+                                                    <v-chip v-if="item.raw.applied" color="success" size="x-small"
+                                                        variant="flat">
+                                                        Đang áp dụng
+                                                    </v-chip>
 
-                                            <div class="text-body-2 text-grey-darken-1 mb-1">
-                                                {{ promo.description || "Không có mô tả" }}
-                                            </div>
+                                                    <v-chip v-else-if="item.raw.eligible" color="primary" size="x-small"
+                                                        variant="tonal">
+                                                        Có thể áp dụng
+                                                    </v-chip>
 
-                                            <div class="text-caption mb-2">
-                                                Giảm dự kiến:
-                                                <strong>{{ formatCurrency(promo.estimatedDiscount) }}</strong>
-                                            </div>
+                                                    <v-chip v-else color="grey" size="x-small" variant="outlined">
+                                                        Chưa đủ điều kiện
+                                                    </v-chip>
+                                                </template>
+                                            </v-list-item>
+                                        </template>
+                                    </v-select>
 
-                                            <div v-if="!promo.eligible && Number(promo.missingAmount || 0) > 0"
-                                                class="text-warning text-caption mb-2">
-                                                Cần mua thêm {{ formatCurrency(promo.missingAmount) }} để áp dụng
-                                            </div>
+                                    <div class="d-flex ga-2 mt-2">
+                                        <v-btn color="primary" variant="tonal"
+                                            :disabled="!getCurrentOrderId(currentOrder) || !selectedPromotionCode"
+                                            @click="handlePromotionCombobox">
+                                            Áp dụng ưu đãi đã chọn
+                                        </v-btn>
 
-                                            <div class="d-flex justify-end ga-2">
-                                                <v-btn v-if="promo.eligible && !promo.applied" color="primary"
-                                                    variant="tonal" @click="applyPromotion(promo)">
-                                                    Áp dụng
-                                                </v-btn>
-
-                                                <v-btn v-if="promo.applied" color="error" variant="text"
-                                                    @click="removePromotion">
-                                                    Bỏ áp dụng
-                                                </v-btn>
-                                            </div>
-                                        </v-card-text>
-                                    </v-card>
+                                        <v-btn color="error" variant="text" :disabled="!currentOrder?.couponCode"
+                                            @click="removePromotion">
+                                            Bỏ ưu đãi
+                                        </v-btn>
+                                    </div>
                                 </div>
 
-                                <div v-else class="text-grey">Chưa có ưu đãi khả dụng</div>
+                                <v-divider class="my-4" />
 
-                                <v-expansion-panels class="mt-3">
-                                    <v-expansion-panel title="Nhập mã đặc biệt">
-                                        <v-expansion-panel-text>
-                                            <v-text-field v-model="couponCode" label="Mã giảm giá" variant="outlined"
-                                                density="comfortable">
-                                                <template #append>
-                                                    <v-btn color="primary" variant="tonal" @click="handleApplyCoupon">
-                                                        Áp dụng
-                                                    </v-btn>
-                                                </template>
-                                            </v-text-field>
-                                        </v-expansion-panel-text>
-                                    </v-expansion-panel>
-                                </v-expansion-panels>
+                                <div>
+                                    <div class="text-subtitle-2 font-weight-medium mb-2">Nhập mã đặc biệt</div>
+
+                                    <v-text-field v-model="couponCode" label="Mã giảm giá"
+                                        placeholder="Nhập mã rồi bấm áp dụng" variant="outlined" density="comfortable"
+                                        :disabled="!getCurrentOrderId(currentOrder)">
+                                        <template #append>
+                                            <v-btn color="primary" variant="tonal"
+                                                :disabled="!getCurrentOrderId(currentOrder) || !String(couponCode || '').trim()"
+                                                @click="handleApplyCoupon">
+                                                Áp dụng mã
+                                            </v-btn>
+                                        </template>
+                                    </v-text-field>
+                                </div>
+
+                                <div v-if="currentOrder?.couponCode" class="text-caption mt-2">
+                                    Mã đang áp dụng:
+                                    <strong>{{ currentOrder.couponCode }}</strong>
+                                </div>
                             </v-card-text>
                         </v-card>
 
@@ -316,8 +322,9 @@
 
                         <v-divider class="my-4" />
 
-                        <v-select v-model="checkoutForm.method" :items="paymentMethods" label="Phương thức thanh toán"
-                            variant="outlined" density="comfortable" />
+                        <v-select v-model="checkoutForm.method" :items="paymentMethods" item-title="title"
+                            item-value="value" label="Phương thức thanh toán" variant="outlined"
+                            density="comfortable" />
 
                         <v-text-field v-if="checkoutForm.method === 'CASH'" v-model.number="checkoutForm.cashReceived"
                             type="number" label="Tiền khách đưa" variant="outlined" density="comfortable" />
@@ -340,6 +347,43 @@
                 </v-card>
             </v-col>
         </v-row>
+
+        <v-dialog v-model="bankingDialog" max-width="520">
+            <v-card rounded="lg">
+                <v-card-title>Thanh toán chuyển khoản MB Bank</v-card-title>
+
+                <v-card-text v-if="bankingInfo">
+                    <div class="text-center mb-4">
+                        <v-img :src="bankingInfo.qrUrl" max-width="280" class="mx-auto" contain />
+                    </div>
+
+                    <div class="mb-2">
+                        <strong>Ngân hàng:</strong> {{ bankingInfo.bankName }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Số tài khoản:</strong> {{ bankingInfo.accountNumber }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Chủ tài khoản:</strong> {{ bankingInfo.accountName }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Số tiền:</strong> {{ formatCurrency(bankingInfo.amount) }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Nội dung CK:</strong> {{ bankingInfo.transferContent }}
+                    </div>
+
+                    <div class="text-caption text-medium-emphasis mt-3">
+                        Khách quét QR để chuyển khoản. Sau đó admin xác nhận ở màn hình quản lý thanh toán.
+                    </div>
+                </v-card-text>
+
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn variant="text" @click="bankingDialog = false">Đóng</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
 
         <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="2500">
             {{ snackbar.text }}
@@ -366,6 +410,9 @@ const selectedCustomer = ref(null)
 const customerMode = ref("guest")
 const couponCode = ref("")
 const promotionOptions = ref([])
+const selectedPromotionCode = ref(null)
+const bankingDialog = ref(false)
+const bankingInfo = ref(null)
 
 const guest = ref({
     customerName: "",
@@ -379,7 +426,10 @@ const checkoutForm = ref({
     cashReceived: null,
 })
 
-const paymentMethods = ["CASH", "BANKING", "QR"]
+const paymentMethods = [
+    { title: "Tiền mặt", value: "CASH" },
+    { title: "Chuyển khoản MB Bank", value: "BANKING" },
+]
 
 const snackbar = ref({
     show: false,
@@ -440,6 +490,30 @@ function formatCurrency(value) {
     }).format(Number(value || 0))
 }
 
+function getPaymentMethodLabel(method) {
+    switch (String(method || "").toUpperCase()) {
+        case "CASH":
+            return "Tiền mặt"
+        case "BANKING":
+            return "Chuyển khoản"
+        default:
+            return method || "-"
+    }
+}
+
+function getPaymentStatusLabel(status) {
+    switch (String(status || "").toUpperCase()) {
+        case "PAID":
+            return "Đã thanh toán"
+        case "UNPAID":
+            return "Chưa thanh toán"
+        case "CANCELLED":
+            return "Đã hủy"
+        default:
+            return status || "-"
+    }
+}
+
 function getCustomerId(customer) {
     return customer.accountId || customer.id || customer.accountID
 }
@@ -485,11 +559,61 @@ function getItemSizeName(item) {
     return item.sizeName || "-"
 }
 
+function buildPromotionComboItem(promo) {
+    const statusText = promo.applied
+        ? "Đang áp dụng"
+        : promo.eligible
+            ? "Có thể áp dụng"
+            : "Chưa đủ điều kiện"
+
+    const missingText =
+        !promo.eligible && Number(promo.missingAmount || 0) > 0
+            ? ` - Cần thêm ${formatCurrency(promo.missingAmount)}`
+            : ""
+
+    return {
+        title: `${promo.name || promo.couponCode} (${promo.couponCode})`,
+        value: promo.couponCode,
+        subtitle: `${statusText} - Giảm dự kiến ${formatCurrency(promo.estimatedDiscount)}${missingText}`,
+        eligible: promo.eligible,
+        applied: promo.applied,
+        raw: promo,
+    }
+}
+
+const promotionComboItems = computed(() => {
+    return (promotionOptions.value || []).map(buildPromotionComboItem)
+})
+
+function getSelectedPromotionCodeValue() {
+    const selected = selectedPromotionCode.value
+
+    if (!selected) return ""
+
+    if (typeof selected === "string") {
+        return selected.trim()
+    }
+
+    if (typeof selected === "object") {
+        return String(
+            selected.value ||
+            selected.couponCode ||
+            selected.raw?.couponCode ||
+            ""
+        ).trim()
+    }
+
+    return String(selected).trim()
+}
+
 function resetOrderForm() {
     selectedCustomer.value = null
     customerMode.value = "guest"
     couponCode.value = ""
+    selectedPromotionCode.value = null
     promotionOptions.value = []
+    bankingDialog.value = false
+    bankingInfo.value = null
 
     guest.value = {
         customerName: "",
@@ -515,8 +639,18 @@ function syncFormFromOrder(order) {
     guest.value.note = order.note || ""
     guest.value.shippingAddress = order.shippingAddress || ""
 
-    couponCode.value = order.couponCode || ""
+    couponCode.value = ""
     customerMode.value = order.customerId ? "account" : "guest"
+
+    if (order.paymentMethod) {
+        checkoutForm.value.method = order.paymentMethod
+    } else {
+        checkoutForm.value.method = "CASH"
+    }
+
+    if (checkoutForm.value.method !== "CASH") {
+        checkoutForm.value.cashReceived = null
+    }
 }
 
 function selectCustomer(customer) {
@@ -595,16 +729,19 @@ async function loadPromotions() {
         const orderId = getCurrentOrderId(currentOrder.value)
         if (!orderId) {
             promotionOptions.value = []
+            selectedPromotionCode.value = null
             return
         }
 
         const { data } = await posApi.getAvailablePromotions(orderId)
-        console.log("Promotions data:", data)
         promotionOptions.value = Array.isArray(data) ? data : []
+
+        const appliedPromo = promotionOptions.value.find((x) => x.applied)
+        selectedPromotionCode.value = appliedPromo ? buildPromotionComboItem(appliedPromo) : null
     } catch (error) {
-        console.error("loadPromotions error:", error)
         showMessage(error.response?.data?.message || "Không tải được ưu đãi", "error")
         promotionOptions.value = []
+        selectedPromotionCode.value = null
     }
 }
 
@@ -794,19 +931,56 @@ async function handleApplyCoupon() {
             return
         }
 
+        const code = String(couponCode.value || "").trim()
+        if (!code) {
+            showMessage("Vui lòng nhập mã giảm giá", "warning")
+            return
+        }
+
         loading.value = true
         const { data } = await posApi.applyCoupon(orderId, {
-            couponCode: couponCode.value || "",
+            couponCode: code,
         })
 
         currentOrder.value = data
+        couponCode.value = ""
         await loadPendingOrders(orderId)
-        showMessage(couponCode.value ? "Áp mã giảm giá thành công" : "Đã bỏ mã giảm giá")
+        await loadPromotions()
+        showMessage("Áp mã giảm giá thành công")
     } catch (error) {
         showMessage(error.response?.data?.message || "Không áp dụng được mã giảm giá", "error")
     } finally {
         loading.value = false
     }
+}
+
+async function handlePromotionCombobox() {
+    const orderId = getCurrentOrderId(currentOrder.value)
+    if (!orderId) {
+        showMessage("Bạn cần tạo đơn trước", "warning")
+        return
+    }
+
+    const code = getSelectedPromotionCodeValue()
+
+    if (!code) {
+        showMessage("Vui lòng chọn ưu đãi", "warning")
+        return
+    }
+
+    const promo = promotionOptions.value.find((x) => x.couponCode === code)
+
+    if (!promo) {
+        showMessage("Không tìm thấy ưu đãi đã chọn", "warning")
+        return
+    }
+
+    if (!promo.eligible && !promo.applied) {
+        showMessage("Ưu đãi này chưa đủ điều kiện áp dụng", "warning")
+        return
+    }
+
+    await applyPromotion(promo)
 }
 
 async function applyPromotion(promo) {
@@ -820,7 +994,7 @@ async function applyPromotion(promo) {
         })
 
         currentOrder.value = data
-        couponCode.value = promo.couponCode
+        couponCode.value = ""
         await loadPendingOrders(orderId)
         await loadPromotions()
         showMessage("Áp dụng ưu đãi thành công")
@@ -843,6 +1017,7 @@ async function removePromotion() {
 
         currentOrder.value = data
         couponCode.value = ""
+        selectedPromotionCode.value = null
         await loadPendingOrders(orderId)
         await loadPromotions()
         showMessage("Đã bỏ ưu đãi")
@@ -867,6 +1042,7 @@ async function handleCheckout() {
         }
 
         loading.value = true
+
         const { data } = await posApi.checkout(orderId, {
             method: checkoutForm.value.method,
             cashReceived:
@@ -875,9 +1051,27 @@ async function handleCheckout() {
                     : null,
         })
 
-        printReceipt(data)
-        await loadPendingOrders()
-        showMessage("Thanh toán thành công")
+        if (checkoutForm.value.method === "CASH") {
+            currentOrder.value = data
+            printReceipt(data)
+            await loadPendingOrders()
+            showMessage("Thanh toán thành công")
+            return
+        }
+
+        if (checkoutForm.value.method === "BANKING") {
+            currentOrder.value = data
+
+            const bankRes = await posApi.getMBBankInfo(orderId)
+            bankingInfo.value = bankRes.data
+            bankingDialog.value = true
+
+            pendingOrders.value = pendingOrders.value.filter(
+                (x) => getCurrentOrderId(x) !== orderId
+            )
+
+            showMessage("Đã tạo yêu cầu chuyển khoản")
+        }
     } catch (error) {
         showMessage(error.response?.data?.message || "Thanh toán thất bại", "error")
     } finally {
@@ -931,7 +1125,7 @@ function printReceipt(order = currentOrder.value) {
         <p><strong>Khach hang:</strong> ${order.customerName || "Khach le"}</p>
         <p><strong>So dien thoai:</strong> ${order.customerPhone || ""}</p>
         <p><strong>Trang thai:</strong> ${order.status || ""}</p>
-        <p><strong>Phuong thuc thanh toan:</strong> ${checkoutForm.value.method}</p>
+        <p><strong>Phuong thuc thanh toan:</strong> ${getPaymentMethodLabel(order.paymentMethod || checkoutForm.value.method)}</p>
 
         <table>
           <thead>
@@ -954,7 +1148,7 @@ function printReceipt(order = currentOrder.value) {
           <div><span>Tam tinh:</span><strong>${formatCurrency(orderSubtotal)}</strong></div>
           <div><span>Giam gia:</span><strong>${formatCurrency(orderDiscount)}</strong></div>
           <div><span>Tong tien:</span><strong>${formatCurrency(orderTotal)}</strong></div>
-          ${checkoutForm.value.method === "CASH"
+          ${String(order.paymentMethod || checkoutForm.value.method).toUpperCase() === "CASH"
             ? `<div><span>Tien khach dua:</span><strong>${formatCurrency(checkoutForm.value.cashReceived || 0)}</strong></div>
                <div><span>Tien thua:</span><strong>${formatCurrency(changeAmount.value)}</strong></div>`
             : ""

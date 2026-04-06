@@ -71,4 +71,12 @@ export default {
   checkout(orderId, payload) {
     return apiClient.post(`/api/pos/orders/${orderId}/checkout`, payload)
   },
+
+  getMBBankInfo(orderId) {
+    return apiClient.get(`/api/payment/orders/${orderId}/mb-bank-info`)
+  },
+
+  confirmBanking(orderId) {
+    return apiClient.put(`/api/payment/orders/${orderId}/confirm`)
+  },
 }
