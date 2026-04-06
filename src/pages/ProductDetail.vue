@@ -22,8 +22,12 @@
 
       <v-col cols="5">
         <div>
-          <h1 class="text-h4 font-weight-bold mb-2">{{ product.productName }}</h1>
-          <p class="text-body-2 text-grey mb-2">Mã sản phẩm: #{{ product.productID }}</p>
+          <h1 class="text-h4 font-weight-bold mb-2">
+            {{ product.productName }}
+          </h1>
+          <p class="text-body-2 text-grey mb-2">
+            Mã sản phẩm: #{{ product.productID }}
+          </p>
           <p class="text-body-2 text-grey mb-1">
             Chất liệu: {{ product.materialName || "—" }}
           </p>
@@ -32,9 +36,16 @@
           </p>
 
           <div class="price mb-4">
-            <div v-if="getVariantDiscount(selectedVariant)" class="price-section">
-              <div class="original-price">{{ formatPrice(selectedVariant?.price || 0) }}đ</div>
-              <div class="discounted-price">{{ formatPrice(getDiscountedVariantPrice(selectedVariant)) }}đ</div>
+            <div
+              v-if="getVariantDiscount(selectedVariant)"
+              class="price-section"
+            >
+              <div class="original-price">
+                {{ formatPrice(selectedVariant?.price || 0) }}đ
+              </div>
+              <div class="discounted-price">
+                {{ formatPrice(getDiscountedVariantPrice(selectedVariant)) }}đ
+              </div>
             </div>
             <div v-else class="text-h5 font-weight-bold text-primary">
               {{ formatPrice(selectedVariant?.price || 0) }}đ
@@ -51,26 +62,57 @@
             text="Biến thể đã chọn hiện đang hết hàng"
           />
 
+          <!-- Chọn màu -->
           <div class="mb-4">
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">Chọn biến thể</h3>
-            <div class="d-flex flex-column gap-2">
+            <h3 class="text-subtitle-1 font-weight-bold mb-2">Chọn màu</h3>
+            <div class="d-flex gap-2 flex-wrap">
+              <div class="mb-4">
+                <h3 class="text-subtitle-1 font-weight-bold mb-2">Chọn màu</h3>
+                <div class="d-flex gap-3 flex-wrap">
+                  <button
+                    v-for="color in uniqueColors"
+                    :key="color.colorID"
+                    class="color-dot-btn"
+                    :class="{ active: selectedColorId === color.colorID }"
+                    :title="color.colorName"
+                    @click="selectColor(color.colorID)"
+                  >
+                    <span
+                      class="color-dot"
+                      :style="{ backgroundColor: color.colorCode }"
+                    ></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chọn size -->
+          <div class="mb-4" v-if="availableSizes.length > 0">
+            <div class="d-flex align-center gap-2 mb-2">
+              <h3 class="text-subtitle-1 font-weight-bold">
+                Chọn kích thước
+              </h3>
+              <v-btn
+                icon="mdi-information"
+                size="x-small"
+                variant="text"
+                @click="openSizeDialog"
+                title="Hướng dẫn chọn size"
+              />
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
               <button
-                v-for="variant in product.colors"
+                v-for="variant in availableSizes"
                 :key="variant.productColorID"
-                class="variant-btn"
-                :class="{ 'variant-btn-active': selectedVariant?.productColorID === variant.productColorID }"
-                @click="changeVariant(variant)"
+                class="size-btn"
+                :class="{
+                  active:
+                    selectedVariant?.productColorID === variant.productColorID,
+                }"
+                @click="selectVariant(variant)"
               >
-                <span class="d-flex align-center gap-2">
-                  <span
-                    class="variant-color"
-                    :style="{ backgroundColor: variant.colorCode }"
-                  ></span>
-                  <span>{{ variant.colorName }} - Size {{ variant.sizeName || "—" }}</span>
-                </span>
-                <span class="font-weight-bold">
-                  {{ formatPrice(variant.price || 0) }}đ
-                </span>
+                {{ variant.sizeName || "—" }}
               </button>
             </div>
           </div>
@@ -99,7 +141,9 @@
                 :disabled="isLoading || isSelectedVariantOutOfStock"
               >
                 <v-icon left>mdi-shopping-cart</v-icon>
-                {{ isSelectedVariantOutOfStock ? "Hết hàng" : "Thêm vào giỏ hàng" }}
+                {{
+                  isSelectedVariantOutOfStock ? "Hết hàng" : "Thêm vào giỏ hàng"
+                }}
               </v-btn>
             </v-col>
             <v-col cols="6">
@@ -117,24 +161,97 @@
           </v-row>
 
           <v-card class="mt-4 pa-4" outlined>
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">Mô tả sản phẩm</h3>
+            <h3 class="text-subtitle-1 font-weight-bold mb-2">
+              Mô tả sản phẩm
+            </h3>
             <p>{{ product.description || "Không có mô tả" }}</p>
           </v-card>
         </div>
       </v-col>
     </v-row>
 
-    <v-snackbar v-model="showSnackbar" :color="snackbarColor" timeout="3000" top>
+    <v-snackbar
+      v-model="showSnackbar"
+      :color="snackbarColor"
+      timeout="3000"
+      top
+    >
       {{ snackbarMessage }}
     </v-snackbar>
+
+    <!-- Size Guide Dialog -->
+    <v-dialog v-model="sizeDialog" max-width="980px">
+  <v-card class="size-guide-dialog">
+    <div class="size-guide-header">
+      <div class="size-guide-title">HƯỚNG DẪN CHỌN SIZE</div>
+      <v-btn
+        icon="mdi-close"
+        variant="text"
+        size="small"
+        @click="sizeDialog = false"
+      />
+    </div>
+
+    <v-divider />
+
+    <div class="size-guide-body">
+      <!-- Bên trái: chữ + ảnh -->
+      <div class="size-guide-left">
+        <div class="size-guide-subtitle">Cách lấy kích thước:</div>
+        <p class="size-guide-text">
+          Dùng thước đo quanh đầu, đo từ điểm A (giữa trán)
+          đến hết chu vi đầu của bạn.
+        </p>
+
+        <div class="size-guide-image-wrap">
+          <img
+            src="/images/HuongDanLaySize.png"
+            alt="Hướng dẫn đo size"
+            class="size-guide-image"
+          />
+        </div>
+      </div>
+
+      <!-- Bên phải: bảng -->
+      <div class="size-guide-right">
+        <table class="size-guide-table">
+          <thead>
+            <tr>
+              <th>SIZE</th>
+              <th v-for="size in sizes" :key="size.sizeID">
+                {{ size.sizeName }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Chu vi đầu <span>(cm)</span></td>
+              <td v-for="size in sizes" :key="`head-${size.sizeID}`">
+                {{ formatSizeValue(size.sizeDescription) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="size-guide-footer">
+      <v-btn variant="text" @click="sizeDialog = false">Đóng</v-btn>
+    </div>
+  </v-card>
+</v-dialog>
 
     <v-row class="mt-8">
       <v-col cols="12" md="3">
         <v-card class="sticky-card" elevation="0" border>
           <v-card-item>
-            <div class="text-subtitle2 font-weight-bold mb-2">Tổng quan đánh giá</div>
+            <div class="text-subtitle2 font-weight-bold mb-2">
+              Tổng quan đánh giá
+            </div>
             <div class="d-flex align-center gap-2 mb-2">
-              <div class="text-h5 font-weight-bold">{{ averageRating.toFixed(1) }}</div>
+              <div class="text-h5 font-weight-bold">
+                {{ averageRating.toFixed(1) }}
+              </div>
               <v-rating
                 :model-value="averageRating"
                 readonly
@@ -142,7 +259,9 @@
                 color="amber"
               />
             </div>
-            <div class="text-caption text-grey mb-4">{{ totalReviews }} đánh giá</div>
+            <div class="text-caption text-grey mb-4">
+              {{ totalReviews }} đánh giá
+            </div>
 
             <div>
               <button
@@ -158,7 +277,9 @@
                 :key="star"
                 class="star-filter-btn"
                 :class="{ active: selectedStarFilter === star }"
-                @click="selectedStarFilter = selectedStarFilter === star ? null : star"
+                @click="
+                  selectedStarFilter = selectedStarFilter === star ? null : star
+                "
               >
                 {{ star }} <v-icon icon="mdi-star" size="small" />
               </button>
@@ -170,7 +291,9 @@
       <v-col cols="12" md="9">
         <div v-if="reviews.length > 0" class="reviews-container">
           <div class="reviews-wrapper pa-6">
-            <h2 class="text-h6 font-weight-bold mb-4">Đánh giá từ khách hàng</h2>
+            <h2 class="text-h6 font-weight-bold mb-4">
+              Đánh giá từ khách hàng
+            </h2>
 
             <div class="reviews-list">
               <v-card
@@ -185,7 +308,10 @@
                     <div class="review-avatar-wrapper">
                       <v-avatar size="48" class="review-avatar">
                         <v-img
-                          :src="review.userAvatar || getDefaultAvatar(review.username)"
+                          :src="
+                            review.userAvatar ||
+                            getDefaultAvatar(review.username)
+                          "
                           :alt="review.username"
                           cover
                         />
@@ -193,10 +319,16 @@
                     </div>
 
                     <div class="flex-grow-1">
-                      <div class="d-flex align-center justify-space-between mb-2">
+                      <div
+                        class="d-flex align-center justify-space-between mb-2"
+                      >
                         <div>
-                          <div class="font-weight-bold text-body-1">{{ review.username }}</div>
-                          <div class="text-caption text-grey">{{ formatDate(review.createdAt) }}</div>
+                          <div class="font-weight-bold text-body-1">
+                            {{ review.username }}
+                          </div>
+                          <div class="text-caption text-grey">
+                            {{ formatDate(review.createdAt) }}
+                          </div>
                         </div>
                       </div>
 
@@ -244,6 +376,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
 import reviewApi from "@/api/ReviewApi";
+import sizeApi from "@/api/sizeApi";
 import { getActiveProductDiscounts } from "@/api/productDiscountApi";
 
 const route = useRoute();
@@ -254,6 +387,7 @@ const product = ref(null);
 const images = ref([]);
 const mainImage = ref("");
 const selectedVariant = ref(null);
+const selectedColorId = ref(null);
 const quantity = ref(1);
 const isLoading = ref(false);
 const showSnackbar = ref(false);
@@ -268,24 +402,103 @@ const selectedStarFilter = ref(null);
 const currentPage = ref(1);
 const itemsPerPage = 5;
 
+const sizeDialog = ref(false);
+const sizes = ref([]);
+const loadingSizes = ref(false);
+const sizeHeaders = [
+  { title: 'Tên Size', key: 'sizeName' },
+  { title: 'Mô Tả', key: 'sizeDescription' },
+];
+const formatSizeValue = (description) => {
+  return description || "-";
+};
+
 const selectedVariantStock = computed(
-  () => Number.parseInt(selectedVariant.value?.stockQuantity, 10) || 0
+  () => Number.parseInt(selectedVariant.value?.stockQuantity, 10) || 0,
 );
 
 const isSelectedVariantOutOfStock = computed(
-  () => selectedVariantStock.value <= 0
+  () => selectedVariantStock.value <= 0,
 );
+
+const uniqueColors = computed(() => {
+  if (!product.value?.colors?.length) return [];
+
+  const map = new Map();
+
+  product.value.colors.forEach((variant) => {
+    if (!map.has(variant.colorID)) {
+      map.set(variant.colorID, {
+        colorID: variant.colorID,
+        colorName: variant.colorName,
+        colorCode: variant.colorCode,
+      });
+    }
+  });
+
+  return Array.from(map.values());
+});
+
+const availableSizes = computed(() => {
+  if (!product.value?.colors?.length || !selectedColorId.value) return [];
+  return product.value.colors.filter(
+    (variant) => Number(variant.colorID) === Number(selectedColorId.value),
+  );
+});
+
+function applySelectedVariant(variant) {
+  selectedVariant.value = variant;
+  images.value = variant?.images || [];
+  mainImage.value = images.value[0] || "";
+  if (quantity.value < 1) quantity.value = 1;
+  if (
+    selectedVariantStock.value > 0 &&
+    quantity.value > selectedVariantStock.value
+  ) {
+    quantity.value = selectedVariantStock.value;
+  }
+}
+
+function selectColor(colorID) {
+  selectedColorId.value = colorID;
+
+  const sizesOfColor = availableSizes.value;
+  if (!sizesOfColor.length) return;
+
+  const requestedVariantId = Number.parseInt(route.query.variant, 10);
+
+  let matched = null;
+
+  if (Number.isFinite(requestedVariantId) && requestedVariantId > 0) {
+    matched = sizesOfColor.find(
+      (v) => Number(v.productColorID) === requestedVariantId,
+    );
+  }
+
+  if (!matched) {
+    matched =
+      sizesOfColor.find(
+        (v) => (Number.parseInt(v.stockQuantity, 10) || 0) > 0,
+      ) || sizesOfColor[0];
+  }
+
+  applySelectedVariant(matched);
+}
+
+function selectVariant(variant) {
+  applySelectedVariant(variant);
+}
 
 onMounted(async () => {
   try {
     const productID = route.params.id;
     const [res, discountRes] = await Promise.all([
       productApi.getDetail(productID),
-      getActiveProductDiscounts()
+      getActiveProductDiscounts(),
     ]);
+
     product.value = res.data;
 
-    // Build discount map by productColorId
     discountMap.value = new Map();
     (discountRes.data || []).forEach((discount) => {
       const productColorId = Number.parseInt(discount.productColorId, 10);
@@ -295,27 +508,26 @@ onMounted(async () => {
     });
 
     if (product.value?.colors?.length) {
-  const requestedVariantId = Number.parseInt(route.query.variant, 10);
+      const requestedVariantId = Number.parseInt(route.query.variant, 10);
 
-  let initialVariant = null;
+      let initialVariant = null;
 
-  if (Number.isFinite(requestedVariantId) && requestedVariantId > 0) {
-    initialVariant = product.value.colors.find(
-      (v) => Number(v.productColorID) === requestedVariantId
-    );
-  }
+      if (Number.isFinite(requestedVariantId) && requestedVariantId > 0) {
+        initialVariant = product.value.colors.find(
+          (v) => Number(v.productColorID) === requestedVariantId,
+        );
+      }
 
-  if (!initialVariant) {
-    initialVariant =
-      product.value.colors.find(
-        (v) => (Number.parseInt(v.stockQuantity, 10) || 0) > 0
-      ) || product.value.colors[0];
-  }
+      if (!initialVariant) {
+        initialVariant =
+          product.value.colors.find(
+            (v) => (Number.parseInt(v.stockQuantity, 10) || 0) > 0,
+          ) || product.value.colors[0];
+      }
 
-  selectedVariant.value = initialVariant;
-  images.value = selectedVariant.value?.images || [];
-  mainImage.value = images.value[0] || "";
-}
+      selectedColorId.value = initialVariant.colorID;
+      applySelectedVariant(initialVariant);
+    }
 
     await loadReviews(productID);
   } catch (error) {
@@ -332,25 +544,19 @@ watch(
     if (!Number.isFinite(variantId) || variantId <= 0) return;
 
     const matchedVariant = product.value.colors.find(
-      (v) => Number(v.productColorID) === variantId
+      (v) => Number(v.productColorID) === variantId,
     );
 
     if (matchedVariant) {
-      changeVariant(matchedVariant);
+      selectedColorId.value = matchedVariant.colorID;
+      applySelectedVariant(matchedVariant);
     }
-  }
+  },
 );
 
-function changeVariant(variant) {
-  selectedVariant.value = variant;
-  images.value = variant.images || [];
-  mainImage.value = images.value[0] || "";
-
-  if (quantity.value < 1) quantity.value = 1;
-  if (selectedVariantStock.value > 0 && quantity.value > selectedVariantStock.value) {
-    quantity.value = selectedVariantStock.value;
-  }
-}
+watch(selectedStarFilter, () => {
+  currentPage.value = 1;
+});
 
 function formatPrice(price) {
   return new Intl.NumberFormat("vi-VN").format(Number(price) || 0);
@@ -366,17 +572,17 @@ const getVariantDiscount = (variant) => {
 const getDiscountedVariantPrice = (variant) => {
   const discount = getVariantDiscount(variant);
   if (!discount) return variant?.price || 0;
-  
+
   const price = Number.parseFloat(variant.price) || 0;
-  
-  if (discount.discountType === 'percent') {
+
+  if (discount.discountType === "percent") {
     const discountPercent = Number.parseFloat(discount.discountValue) || 0;
     const discountAmount = price * (discountPercent / 100);
-    const maxDiscount = Number.parseFloat(discount.maxDiscountValue) || Infinity;
+    const maxDiscount =
+      Number.parseFloat(discount.maxDiscountValue) || Infinity;
     const actualDiscount = Math.min(discountAmount, maxDiscount);
     return Math.max(0, price - actualDiscount);
   } else {
-    // Fixed discount
     const discountAmount = Number.parseFloat(discount.discountValue) || 0;
     return Math.max(0, price - discountAmount);
   }
@@ -402,6 +608,24 @@ const loadRatingStats = async (productID) => {
   } catch (error) {
     console.error("Failed to load rating stats:", error);
   }
+};
+
+const loadSizes = async () => {
+  loadingSizes.value = true;
+  try {
+    const response = await sizeApi.getAllActive();
+    sizes.value = response.data || [];
+  } catch (error) {
+    console.error("Failed to load sizes:", error);
+    sizes.value = [];
+  } finally {
+    loadingSizes.value = false;
+  }
+};
+
+const openSizeDialog = async () => {
+  await loadSizes();
+  sizeDialog.value = true;
 };
 
 const filteredReviews = computed(() => {
@@ -464,10 +688,13 @@ async function handleAddToCart() {
 
   isLoading.value = true;
   try {
-    await userStore.addToCartAPI(selectedVariant.value.productColorID, quantity.value);
+    await userStore.addToCartAPI(
+      selectedVariant.value.productColorID,
+      quantity.value,
+    );
     window.dispatchEvent(new Event("cart-changed"));
 
-    const variantLabel = `${selectedVariant.value.colorName || ''} - Size ${selectedVariant.value.sizeName || '-'}`;
+    const variantLabel = `${selectedVariant.value.colorName || ""} - Size ${selectedVariant.value.sizeName || "-"}`;
     snackbarMessage.value = `Đã thêm ${quantity.value} sản phẩm "${product.value.productName}" (${variantLabel}) vào giỏ hàng`;
     snackbarColor.value = "success";
     showSnackbar.value = true;
@@ -516,16 +743,19 @@ async function handleBuyNow() {
   try {
     const addedItem = await userStore.addToCartAPI(
       selectedVariant.value.productColorID,
-      quantity.value
+      quantity.value,
     );
 
     const addedCartItemId = Number.parseInt(
       addedItem?.id ?? addedItem?.cartItemID,
-      10
+      10,
     );
 
     if (Number.isFinite(addedCartItemId) && addedCartItemId > 0) {
-      sessionStorage.setItem("selectedCartItemIds", JSON.stringify([addedCartItemId]));
+      sessionStorage.setItem(
+        "selectedCartItemIds",
+        JSON.stringify([addedCartItemId]),
+      );
       window.dispatchEvent(new Event("cart-changed"));
       router.push({ name: "Checkout" });
       return;
@@ -559,11 +789,11 @@ async function handleBuyNow() {
   background-color: #f9f9f9;
 }
 .thumb-img:hover {
-  border-color: #cdbA96;
+  border-color: #cdba96;
   box-shadow: 0 0 6px rgba(205, 186, 150, 0.4);
 }
 .thumb-active {
-  border-color: #cdbA96;
+  border-color: #cdba96;
   box-shadow: 0 0 8px rgba(205, 186, 150, 0.5);
 }
 
@@ -582,11 +812,11 @@ async function handleBuyNow() {
 }
 
 .variant-btn:hover {
-  border-color: #cdbA96;
+  border-color: #cdba96;
 }
 
 .variant-btn-active {
-  border-color: #cdbA96;
+  border-color: #cdba96;
   box-shadow: 0 0 6px rgba(205, 186, 150, 0.35);
 }
 
@@ -720,5 +950,181 @@ async function handleBuyNow() {
   font-size: 24px;
   font-weight: bold;
   color: #ff6b6b;
+}
+.color-dot-btn {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #cfcfcf;
+  transition: all 0.2s ease;
+}
+
+.color-dot-btn:hover .color-dot {
+  transform: scale(1.08);
+  border-color: #111;
+}
+
+.color-dot-btn.active .color-dot {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+  border-color: #111;
+}
+.size-btn {
+  min-width: 56px;
+  height: 40px;
+  border-radius: 20px;
+  border: 1px solid #d8d8d8;
+  background: #fff;
+  color: #111;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.size-btn:hover:not(:disabled) {
+  border-color: #111;
+}
+
+.size-btn.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.size-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.size-guide-dialog {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.size-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 12px;
+}
+
+.size-guide-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #222;
+}
+
+.size-guide-body {
+  display: grid;
+  grid-template-columns: 0.95fr 1.55fr;
+  gap: 24px;
+  padding: 18px 22px 8px;
+  align-items: start;
+}
+
+.size-guide-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.size-guide-subtitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #222;
+}
+
+.size-guide-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  margin: 0;
+  max-width: 260px;
+}
+
+.size-guide-image-wrap {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.size-guide-image {
+  width: 220px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.size-guide-right {
+  width: 100%;
+}
+
+.size-guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.size-guide-table thead th {
+  background: #2f2f2f;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  padding: 14px 10px;
+  border: 1px solid #777;
+}
+
+.size-guide-table tbody td {
+  border: 1px solid #999;
+  text-align: center;
+  padding: 18px 12px;
+  font-size: 15px;
+  color: #222;
+  vertical-align: middle;
+}
+
+.size-guide-table tbody td:first-child {
+  font-weight: 700;
+  width: 180px;
+}
+
+.size-guide-table tbody td:first-child span {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  margin-top: 2px;
+}
+
+.size-guide-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 18px 16px;
+}
+
+@media (max-width: 900px) {
+  .size-guide-body {
+    grid-template-columns: 1fr;
+  }
+
+  .size-guide-text {
+    max-width: 100%;
+  }
+
+  .size-guide-image-wrap {
+    justify-content: center;
+  }
 }
 </style>
