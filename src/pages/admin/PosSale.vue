@@ -381,6 +381,9 @@
                 <v-card-actions>
                     <v-spacer />
                     <v-btn variant="text" @click="bankingDialog = false">Đóng</v-btn>
+                    <v-btn color="success" variant="flat" :loading="confirmingBankingPayment" @click="confirmBankingPayment">
+                        Xác nhận thanh toán
+                    </v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>
@@ -398,6 +401,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue"
 import posApi from "@/api/posApi"
+import paymentApi from "@/api/paymentApi"
 
 const loading = ref(false)
 const productKeyword = ref("")
@@ -413,6 +417,7 @@ const promotionOptions = ref([])
 const selectedPromotionCode = ref(null)
 const bankingDialog = ref(false)
 const bankingInfo = ref(null)
+const confirmingBankingPayment = ref(false)
 
 const guest = ref({
     customerName: "",
@@ -1076,6 +1081,30 @@ async function handleCheckout() {
         showMessage(error.response?.data?.message || "Thanh toán thất bại", "error")
     } finally {
         loading.value = false
+    }
+}
+
+async function confirmBankingPayment() {
+    try {
+        const orderId = getCurrentOrderId(currentOrder.value)
+        if (!orderId) {
+            showMessage("Không tìm thấy đơn hàng", "warning")
+            return
+        }
+
+        confirmingBankingPayment.value = true
+        await paymentApi.confirmPayment(orderId)
+        
+        bankingDialog.value = false
+        currentOrder.value = null
+        checkoutForm.value = { method: "CASH", cashReceived: null }
+        
+        await loadPendingOrders()
+        showMessage("Xác nhận thanh toán thành công")
+    } catch (error) {
+        showMessage(error.response?.data?.message || "Xác nhận thanh toán thất bại", "error")
+    } finally {
+        confirmingBankingPayment.value = false
     }
 }
 
