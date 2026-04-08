@@ -14,7 +14,7 @@
       <v-data-table :headers="headers" :items="orders" :loading="isLoading" item-key="orderId" class="elevation-0">
         <template #item.orderInfo="{ item }">
           <div>
-            <div class="font-weight-bold">#{{ item.orderId }}</div>
+            <div class="font-weight-bold">{{ getDisplayOrderCode(item) }}</div>
             <div class="text-caption text-grey">{{ item.accountUsername }} | {{ formatDate(item.orderDate) }}</div>
           </div>
         </template>
@@ -55,7 +55,7 @@
       <v-card rounded="xl">
         <v-card-title class="d-flex justify-space-between align-center">
           <div>
-            <div class="text-h6 font-weight-bold">Quản lý đơn hàng / #{{ selectedOrder?.orderId || '-' }}</div>
+            <div class="text-h6 font-weight-bold">Quản lý đơn hàng / {{ getDisplayOrderCode(selectedOrder) }}</div>
             <div class="text-caption text-medium-emphasis mt-1">
               {{ selectedOrder?.accountUsername || 'Khách vãng lai' }}
             </div>
@@ -94,8 +94,8 @@
                 <v-card-title>Thông tin đơn hàng</v-card-title>
                 <v-card-text>
                   <div class="detail-row">
-                    <span>Mã đơn:</span>
-                    <strong>#{{ selectedOrder?.orderId || '-' }}</strong>
+                    <span>Mã vận đơn:</span>
+                    <strong>{{ getDisplayOrderCode(selectedOrder) }}</strong>
                   </div>
                   <div class="detail-row">
                     <span>Ngày tạo:</span>
@@ -140,15 +140,13 @@
                   </div>
 
                   <div class="d-flex ga-2 flex-wrap">
-                    <v-btn color="info" variant="tonal"
-                      :disabled="!canStartShipping(selectedOrder)"
+                    <v-btn color="info" variant="tonal" :disabled="!canStartShipping(selectedOrder)"
                       :loading="startingShippingOrderId === selectedOrder?.orderId"
                       @click="startShipping(selectedOrder)">
                       Bắt đầu giao hàng
                     </v-btn>
 
-                    <v-btn color="success" variant="tonal"
-                      :disabled="!canCompleteDelivery(selectedOrder)"
+                    <v-btn color="success" variant="tonal" :disabled="!canCompleteDelivery(selectedOrder)"
                       :loading="completingDeliveryOrderId === selectedOrder?.orderId"
                       @click="completeDelivery(selectedOrder)">
                       Đã giao hàng
@@ -268,13 +266,16 @@ const formatPrice = (value) => new Intl.NumberFormat('vi-VN').format(value || 0)
 const formatDate = (value) => {
   if (!value) return 'N/A'
 
-  // Backend can return either ISO string or pre-formatted dd/MM/yyyy HH:mm:ss.
   if (typeof value === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(value)) {
     return value
   }
 
   const parsed = new Date(value)
   return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN')
+}
+
+const getDisplayOrderCode = (order) => {
+  return order?.trackingCode || '-'
 }
 
 const orderTimelineSteps = computed(() => {
@@ -687,7 +688,7 @@ const confirmPayment = async (order) => {
     })
     clearUiShippingStarted(order.orderId)
 
-    snackbarMessage.value = `Đã xác nhận thanh toán đơn #${order.orderId}`
+    snackbarMessage.value = `Đã xác nhận thanh toán đơn ${getDisplayOrderCode(order)}`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -703,7 +704,7 @@ const confirmPayment = async (order) => {
 const cancelOrder = async (order) => {
   if (!canCancelOrder(order)) return
 
-  const confirmed = window.confirm(`Bạn có chắc muốn hủy đơn #${order.orderId}?`)
+  const confirmed = window.confirm(`Bạn có chắc muốn hủy đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
   cancellingOrderId.value = order.orderId
@@ -715,7 +716,7 @@ const cancelOrder = async (order) => {
       orderStatus: 'CANCELLED',
     })
 
-    snackbarMessage.value = `Đã hủy đơn #${order.orderId}`
+    snackbarMessage.value = `Đã hủy đơn ${getDisplayOrderCode(order)}`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -753,17 +754,15 @@ const revertOrderStatus = async (order, reason) => {
 
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
 
-  // COD: from delivered (unpaid) go back to in-transit UI step.
   if (isUiDeliveredOrder(order) && paymentStatus === 'UNPAID') {
     clearUiDelivered(order.orderId)
     startTimelineReveal()
-    snackbarMessage.value = `Đơn #${order.orderId} đã quay lại bước Đang vận chuyển (UI)`
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Đang vận chuyển (UI)`
     snackbarColor.value = 'success'
     showSnackbar.value = true
     return
   }
 
-  // Online: from completed (delivered UI) go back one UI step first.
   if (isOnlinePaymentMethod(order) && isUiDeliveredOrder(order)) {
     revertingOrderId.value = order.orderId
     try {
@@ -787,7 +786,7 @@ const revertOrderStatus = async (order, reason) => {
         paymentStatus: responsePaymentStatus || 'PAID',
       })
       startTimelineReveal()
-      snackbarMessage.value = `Đơn #${order.orderId} đã quay lại bước Đang giao hàng (UI)`
+      snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Đang giao hàng (UI)`
       snackbarColor.value = 'success'
       showSnackbar.value = true
       return
@@ -802,7 +801,6 @@ const revertOrderStatus = async (order, reason) => {
     }
   }
 
-  // Online: from in-transit UI go back to waiting-for-shipping UI step.
   if (isOnlinePaymentMethod(order) && isUiShippingStartedOrder(order)) {
     revertingOrderId.value = order.orderId
     try {
@@ -826,7 +824,7 @@ const revertOrderStatus = async (order, reason) => {
         paymentStatus: responsePaymentStatus || 'PAID',
       })
       startTimelineReveal()
-      snackbarMessage.value = `Đơn #${order.orderId} đã quay lại bước Chờ giao hàng (UI)`
+      snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Chờ giao hàng (UI)`
       snackbarColor.value = 'success'
       showSnackbar.value = true
       return
@@ -864,15 +862,13 @@ const revertOrderStatus = async (order, reason) => {
       orderStatus: responseOrderStatus || 'PENDING_PAYMENT',
     })
 
-    // COD: when backend returns SHIPPING + UNPAID from completed state,
-    // show the previous visible step as "Xác nhận chuyển khoản".
     if (isCodPaymentMethod(order)
       && (responseOrderStatus || '').toUpperCase() === 'SHIPPING'
       && (responsePaymentStatus || '').toUpperCase() === 'UNPAID') {
       markUiDelivered(order.orderId)
     }
 
-    snackbarMessage.value = `Đã quay lại trạng thái trước cho đơn #${order.orderId}`
+    snackbarMessage.value = `Đã quay lại trạng thái trước cho đơn ${getDisplayOrderCode(order)}`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -910,7 +906,7 @@ const submitRevertOrder = async () => {
 const startShipping = async (order) => {
   if (!canStartShipping(order)) return
 
-  const confirmed = window.confirm(`Bắt đầu giao hàng cho đơn #${order.orderId}?`)
+  const confirmed = window.confirm(`Bắt đầu giao hàng cho đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
   startingShippingOrderId.value = order.orderId
@@ -924,7 +920,7 @@ const startShipping = async (order) => {
     markUiShippingStarted(order.orderId)
     clearUiDelivered(order.orderId)
 
-    snackbarMessage.value = `Đơn #${order.orderId} đã chuyển sang Đang vận chuyển`
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã chuyển sang Đang vận chuyển`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -940,14 +936,14 @@ const startShipping = async (order) => {
 const completeDelivery = async (order) => {
   if (!canCompleteDelivery(order)) return
 
-  const confirmed = window.confirm(`Xác nhận đã giao hàng đơn #${order.orderId}?`)
+  const confirmed = window.confirm(`Xác nhận đã giao hàng đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
   completingDeliveryOrderId.value = order.orderId
   try {
     markUiDelivered(order.orderId)
     startTimelineReveal()
-    snackbarMessage.value = `Đơn #${order.orderId} đã giao hàng (UI)`
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã giao hàng (UI)`
 
     snackbarColor.value = 'success'
     showSnackbar.value = true
@@ -964,7 +960,7 @@ const completeDelivery = async (order) => {
 const completeOrder = async (order) => {
   if (!canCompleteOrder(order)) return
 
-  const confirmed = window.confirm(`Xác nhận hoàn thành đơn #${order.orderId}?`)
+  const confirmed = window.confirm(`Xác nhận hoàn thành đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
   completingOrderId.value = order.orderId
@@ -977,7 +973,7 @@ const completeOrder = async (order) => {
       paymentStatus: 'PAID',
     })
 
-    snackbarMessage.value = `Đơn #${order.orderId} đã hoàn thành`
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã hoàn thành`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
