@@ -37,13 +37,16 @@
           </li>
           <li>
             <strong>Phù hợp sử dụng:</strong>
-            {{ product?.occasions || "Đi chơi, hoạt động ngoài trời, tập luyện" }}
+            {{ product?.occasions || "Đi chơi, hoạt động ngoài trời, tập luyện..." }}
           </li>
         </ul>
 
         <div class="product-detail-tabs__desc" v-if="product?.description">
-          <h4>Mô tả</h4>
-          <p>{{ product.description }}</p>
+          <h3 class="product-detail-tabs__title">Mô tả</h3>
+          <ul class="product-detail-tabs__list">
+            <li><p>{{ product.description }}</p></li>
+          </ul>
+          
         </div>
       </div>
 

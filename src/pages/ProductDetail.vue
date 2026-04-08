@@ -1,5 +1,9 @@
 <template>
-  <v-container class="py-8" v-if="product">
+  <v-container
+    class="py-8 px-md-6 px-lg-10 product-detail-page"
+    v-if="product"
+    fluid
+  >
     <v-row>
       <!-- CỘT TRÁI: ẢNH -->
       <v-col cols="7">
@@ -11,8 +15,8 @@
                 v-for="(img, index) in images"
                 :key="index"
                 :src="img"
-                height="80"
-                width="80"
+                height="96"
+                width="96"
                 class="thumb-img rounded cursor-pointer"
                 :class="{ 'thumb-active': mainImage === img }"
                 @click="mainImage = img"
@@ -22,13 +26,36 @@
 
           <!-- Ảnh chính -->
           <v-col cols="10">
-            <v-img
-              :src="mainImage"
-              height="500"
-              class="rounded main-product-image"
-              contain
-            />
+            <div class="main-image-wrap">
+              <v-icon
+                v-if="images.length > 1"
+                class="image-nav-icon image-nav-icon--left"
+                @click="showPrevImage"
+              >
+                mdi-chevron-left
+              </v-icon>
+
+              <v-img
+                :src="mainImage"
+                height="560"
+                class="rounded main-product-image"
+                contain
+              />
+
+              <v-icon
+                v-if="images.length > 1"
+                class="image-nav-icon image-nav-icon--right"
+                @click="showNextImage"
+              >
+                mdi-chevron-right
+              </v-icon>
+            </div>
           </v-col>
+          <!-- TAB CHI TIẾT -->
+          <ProductDetailTabs
+            :product="product"
+            :selected-variant="selectedVariant"
+          />
         </v-row>
       </v-col>
 
@@ -41,14 +68,6 @@
 
           <p class="text-body-2 text-grey mb-2">
             Mã sản phẩm: #{{ product.productID }}
-          </p>
-
-          <p class="text-body-2 text-grey mb-1">
-            Chất liệu: {{ product.materialName || "—" }}
-          </p>
-
-          <p class="text-body-2 text-grey mb-3">
-            Thương hiệu: {{ product.brandName || "—" }}
           </p>
 
           <div class="price mb-4">
@@ -103,9 +122,7 @@
           <!-- Chọn size -->
           <div class="mb-4" v-if="availableSizes.length > 0">
             <div class="d-flex align-center gap-2 mb-2">
-              <h3 class="text-subtitle-1 font-weight-bold">
-                Chọn kích thước
-              </h3>
+              <h3 class="text-subtitle-1 font-weight-bold">Chọn kích thước</h3>
 
               <v-btn
                 icon="mdi-information"
@@ -182,12 +199,6 @@
       </v-col>
     </v-row>
 
-    <!-- TAB CHI TIẾT -->
-    <ProductDetailTabs
-      :product="product"
-      :selected-variant="selectedVariant"
-    />
-
     <v-snackbar
       v-model="showSnackbar"
       :color="snackbarColor"
@@ -216,8 +227,8 @@
           <div class="size-guide-left">
             <div class="size-guide-subtitle">Cách lấy kích thước:</div>
             <p class="size-guide-text">
-              Dùng thước đo quanh đầu, đo từ điểm A (giữa trán)
-              đến hết chu vi đầu của bạn.
+              Dùng thước đo quanh đầu, đo từ điểm A (giữa trán) đến hết chu vi
+              đầu của bạn.
             </p>
 
             <div class="size-guide-image-wrap">
@@ -258,10 +269,7 @@
     </v-dialog>
 
     <!-- REVIEW -->
-    <ProductReviews
-      v-if="product?.productID"
-      :product-id="product.productID"
-    />
+    <ProductReviews v-if="product?.productID" :product-id="product.productID" />
   </v-container>
 </template>
 
@@ -611,6 +619,25 @@ async function handleBuyNow() {
   } finally {
     isLoading.value = false;
   }
+}
+function showPrevImage() {
+  if (!images.value.length) return;
+
+  const currentIndex = images.value.findIndex((img) => img === mainImage.value);
+  const prevIndex =
+    currentIndex <= 0 ? images.value.length - 1 : currentIndex - 1;
+
+  mainImage.value = images.value[prevIndex];
+}
+
+function showNextImage() {
+  if (!images.value.length) return;
+
+  const currentIndex = images.value.findIndex((img) => img === mainImage.value);
+  const nextIndex =
+    currentIndex >= images.value.length - 1 ? 0 : currentIndex + 1;
+
+  mainImage.value = images.value[nextIndex];
 }
 </script>
 
