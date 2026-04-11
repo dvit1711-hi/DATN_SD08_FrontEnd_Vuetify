@@ -12,14 +12,14 @@
           <v-col cols="2">
             <div class="d-flex flex-column ga-2">
               <v-img
-                v-for="(img, index) in images"
-                :key="index"
-                :src="img"
+                v-for="img in images"
+                :key="img.imageID || img.imageUrl"
+                :src="img.imageUrl"
                 height="96"
                 width="96"
                 class="thumb-img rounded cursor-pointer"
-                :class="{ 'thumb-active': mainImage === img }"
-                @click="mainImage = img"
+                :class="{ 'thumb-active': mainImage === img.imageUrl }"
+                @click="mainImage = img.imageUrl"
               />
             </div>
           </v-col>
@@ -342,8 +342,10 @@ const availableSizes = computed(() => {
 
 function applySelectedVariant(variant) {
   selectedVariant.value = variant;
-  images.value = variant?.images || [];
-  mainImage.value = images.value[0] || "";
+  images.value = Array.isArray(variant?.images) ? variant.images : [];
+
+  const main = images.value.find((img) => img?.isMain);
+  mainImage.value = main?.imageUrl || images.value[0]?.imageUrl || "";
 
   if (quantity.value < 1) quantity.value = 1;
 
@@ -623,21 +625,25 @@ async function handleBuyNow() {
 function showPrevImage() {
   if (!images.value.length) return;
 
-  const currentIndex = images.value.findIndex((img) => img === mainImage.value);
+  const currentIndex = images.value.findIndex(
+    (img) => img.imageUrl === mainImage.value
+  );
   const prevIndex =
     currentIndex <= 0 ? images.value.length - 1 : currentIndex - 1;
 
-  mainImage.value = images.value[prevIndex];
+  mainImage.value = images.value[prevIndex]?.imageUrl || "";
 }
 
 function showNextImage() {
   if (!images.value.length) return;
 
-  const currentIndex = images.value.findIndex((img) => img === mainImage.value);
+  const currentIndex = images.value.findIndex(
+    (img) => img.imageUrl === mainImage.value
+  );
   const nextIndex =
     currentIndex >= images.value.length - 1 ? 0 : currentIndex + 1;
 
-  mainImage.value = images.value[nextIndex];
+  mainImage.value = images.value[nextIndex]?.imageUrl || "";
 }
 </script>
 
