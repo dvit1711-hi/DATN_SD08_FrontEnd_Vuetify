@@ -302,6 +302,72 @@
               </v-card-text>
             </v-card>
 
+            <!-- All available discount coupons -->
+            <v-card class="mb-4" variant="outlined">
+              <v-card-title class="text-subtitle-2 font-weight-bold d-flex align-center ga-2">
+                <v-icon>mdi-tag-multiple</v-icon>
+                Tất cả mã giảm giá có sẵn
+              </v-card-title>
+              <v-divider />
+              <v-card-text>
+                <v-progress-linear v-if="isLoadingAvailableCoupons" indeterminate color="primary" class="mb-4" />
+                
+                <div v-if="!isLoadingAvailableCoupons && availableCoupons.length === 0" class="text-center py-6">
+                  <p class="text-body-2 text-grey">Hiện không có mã giảm giá nào khả dụng</p>
+                </div>
+
+                <v-row v-else-if="!isLoadingAvailableCoupons" dense class="ga-3">
+                  <v-col v-for="coupon in availableCoupons" :key="coupon.id" cols="12" sm="6" md="4">
+                    <v-card 
+                      class="coupon-card h-100" 
+                      variant="outlined"
+                      :class="{ 'selected': couponCode === coupon.couponCode }"
+                      @click="applyAvailableCoupon(coupon)"
+                    >
+                      <v-card-text class="d-flex flex-column h-100 pa-4">
+                        <div class="d-flex align-center justify-space-between mb-3">
+                          <div class="text-subtitle-2 font-weight-bold text-primary">{{ coupon.couponCode }}</div>
+                          <v-icon 
+                            :color="couponCode === coupon.couponCode ? 'primary' : 'grey'"
+                            size="small"
+                          >
+                            {{ couponCode === coupon.couponCode ? 'mdi-check-circle' : 'mdi-circle-outline' }}
+                          </v-icon>
+                        </div>
+
+                        <div class="flex-grow-1 mb-3">
+                          <div class="text-caption text-grey">Giảm</div>
+                          <div class="text-h6 font-weight-bold text-success">
+                            {{ coupon.discountType === 'percent' ? coupon.discountValue + '%' : formatPrice(coupon.discountValue) + 'đ' }}
+                          </div>
+                        </div>
+
+                        <div v-if="coupon.minOrderValue > 0" class="mb-3">
+                          <div class="text-caption text-grey">Đơn tối thiểu</div>
+                          <div class="text-caption font-weight-medium">{{ formatPrice(coupon.minOrderValue) }}đ</div>
+                        </div>
+
+                        <div v-if="coupon.description" class="mb-3">
+                          <div class="text-caption text-grey">{{ coupon.description }}</div>
+                        </div>
+
+                        <v-btn
+                          color="primary"
+                          size="x-small"
+                          variant="flat"
+                          class="mt-auto"
+                          :loading="isApplyingCoupon && couponCode === coupon.couponCode"
+                          @click.stop="applyAvailableCoupon(coupon)"
+                        >
+                          {{ couponCode === coupon.couponCode ? 'Đã chọn' : 'Áp dụng' }}
+                        </v-btn>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+
             <!-- Current discount status -->
             <v-card v-if="discountAmount > 0" class="mb-4" variant="outlined" color="success">
               <v-card-text class="d-flex align-center justify-space-between">
@@ -464,6 +530,8 @@ const discountAmount = ref(0)
 const userClaimedCoupons = ref([])
 const selectedCoupon = ref(null)
 const isApplyingCoupon = ref(false)
+const availableCoupons = ref([])
+const isLoadingAvailableCoupons = ref(false)
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
 const showMBBankDialog = ref(false)
 const mbBankPaymentInfo = ref(null)
@@ -697,6 +765,21 @@ const applySavedAddressToGhn = async (address) => {
   }
 }
 
+const loadAvailableCoupons = async () => {
+  isLoadingAvailableCoupons.value = true
+  try {
+    const res = await getAllDiscountCoupons()
+    const coupons = res.data || []
+    // Filter only valid, active coupons
+    availableCoupons.value = coupons.filter(coupon => isCouponValid(coupon))
+  } catch (error) {
+    console.error('Lỗi tải danh sách mã giảm giá có sẵn:', error)
+    availableCoupons.value = []
+  } finally {
+    isLoadingAvailableCoupons.value = false
+  }
+}
+
 const loadUserClaimedCoupons = async () => {
   const accountId = Number.parseInt(userStore.accountId, 10)
   if (!Number.isFinite(accountId) || accountId <= 0) {
@@ -778,6 +861,18 @@ const applyManualCoupon = async () => {
   try {
     couponCode.value = code
     // Clear manual input after attempt
+    manualCouponCode.value = ''
+    await previewCoupon()
+  } finally {
+    isApplyingCoupon.value = false
+  }
+}
+
+const applyAvailableCoupon = async (coupon) => {
+  if (!coupon) return
+  isApplyingCoupon.value = true
+  try {
+    couponCode.value = coupon.couponCode
     manualCouponCode.value = ''
     await previewCoupon()
   } finally {
@@ -1295,7 +1390,7 @@ const markCancelledOnlineOrderHidden = (orderId) => {
 }
 
 onMounted(async () => {
-  await Promise.all([loadCheckoutItems(), loadUserClaimedCoupons(), loadGhnProvinces(), loadSavedAddresses()])
+  await Promise.all([loadCheckoutItems(), loadUserClaimedCoupons(), loadAvailableCoupons(), loadGhnProvinces(), loadSavedAddresses()])
   await onSavedAddressChange()
 })
 </script>
@@ -1349,5 +1444,42 @@ onMounted(async () => {
 .qr-image {
   width: 100%;
   height: 100%;
+}
+
+/* Available coupons card styles */
+.coupon-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid #e0e0e0;
+  background-color: #fafafa;
+}
+
+.coupon-card:hover {
+  border-color: #1976d2;
+  background-color: #f0f7ff;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.15);
+  transform: translateY(-2px);
+}
+
+.coupon-card.selected {
+  border-color: #1976d2;
+  background-color: #e3f2fd;
+  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.25);
+}
+
+.h-100 {
+  height: 100%;
+}
+
+.gap-3 {
+  gap: 12px;
+}
+
+.ga-3 {
+  gap: 12px;
+}
+
+.ga-2 {
+  gap: 8px;
 }
 </style>

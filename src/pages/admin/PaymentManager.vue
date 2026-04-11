@@ -3,68 +3,105 @@
     <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-6">
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Xác nhận thanh toán</h1>
-        <p class="text-body-2 text-grey">Admin xác nhận các đơn chưa thanh toán</p>
+        <p class="text-body-2 text-grey">Online = mua trên mạng | Offline = khách lẻ tại quầy</p>
       </div>
+
       <v-btn color="primary" prepend-icon="mdi-refresh" @click="loadOrders" :loading="isLoading">
         Làm mới
       </v-btn>
     </div>
 
     <v-card rounded="xl" elevation="0" class="pa-4 mb-6">
-      <v-text-field v-model="searchKeyword" label="Tìm kiếm" placeholder="Tìm theo mã đơn, tên khách hàng, phương thức, trạng thái..." prepend-inner-icon="mdi-magnify" variant="outlined" density="comfortable" clearable @input="searchKeyword = $event" />
+      <v-text-field v-model="searchKeyword" label="Tìm kiếm"
+        placeholder="Tìm theo mã đơn, tên khách hàng, phương thức, trạng thái..." prepend-inner-icon="mdi-magnify"
+        variant="outlined" density="comfortable" clearable />
       <div v-if="searchKeyword" class="text-caption text-medium-emphasis mt-2">
-        Tìm thấy <strong>{{ filteredOrders.length }}</strong> kết quả
+        Tìm thấy <strong>{{ searchedOrders.length }}</strong> kết quả
       </div>
     </v-card>
 
-    <v-card rounded="xl" elevation="0" class="pa-2">
-      <v-data-table :headers="headers" :items="filteredOrders" :loading="isLoading" item-key="orderId" class="elevation-0">
-        <template #item.orderInfo="{ item }">
-          <div>
-            <div class="font-weight-bold">#{{ item.orderId }}</div>
-            <div class="text-caption text-grey">{{ item.accountUsername }} | {{ formatDate(item.orderDate) }}</div>
+    <v-card rounded="xl" elevation="0" class="payment-manage-card">
+      <div class="payment-card-head">
+        <div>
+          <div class="text-h6 font-weight-bold">Quản lý xác nhận thanh toán</div>
+          <div class="text-body-2 text-grey">
+            Online: khách mua trên mạng | Offline: khách lẻ mua tại quầy
           </div>
-        </template>
+        </div>
 
-        <template #item.paymentStatus="{ item }">
-          <v-chip size="small" :color="getPaymentStatusColor(item.paymentStatus)" variant="tonal">
-            {{ getPaymentStatusLabel(item.paymentStatus) }}
-          </v-chip>
-        </template>
+        <v-chip :color="paymentTab === 'online' ? 'primary' : 'deep-orange'" variant="tonal" size="small">
+          {{ currentTabOrders.length }} đơn
+        </v-chip>
+      </div>
 
-        <template #item.paymentMethod="{ item }">
-          <v-chip size="small" color="orange" variant="tonal">
-            {{ item.paymentMethod || 'UNKNOWN' }}
-          </v-chip>
-        </template>
+      <div class="custom-payment-tabs">
+        <button type="button" class="custom-payment-tab" :class="{ active: paymentTab === 'online' }"
+          @click="paymentTab = 'online'">
+          <v-icon size="16">mdi-web</v-icon>
+          <span>Online</span>
+        </button>
 
-        <template #item.orderStatus="{ item }">
-          <v-chip size="small" :color="getOrderStatusColor(item)" variant="tonal">
-            {{ getOrderStatusLabel(item) }}
-          </v-chip>
-        </template>
+        <button type="button" class="custom-payment-tab" :class="{ active: paymentTab === 'offline' }"
+          @click="paymentTab = 'offline'">
+          <v-icon size="16">mdi-store</v-icon>
+          <span>Offline</span>
+        </button>
+      </div>
 
-        <template #item.totalAmount="{ item }">
-          <span class="font-weight-bold">{{ formatPrice(item.totalAmount) }}đ</span>
-        </template>
+      <div class="pt-3">
+        <v-data-table :headers="headers" :items="currentTabOrders" :loading="isLoading" item-key="orderId"
+          class="elevation-0">
+          <template #item.orderInfo="{ item }">
+            <div>
+              <div class="font-weight-bold">{{ getDisplayOrderCode(item) }}</div>
+              <div class="text-caption text-grey">
+                {{ getDisplayCustomer(item) }} | {{ formatDate(item.orderDate) }}
+              </div>
+            </div>
+          </template>
 
-        <template #item.actions="{ item }">
-          <div class="d-flex ga-2">
-            <v-btn color="primary" variant="tonal" size="small" @click="openOrderDetail(item)">
-              Chi tiết
-            </v-btn>
-          </div>
-        </template>
-      </v-data-table>
+          <template #item.paymentStatus="{ item }">
+            <v-chip size="small" :color="getPaymentStatusColor(item.paymentStatus)" variant="tonal">
+              {{ getPaymentStatusLabel(item.paymentStatus) }}
+            </v-chip>
+          </template>
+
+          <template #item.paymentMethod="{ item }">
+            <v-chip size="small" color="orange" variant="tonal">
+              {{ item.paymentMethod || 'UNKNOWN' }}
+            </v-chip>
+          </template>
+
+          <template #item.orderStatus="{ item }">
+            <v-chip size="small" :color="getOrderStatusColor(item)" variant="tonal">
+              {{ getOrderStatusLabel(item) }}
+            </v-chip>
+          </template>
+
+          <template #item.totalAmount="{ item }">
+            <span class="font-weight-bold">{{ formatPrice(item.totalAmount) }}đ</span>
+          </template>
+
+          <template #item.actions="{ item }">
+            <div class="d-flex ga-2">
+              <v-btn color="primary" variant="tonal" size="small" @click="openOrderDetail(item)">
+                Chi tiết
+              </v-btn>
+            </div>
+          </template>
+        </v-data-table>
+      </div>
     </v-card>
 
     <v-dialog v-model="detailDialog" max-width="1200">
       <v-card rounded="xl">
         <v-card-title class="d-flex justify-space-between align-center">
           <div>
-            <div class="text-h6 font-weight-bold">Quản lý đơn hàng / #{{ selectedOrder?.orderId || '-' }}</div>
+            <div class="text-h6 font-weight-bold">
+              Quản lý đơn hàng / {{ getDisplayOrderCode(selectedOrder) }}
+            </div>
             <div class="text-caption text-medium-emphasis mt-1">
-              {{ selectedOrder?.accountUsername || 'Khách vãng lai' }}
+              {{ getDisplayCustomer(selectedOrder) }}
             </div>
           </div>
 
@@ -101,8 +138,12 @@
                 <v-card-title>Thông tin đơn hàng</v-card-title>
                 <v-card-text>
                   <div class="detail-row">
-                    <span>Mã đơn:</span>
-                    <strong>#{{ selectedOrder?.orderId || '-' }}</strong>
+                    <span>Mã vận đơn:</span>
+                    <strong>{{ getDisplayOrderCode(selectedOrder) }}</strong>
+                  </div>
+                  <div class="detail-row">
+                    <span>Loại đơn:</span>
+                    <strong>{{ getOrderTypeLabel(selectedOrder) }}</strong>
                   </div>
                   <div class="detail-row">
                     <span>Ngày tạo:</span>
@@ -110,7 +151,15 @@
                   </div>
                   <div class="detail-row">
                     <span>Khách hàng:</span>
-                    <strong>{{ selectedOrder?.accountUsername || 'Khách vãng lai' }}</strong>
+                    <strong>{{ getDisplayCustomer(selectedOrder) }}</strong>
+                  </div>
+                  <div class="detail-row" v-if="isOfflineGuestOrder(selectedOrder)">
+                    <span>Số điện thoại:</span>
+                    <strong>{{ selectedOrder?.customerPhone || '-' }}</strong>
+                  </div>
+                  <div class="detail-row" v-if="isOfflineGuestOrder(selectedOrder)">
+                    <span>Nhân viên tạo đơn:</span>
+                    <strong>{{ selectedOrder?.employeeName || selectedOrder?.employeeID || '-' }}</strong>
                   </div>
                   <div class="detail-row">
                     <span>Địa chỉ:</span>
@@ -144,36 +193,43 @@
                     <v-chip size="small" color="orange" variant="tonal">
                       {{ selectedOrder?.paymentMethod || 'UNKNOWN' }}
                     </v-chip>
+
+                    <v-chip size="small" :color="isOnlineOrder(selectedOrder) ? 'primary' : 'deep-orange'"
+                      variant="tonal">
+                      {{ getOrderTypeLabel(selectedOrder) }}
+                    </v-chip>
                   </div>
 
                   <div class="d-flex ga-2 flex-wrap">
-                    <v-btn color="info" variant="tonal"
-                      :disabled="!canStartShipping(selectedOrder)"
+                    <v-btn color="info" variant="tonal" :disabled="!canStartShipping(selectedOrder)"
                       :loading="startingShippingOrderId === selectedOrder?.orderId"
                       @click="startShipping(selectedOrder)">
                       Bắt đầu giao hàng
                     </v-btn>
 
-                    <v-btn color="success" variant="tonal"
-                      :disabled="!canCompleteDelivery(selectedOrder)"
+                    <v-btn color="success" variant="tonal" :disabled="!canCompleteDelivery(selectedOrder)"
                       :loading="completingDeliveryOrderId === selectedOrder?.orderId"
                       @click="completeDelivery(selectedOrder)">
                       Đã giao hàng
                     </v-btn>
+
                     <v-btn color="success" :variant="isUiDeliveredOrder(selectedOrder) ? 'tonal' : 'flat'"
                       :disabled="!canConfirmOrder(selectedOrder)"
                       :loading="confirmingOrderId === selectedOrder?.orderId" @click="confirmPayment(selectedOrder)">
                       Xác nhận thanh toán
                     </v-btn>
+
                     <v-btn color="success" variant="tonal" :disabled="!canCompleteOrder(selectedOrder)"
                       :loading="completingOrderId === selectedOrder?.orderId" @click="completeOrder(selectedOrder)">
                       Hoàn thành
                     </v-btn>
+
                     <v-btn color="warning" variant="tonal" prepend-icon="mdi-undo"
                       :disabled="!canRevertOrder(selectedOrder)" :loading="revertingOrderId === selectedOrder?.orderId"
                       @click="openRevertReasonDialog(selectedOrder)">
                       Quay lại trạng thái trước
                     </v-btn>
+
                     <v-btn color="error" variant="outlined" :disabled="!canCancelOrder(selectedOrder)"
                       :loading="cancellingOrderId === selectedOrder?.orderId" @click="cancelOrder(selectedOrder)">
                       Hủy đơn
@@ -218,6 +274,7 @@ import paymentApi from '@/api/paymentApi'
 
 const orders = ref([])
 const searchKeyword = ref('')
+const paymentTab = ref('online')
 const isLoading = ref(false)
 const confirmingOrderId = ref(null)
 const cancellingOrderId = ref(null)
@@ -273,10 +330,10 @@ uiShippingStartedOrderIds.value = loadIdSet(ONLINE_SHIPPING_STARTED_KEY)
 uiDeliveredOrderIds.value = loadIdSet(UI_DELIVERED_ORDER_IDS_KEY)
 
 const formatPrice = (value) => new Intl.NumberFormat('vi-VN').format(value || 0)
+
 const formatDate = (value) => {
   if (!value) return 'N/A'
 
-  // Backend can return either ISO string or pre-formatted dd/MM/yyyy HH:mm:ss.
   if (typeof value === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(value)) {
     return value
   }
@@ -285,32 +342,47 @@ const formatDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN')
 }
 
-const filteredOrders = computed(() => {
-  if (!searchKeyword.value.trim()) return orders.value
-  
-  const keyword = searchKeyword.value.toLowerCase().trim()
-  return orders.value.filter((order) => {
-    const orderId = String(order.orderId || '').toLowerCase()
-    const accountUsername = String(order.accountUsername || 'khách vãng lai').toLowerCase()
-    const paymentMethod = String(order.paymentMethod || '').toLowerCase()
-    const paymentStatus = getPaymentStatusLabel(order.paymentStatus).toLowerCase()
-    const orderStatus = getOrderStatusLabel(order).toLowerCase()
-    const totalAmount = String(order.totalAmount || '').toLowerCase()
-    
-    return (
-      orderId.includes(keyword) ||
-      accountUsername.includes(keyword) ||
-      paymentMethod.includes(keyword) ||
-      paymentStatus.includes(keyword) ||
-      orderStatus.includes(keyword) ||
-      totalAmount.includes(keyword)
-    )
-  })
-})
+const getDisplayOrderCode = (order) => {
+  return order?.trackingCode || `#${order?.orderId || '-'}`
+}
 
-const orderTimelineSteps = computed(() => {
-  return buildTimelineSteps(selectedOrder.value)
-})
+const getAccountId = (order) => {
+  return order?.accountId ?? order?.accountID ?? null
+}
+
+const hasAccount = (order) => {
+  return !!getAccountId(order) || !!order?.accountUsername
+}
+
+const getOrderType = (order) => {
+  return String(order?.orderType || '').toUpperCase()
+}
+
+const isOnlineOrder = (order) => getOrderType(order) === 'ONLINE'
+const isOfflineOrder = (order) => getOrderType(order) === 'OFFLINE'
+
+const isOfflineGuestOrder = (order) => {
+  return isOfflineOrder(order) && !hasAccount(order)
+}
+
+const getOrderTypeLabel = (order) => {
+  if (isOnlineOrder(order)) return 'Online'
+  if (isOfflineGuestOrder(order)) return 'Offline - Khách lẻ'
+  if (isOfflineOrder(order)) return 'Offline'
+  return 'Không xác định'
+}
+
+const getDisplayCustomer = (order) => {
+  if (isOfflineGuestOrder(order)) {
+    return order?.customerName || order?.customerPhone || 'Khách lẻ'
+  }
+
+  if (isOfflineOrder(order)) {
+    return order?.customerName || order?.accountUsername || 'Khách tại quầy'
+  }
+
+  return order?.accountUsername || order?.customerName || 'Khách online'
+}
 
 const getPaymentStatusLabel = (status) => {
   const normalized = String(status || '').toUpperCase()
@@ -320,82 +392,54 @@ const getPaymentStatusLabel = (status) => {
   return 'Không xác định'
 }
 
-const getOrderVisualStage = (order) => {
-  const orderStatus = String(order?.orderStatus || '').toUpperCase()
-  const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
-
-  if (orderStatus === 'CANCELLED' || paymentStatus === 'CANCELLED') return 'CANCELLED'
-  if (orderStatus === 'PAID') return 'COMPLETED'
-
-  if (orderStatus === 'SHIPPING') {
-    if (isUiDeliveredOrder(order)) {
-      return 'DELIVERED'
-    }
-    if (isUiShippingStartedOrder(order)) return 'IN_TRANSIT'
-    return 'WAIT_SHIP'
-  }
-
-  if (orderStatus === 'PENDING_PAYMENT') {
-    if (isOnlinePaymentMethod(order) && paymentStatus === 'PAID') return 'WAIT_SHIP'
-    return 'WAIT_CONFIRM'
-  }
-
-  return 'UNKNOWN'
+const isOnlinePaymentMethod = (order) => {
+  const method = String(order?.paymentMethod || '').toUpperCase()
+  return method === 'BANK_TRANSFER' || method === 'E_WALLET' || method === 'BANKING' || method === 'VNPAY' || method === 'MOMO'
 }
 
-const getOrderStatusLabel = (order) => {
-  const stage = getOrderVisualStage(order)
-  if (stage === 'WAIT_CONFIRM') return 'Chờ xác nhận'
-  if (stage === 'WAIT_SHIP') return 'Chờ giao hàng'
-  if (stage === 'IN_TRANSIT') return 'Đang giao hàng'
-  if (stage === 'DELIVERED') return 'Đã giao hàng'
-  if (stage === 'COMPLETED') return 'Hoàn thành'
-  if (stage === 'CANCELLED') return 'Đã hủy'
-  return 'Không xác định'
+const isCodPaymentMethod = (order) => {
+  const method = String(order?.paymentMethod || '').toUpperCase()
+  return method === 'COD'
 }
 
-const getPaymentStatusColor = (status) => {
-  const normalized = String(status || '').toUpperCase()
-  if (normalized === 'PAID') return 'success'
-  if (normalized === 'UNPAID') return 'warning'
-  if (normalized === 'CANCELLED') return 'error'
-  return 'info'
-}
+const searchedOrders = computed(() => {
+  if (!searchKeyword.value.trim()) return orders.value
 
-const getOrderStatusColor = (order) => {
-  const stage = getOrderVisualStage(order)
-  if (stage === 'COMPLETED') return 'success'
-  if (stage === 'DELIVERED') return 'warning'
-  if (stage === 'WAIT_CONFIRM' || stage === 'WAIT_SHIP') return 'warning'
-  if (stage === 'IN_TRANSIT') return 'primary'
-  if (stage === 'CANCELLED') return 'error'
-  return 'grey'
-}
+  const keyword = searchKeyword.value.toLowerCase().trim()
+  return orders.value.filter((order) => {
+    const orderId = String(order.orderId || '').toLowerCase()
+    const trackingCode = String(order.trackingCode || '').toLowerCase()
+    const customer = getDisplayCustomer(order).toLowerCase()
+    const paymentMethod = String(order.paymentMethod || '').toLowerCase()
+    const paymentStatus = getPaymentStatusLabel(order.paymentStatus).toLowerCase()
+    const orderStatus = getOrderStatusLabel(order).toLowerCase()
+    const totalAmount = String(order.totalAmount || '').toLowerCase()
+    const orderType = getOrderTypeLabel(order).toLowerCase()
+
+    return (
+      orderId.includes(keyword) ||
+      trackingCode.includes(keyword) ||
+      customer.includes(keyword) ||
+      paymentMethod.includes(keyword) ||
+      paymentStatus.includes(keyword) ||
+      orderStatus.includes(keyword) ||
+      totalAmount.includes(keyword) ||
+      orderType.includes(keyword)
+    )
+  })
+})
+
+const onlineOrders = computed(() => searchedOrders.value.filter(isOnlineOrder))
+const offlineOrders = computed(() => searchedOrders.value.filter(isOfflineOrder))
+
+const currentTabOrders = computed(() => {
+  return paymentTab.value === 'online' ? onlineOrders.value : offlineOrders.value
+})
 
 const isCancelledOrder = (order) => {
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
   const orderStatus = String(order?.orderStatus || '').toUpperCase()
   return paymentStatus === 'CANCELLED' || orderStatus === 'CANCELLED'
-}
-
-const isPaidOrder = (order) => {
-  const orderStatus = String(order?.orderStatus || '').toUpperCase()
-  return orderStatus === 'PAID'
-}
-
-const isShippingOrder = (order) => {
-  const orderStatus = String(order?.orderStatus || '').toUpperCase()
-  return orderStatus === 'SHIPPING'
-}
-
-const isOnlinePaymentMethod = (order) => {
-  const method = String(order?.paymentMethod || '').toUpperCase()
-  return method === 'BANK_TRANSFER' || method === 'E_WALLET' || method === 'BANKING'
-}
-
-const isCodPaymentMethod = (order) => {
-  const method = String(order?.paymentMethod || '').toUpperCase()
-  return method === 'COD' || method === 'CASH'
 }
 
 const isUiShippingStartedOrder = (order) => {
@@ -444,8 +488,60 @@ const clearUiShippingStarted = (orderId) => {
   persistIdSet(ONLINE_SHIPPING_STARTED_KEY, next)
 }
 
-const isGuestOrder = (order) => {
-  return !order?.accountUsername && !order?.accountId
+const getOrderVisualStage = (order) => {
+  const orderStatus = String(order?.orderStatus || '').toUpperCase()
+  const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+
+  if (orderStatus === 'CANCELLED' || paymentStatus === 'CANCELLED') return 'CANCELLED'
+
+  if (isOfflineGuestOrder(order)) {
+    if (orderStatus === 'PAID' || paymentStatus === 'PAID') return 'COMPLETED'
+    return 'WAIT_CONFIRM'
+  }
+
+  if (orderStatus === 'PAID') return 'COMPLETED'
+
+  if (orderStatus === 'SHIPPING') {
+    if (isUiDeliveredOrder(order)) return 'DELIVERED'
+    if (isUiShippingStartedOrder(order)) return 'IN_TRANSIT'
+    return 'WAIT_SHIP'
+  }
+
+  if (orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING') {
+    if (isOnlinePaymentMethod(order) && paymentStatus === 'PAID') return 'WAIT_SHIP'
+    return 'WAIT_CONFIRM'
+  }
+
+  return 'UNKNOWN'
+}
+
+const getOrderStatusLabel = (order) => {
+  const stage = getOrderVisualStage(order)
+  if (stage === 'WAIT_CONFIRM') return 'Chờ xác nhận'
+  if (stage === 'WAIT_SHIP') return 'Chờ giao hàng'
+  if (stage === 'IN_TRANSIT') return 'Đang giao hàng'
+  if (stage === 'DELIVERED') return 'Đã giao hàng'
+  if (stage === 'COMPLETED') return 'Hoàn thành'
+  if (stage === 'CANCELLED') return 'Đã hủy'
+  return 'Không xác định'
+}
+
+const getPaymentStatusColor = (status) => {
+  const normalized = String(status || '').toUpperCase()
+  if (normalized === 'PAID') return 'success'
+  if (normalized === 'UNPAID') return 'warning'
+  if (normalized === 'CANCELLED') return 'error'
+  return 'info'
+}
+
+const getOrderStatusColor = (order) => {
+  const stage = getOrderVisualStage(order)
+  if (stage === 'COMPLETED') return 'success'
+  if (stage === 'DELIVERED') return 'warning'
+  if (stage === 'WAIT_CONFIRM' || stage === 'WAIT_SHIP') return 'warning'
+  if (stage === 'IN_TRANSIT') return 'primary'
+  if (stage === 'CANCELLED') return 'error'
+  return 'grey'
 }
 
 const buildTimelineSteps = (order) => {
@@ -453,16 +549,16 @@ const buildTimelineSteps = (order) => {
 
   const createdTime = formatDate(order.orderDate)
 
-  // Guest orders: simple 2-step flow
-  if (isGuestOrder(order)) {
-    const guestSteps = [
+  if (isOfflineGuestOrder(order)) {
+    const offlineSteps = [
       { code: 'WAIT_CONFIRM', label: 'Chờ xác nhận', icon: 'mdi-text-box-check-outline', time: '-' },
+      { code: 'TRANSFER_CONFIRM', label: 'Xác nhận thanh toán', icon: 'mdi-bank-check', time: '-' },
       { code: 'COMPLETED', label: 'Hoàn thành', icon: 'mdi-check-decagram-outline', time: '-' },
     ]
 
     if (isCancelledOrder(order)) {
       return [
-        { ...guestSteps[0], state: 'done', time: createdTime },
+        { ...offlineSteps[0], state: 'done', time: createdTime },
         {
           code: 'CANCELLED',
           label: 'Đã hủy',
@@ -477,26 +573,26 @@ const buildTimelineSteps = (order) => {
     const orderStatus = String(order?.orderStatus || '').toUpperCase()
 
     let activeIndex = 0
-    if (orderStatus === 'PAID' || paymentStatus === 'PAID') {
-      activeIndex = 1
+    if (paymentStatus === 'PAID' || orderStatus === 'PAID') {
+      activeIndex = 2
     }
 
-    return guestSteps.map((step, index) => {
+    return offlineSteps.map((step, index) => {
       let state = 'pending'
       if (index < activeIndex) state = 'done'
-      if (index === activeIndex) state = 'current'
-      if (index === guestSteps.length - 1 && activeIndex >= guestSteps.length - 1) state = 'done'
+      if (index === activeIndex) state = activeIndex === offlineSteps.length - 1 ? 'done' : 'current'
+
+      const showTime = index === 0 || state === 'done' || state === 'current'
 
       return {
         ...step,
         state,
-        time: index === 0 || (index === 1 && activeIndex >= 1) ? createdTime : '-',
+        time: showTime ? createdTime : '-',
       }
     })
   }
 
-  // Regular account orders: full flow
-  const onlineSteps = [
+  const onlinePrepaidSteps = [
     { code: 'WAIT_CONFIRM', label: 'Chờ xác nhận', icon: 'mdi-text-box-check-outline', time: '-' },
     { code: 'TRANSFER_CONFIRM', label: 'Xác nhận thanh toán', icon: 'mdi-bank-check', time: '-' },
     { code: 'WAIT_SHIP', label: 'Chờ giao hàng', icon: 'mdi-package-variant-closed-check', time: '-' },
@@ -505,7 +601,7 @@ const buildTimelineSteps = (order) => {
     { code: 'COMPLETED', label: 'Hoàn thành', icon: 'mdi-check-decagram-outline', time: '-' },
   ]
 
-  const codSteps = [
+  const onlineCodSteps = [
     { code: 'WAIT_CONFIRM', label: 'Chờ xác nhận', icon: 'mdi-text-box-check-outline', time: '-' },
     { code: 'WAIT_SHIP', label: 'Chờ giao hàng', icon: 'mdi-package-variant-closed-check', time: '-' },
     { code: 'SHIPPING', label: 'Đang giao hàng', icon: 'mdi-truck-delivery-outline', time: '-' },
@@ -514,7 +610,7 @@ const buildTimelineSteps = (order) => {
     { code: 'COMPLETED', label: 'Hoàn thành', icon: 'mdi-check-decagram-outline', time: '-' },
   ]
 
-  const baseSteps = isOnlinePaymentMethod(order) ? onlineSteps : codSteps
+  const baseSteps = isOnlinePaymentMethod(order) ? onlinePrepaidSteps : onlineCodSteps
 
   if (isCancelledOrder(order)) {
     return [
@@ -533,14 +629,18 @@ const buildTimelineSteps = (order) => {
   const orderStatus = String(order?.orderStatus || '').toUpperCase()
   const uiShippingStarted = isUiShippingStartedOrder(order)
   const uiDelivered = isUiDeliveredOrder(order)
-  const codFinalActionPending = isCodPaymentMethod(order) && paymentStatus === 'PAID' && uiDelivered && orderStatus !== 'PAID'
+  const codFinalActionPending =
+    isCodPaymentMethod(order) &&
+    paymentStatus === 'PAID' &&
+    uiDelivered &&
+    orderStatus !== 'PAID'
 
   let activeIndex = 0
 
   if (isOnlinePaymentMethod(order)) {
     if (orderStatus === 'PAID') {
       activeIndex = 5
-    } else if (paymentStatus === 'UNPAID' && orderStatus === 'PENDING_PAYMENT') {
+    } else if (paymentStatus === 'UNPAID' && (orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING')) {
       activeIndex = 0
     } else if (paymentStatus === 'PAID' && !uiShippingStarted) {
       activeIndex = 2
@@ -552,15 +652,13 @@ const buildTimelineSteps = (order) => {
   } else {
     if (orderStatus === 'PAID') {
       activeIndex = 5
-    } else if (paymentStatus === 'UNPAID' && orderStatus === 'PENDING_PAYMENT') {
+    } else if (paymentStatus === 'UNPAID' && (orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING')) {
       activeIndex = 0
-    } else if (paymentStatus === 'PAID' && orderStatus === 'SHIPPING' && uiShippingStarted && !uiDelivered) {
+    } else if (orderStatus === 'SHIPPING' && uiShippingStarted && !uiDelivered) {
       activeIndex = 2
-    } else if (paymentStatus === 'PAID' && orderStatus === 'SHIPPING' && uiDelivered) {
-      activeIndex = 4
-    } else if (orderStatus === 'SHIPPING' && uiShippingStarted && !uiDelivered && paymentStatus === 'UNPAID') {
-      activeIndex = 2
-    } else if (uiDelivered && paymentStatus === 'UNPAID') {
+    } else if (orderStatus === 'SHIPPING' && uiDelivered && paymentStatus === 'UNPAID') {
+      activeIndex = 3
+    } else if (uiDelivered && paymentStatus === 'PAID') {
       activeIndex = 4
     }
   }
@@ -568,29 +666,25 @@ const buildTimelineSteps = (order) => {
   return baseSteps.map((step, index) => {
     let state = 'pending'
     if (index < activeIndex) state = 'done'
-    if (index === activeIndex) state = codFinalActionPending ? 'current' : activeIndex === baseSteps.length - 1 ? 'done' : 'current'
+    if (index === activeIndex) {
+      state = codFinalActionPending
+        ? 'current'
+        : activeIndex === baseSteps.length - 1
+          ? 'done'
+          : 'current'
+    }
 
-    const isOnlineTransferTime = isOnlinePaymentMethod(order) && paymentStatus === 'PAID' && index === 1
-    const isWaitingShippingTime = index === 2 && ((isOnlinePaymentMethod(order) && paymentStatus === 'PAID' && !uiShippingStarted) || (isCodPaymentMethod(order) && orderStatus === 'PENDING_PAYMENT'))
-    const isShippingTime = index === 3 && uiShippingStarted && !uiDelivered
-    const isDeliveredTime = index === 4 && uiDelivered && paymentStatus === 'UNPAID'
-    const isCompleteTime = index === 5 && uiDelivered && paymentStatus === 'PAID'
+    const showTime = index === 0 || state === 'done' || state === 'current'
 
     return {
       ...step,
       state,
-      time:
-        index === 0 ||
-          isOnlineTransferTime ||
-          isWaitingShippingTime ||
-          isShippingTime ||
-          isDeliveredTime ||
-          isCompleteTime
-          ? createdTime
-          : '-',
+      time: showTime ? createdTime : '-',
     }
   })
 }
+
+const orderTimelineSteps = computed(() => buildTimelineSteps(selectedOrder.value))
 
 const connectorClass = (nextStep) => {
   if (!nextStep) return 'track-connector--pending'
@@ -638,17 +732,28 @@ const canConfirmOrder = (order) => {
   const orderStatus = String(order?.orderStatus || '').toUpperCase()
 
   if (paymentStatus !== 'UNPAID') return false
-  if (isOnlinePaymentMethod(order)) {
-    return orderStatus === 'PENDING_PAYMENT'
+
+  if (isOfflineGuestOrder(order)) {
+    return orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING'
   }
 
-  return isUiDeliveredOrder(order)
+  if (isOnlineOrder(order)) {
+    if (isOnlinePaymentMethod(order)) {
+      return orderStatus === 'PENDING_PAYMENT'
+    }
+
+    if (isCodPaymentMethod(order)) {
+      return isUiDeliveredOrder(order)
+    }
+  }
+
+  return false
 }
 
 const canCancelOrder = (order) => {
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
   const orderStatus = String(order?.orderStatus || '').toUpperCase()
-  return paymentStatus === 'UNPAID' && orderStatus === 'PENDING_PAYMENT'
+  return paymentStatus === 'UNPAID' && (orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING')
 }
 
 const canRevertOrder = (order) => {
@@ -666,7 +771,7 @@ const canRevertOrder = (order) => {
 }
 
 const canStartShipping = (order) => {
-  if (!order) return false
+  if (!order || !isOnlineOrder(order)) return false
 
   const orderStatus = String(order?.orderStatus || '').toUpperCase()
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
@@ -678,11 +783,11 @@ const canStartShipping = (order) => {
     return paymentStatus === 'PAID' && orderStatus === 'SHIPPING'
   }
 
-  return paymentStatus === 'UNPAID' && orderStatus === 'PENDING_PAYMENT'
+  return paymentStatus === 'UNPAID' && (orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING')
 }
 
 const canCompleteDelivery = (order) => {
-  if (!order) return false
+  if (!order || !isOnlineOrder(order)) return false
 
   const orderStatus = String(order?.orderStatus || '').toUpperCase()
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
@@ -694,7 +799,7 @@ const canCompleteDelivery = (order) => {
 }
 
 const canCompleteOrder = (order) => {
-  if (!order) return false
+  if (!order || !isOnlineOrder(order)) return false
 
   const orderStatus = String(order?.orderStatus || '').toUpperCase()
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
@@ -730,7 +835,11 @@ const applyOrderPatch = (order, patch) => {
     startTimelineReveal()
   }
 
-  if (patch?.orderStatus === 'PENDING_PAYMENT' || patch?.orderStatus === 'CANCELLED') {
+  if (
+    patch?.orderStatus === 'PENDING_PAYMENT' ||
+    patch?.orderStatus === 'CANCELLED' ||
+    patch?.orderStatus === 'PENDING'
+  ) {
     clearUiDelivered(order.orderId)
     clearUiShippingStarted(order.orderId)
   }
@@ -760,13 +869,21 @@ const confirmPayment = async (order) => {
   try {
     const token = localStorage.getItem('token')
     await paymentApi.confirmPayment(order.orderId, token)
-    applyOrderPatch(order, {
-      paymentStatus: 'PAID',
-      orderStatus: 'SHIPPING',
-    })
-    clearUiShippingStarted(order.orderId)
 
-    snackbarMessage.value = `Đã xác nhận thanh toán đơn #${order.orderId}`
+    if (isOfflineGuestOrder(order)) {
+      applyOrderPatch(order, {
+        paymentStatus: 'PAID',
+        orderStatus: 'PAID',
+      })
+    } else {
+      applyOrderPatch(order, {
+        paymentStatus: 'PAID',
+        orderStatus: 'SHIPPING',
+      })
+      clearUiShippingStarted(order.orderId)
+    }
+
+    snackbarMessage.value = `Đã xác nhận thanh toán đơn ${getDisplayOrderCode(order)}`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -782,7 +899,7 @@ const confirmPayment = async (order) => {
 const cancelOrder = async (order) => {
   if (!canCancelOrder(order)) return
 
-  const confirmed = window.confirm(`Bạn có chắc muốn hủy đơn #${order.orderId}?`)
+  const confirmed = window.confirm(`Bạn có chắc muốn hủy đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
   cancellingOrderId.value = order.orderId
@@ -794,7 +911,7 @@ const cancelOrder = async (order) => {
       orderStatus: 'CANCELLED',
     })
 
-    snackbarMessage.value = `Đã hủy đơn #${order.orderId}`
+    snackbarMessage.value = `Đã hủy đơn ${getDisplayOrderCode(order)}`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -832,18 +949,16 @@ const revertOrderStatus = async (order, reason) => {
 
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
 
-  // COD: from delivered (unpaid) go back to in-transit UI step.
   if (isUiDeliveredOrder(order) && paymentStatus === 'UNPAID') {
     clearUiDelivered(order.orderId)
     startTimelineReveal()
-    snackbarMessage.value = `Đơn #${order.orderId} đã quay lại bước Đang vận chuyển (UI)`
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Đang vận chuyển (UI)`
     snackbarColor.value = 'success'
     showSnackbar.value = true
     return
   }
 
-  // Online: from completed (delivered UI) go back one UI step first.
-  if (isOnlinePaymentMethod(order) && isUiDeliveredOrder(order)) {
+  if (isOnlineOrder(order) && isOnlinePaymentMethod(order) && isUiDeliveredOrder(order)) {
     revertingOrderId.value = order.orderId
     try {
       const token = localStorage.getItem('token')
@@ -866,7 +981,7 @@ const revertOrderStatus = async (order, reason) => {
         paymentStatus: responsePaymentStatus || 'PAID',
       })
       startTimelineReveal()
-      snackbarMessage.value = `Đơn #${order.orderId} đã quay lại bước Đang giao hàng (UI)`
+      snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Đang giao hàng (UI)`
       snackbarColor.value = 'success'
       showSnackbar.value = true
       return
@@ -881,8 +996,7 @@ const revertOrderStatus = async (order, reason) => {
     }
   }
 
-  // Online: from in-transit UI go back to waiting-for-shipping UI step.
-  if (isOnlinePaymentMethod(order) && isUiShippingStartedOrder(order)) {
+  if (isOnlineOrder(order) && isOnlinePaymentMethod(order) && isUiShippingStartedOrder(order)) {
     revertingOrderId.value = order.orderId
     try {
       const token = localStorage.getItem('token')
@@ -905,7 +1019,7 @@ const revertOrderStatus = async (order, reason) => {
         paymentStatus: responsePaymentStatus || 'PAID',
       })
       startTimelineReveal()
-      snackbarMessage.value = `Đơn #${order.orderId} đã quay lại bước Chờ giao hàng (UI)`
+      snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Chờ giao hàng (UI)`
       snackbarColor.value = 'success'
       showSnackbar.value = true
       return
@@ -943,15 +1057,16 @@ const revertOrderStatus = async (order, reason) => {
       orderStatus: responseOrderStatus || 'PENDING_PAYMENT',
     })
 
-    // COD: when backend returns SHIPPING + UNPAID from completed state,
-    // show the previous visible step as "Xác nhận chuyển khoản".
-    if (isCodPaymentMethod(order)
-      && (responseOrderStatus || '').toUpperCase() === 'SHIPPING'
-      && (responsePaymentStatus || '').toUpperCase() === 'UNPAID') {
+    if (
+      isOnlineOrder(order) &&
+      isCodPaymentMethod(order) &&
+      (responseOrderStatus || '').toUpperCase() === 'SHIPPING' &&
+      (responsePaymentStatus || '').toUpperCase() === 'UNPAID'
+    ) {
       markUiDelivered(order.orderId)
     }
 
-    snackbarMessage.value = `Đã quay lại trạng thái trước cho đơn #${order.orderId}`
+    snackbarMessage.value = `Đã quay lại trạng thái trước cho đơn ${getDisplayOrderCode(order)}`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -989,7 +1104,7 @@ const submitRevertOrder = async () => {
 const startShipping = async (order) => {
   if (!canStartShipping(order)) return
 
-  const confirmed = window.confirm(`Bắt đầu giao hàng cho đơn #${order.orderId}?`)
+  const confirmed = window.confirm(`Bắt đầu giao hàng cho đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
   startingShippingOrderId.value = order.orderId
@@ -1003,7 +1118,7 @@ const startShipping = async (order) => {
     markUiShippingStarted(order.orderId)
     clearUiDelivered(order.orderId)
 
-    snackbarMessage.value = `Đơn #${order.orderId} đã chuyển sang Đang vận chuyển`
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã chuyển sang Đang vận chuyển`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -1019,15 +1134,14 @@ const startShipping = async (order) => {
 const completeDelivery = async (order) => {
   if (!canCompleteDelivery(order)) return
 
-  const confirmed = window.confirm(`Xác nhận đã giao hàng đơn #${order.orderId}?`)
+  const confirmed = window.confirm(`Xác nhận đã giao hàng đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
   completingDeliveryOrderId.value = order.orderId
   try {
     markUiDelivered(order.orderId)
     startTimelineReveal()
-    snackbarMessage.value = `Đơn #${order.orderId} đã giao hàng (UI)`
-
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã giao hàng (UI)`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -1043,7 +1157,7 @@ const completeDelivery = async (order) => {
 const completeOrder = async (order) => {
   if (!canCompleteOrder(order)) return
 
-  const confirmed = window.confirm(`Xác nhận hoàn thành đơn #${order.orderId}?`)
+  const confirmed = window.confirm(`Xác nhận hoàn thành đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
   completingOrderId.value = order.orderId
@@ -1056,7 +1170,7 @@ const completeOrder = async (order) => {
       paymentStatus: 'PAID',
     })
 
-    snackbarMessage.value = `Đơn #${order.orderId} đã hoàn thành`
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã hoàn thành`
     snackbarColor.value = 'success'
     showSnackbar.value = true
   } catch (error) {
@@ -1077,6 +1191,45 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.payment-manage-card {
+  padding: 20px;
+}
+
+.payment-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.custom-payment-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-top: 8px;
+}
+
+.custom-payment-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  color: #555;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.custom-payment-tab.active {
+  color: #111;
+  font-weight: 600;
+  border-bottom-color: #111;
+}
+
 .order-track-scroll {
   overflow-x: auto;
   padding-bottom: 8px;

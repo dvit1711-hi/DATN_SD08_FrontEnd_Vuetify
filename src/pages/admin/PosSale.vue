@@ -17,23 +17,36 @@
                         </v-radio-group>
 
                         <div v-if="customerMode === 'account'">
-                            <v-text-field v-model="customerKeyword" label="Tìm khách hàng"
-                                placeholder="Nhập tên, email, số điện thoại..." density="comfortable" variant="outlined"
-                                prepend-inner-icon="mdi-magnify" @input="searchCustomers" />
+                            <v-row>
+                                <v-col cols="12" md="5">
+                                    <v-text-field v-model="customerKeyword" label="Tìm khách có tài khoản"
+                                        placeholder="Nhập tên, email, số điện thoại..." density="comfortable"
+                                        variant="outlined" prepend-inner-icon="mdi-magnify" clearable
+                                        :loading="customerLoading" @update:model-value="handleCustomerSearch"
+                                        @click:clear="clearCustomerSearch" />
+                                </v-col>
 
-                            <v-list v-if="customers.length" class="border rounded">
-                                <v-list-item v-for="customer in customers" :key="getCustomerId(customer)"
-                                    @click="selectCustomer(customer)">
-                                    <template #prepend>
-                                        <v-icon>mdi-account</v-icon>
-                                    </template>
-
-                                    <v-list-item-title>{{ getCustomerName(customer) }}</v-list-item-title>
-                                    <v-list-item-subtitle>
-                                        {{ getCustomerPhone(customer) }} - {{ customer.email || "" }}
-                                    </v-list-item-subtitle>
-                                </v-list-item>
-                            </v-list>
+                                <v-col cols="12" md="7">
+                                    <v-autocomplete v-model="selectedCustomer" :items="customers" item-title="plainName"
+                                        item-value="accountId" label="Chọn khách hàng"
+                                        placeholder="Chọn khách có tài khoản" density="comfortable" variant="outlined"
+                                        prepend-inner-icon="mdi-account" return-object clearable no-filter hide-no-data
+                                        :loading="customerLoading" no-data-text="Không có khách hàng phù hợp"
+                                        class="customer-account-select" :menu-props="{ maxHeight: 320 }"
+                                        @focus="openCustomerSearch" @update:model-value="handleCustomerSelect">
+                                        <template #item="{ props, item }">
+                                            <v-list-item v-bind="props" :title="getCustomerOptionName(item)"
+                                                :subtitle="getCustomerOptionSubtitle(item)">
+                                                <template #prepend>
+                                                    <v-avatar size="34" color="grey-lighten-3">
+                                                        <v-icon size="18">mdi-account</v-icon>
+                                                    </v-avatar>
+                                                </template>
+                                            </v-list-item>
+                                        </template>
+                                    </v-autocomplete>
+                                </v-col>
+                            </v-row>
                         </div>
 
                         <div v-else>
@@ -111,6 +124,7 @@
                                                 </div>
                                             </template>
                                         </div>
+
                                         <div>
                                             Tồn kho:
                                             <strong>{{ product.stockQuantity ?? 0 }}</strong>
@@ -147,8 +161,10 @@
                         <div v-if="pendingOrders.length" class="d-flex flex-wrap ga-2">
                             <v-chip v-for="order in pendingOrders" :key="getCurrentOrderId(order)"
                                 :color="getCurrentOrderId(order) === getCurrentOrderId(currentOrder) ? 'primary' : ''"
-                                :variant="getCurrentOrderId(order) === getCurrentOrderId(currentOrder) ? 'flat' : 'outlined'"
-                                @click="switchOrder(order)">
+                                :variant="getCurrentOrderId(order) === getCurrentOrderId(currentOrder)
+                                    ? 'flat'
+                                    : 'outlined'
+                                    " @click="switchOrder(order)">
                                 #{{ getCurrentOrderId(order) }} - {{ order.customerName || "Khách lẻ" }}
                                 <v-icon end size="18" @click.stop="closePendingOrder(order)">
                                     mdi-close-circle
@@ -168,7 +184,10 @@
                     <v-card-title class="d-flex justify-space-between align-center">
                         <span>Đơn hàng hiện tại</span>
                         <v-chip color="primary" variant="tonal">
-                            {{ getCurrentOrderId(currentOrder) ? `#${getCurrentOrderId(currentOrder)}` : "Chưa tạo đơn"
+                            {{
+                                getCurrentOrderId(currentOrder)
+                                    ? `#${getCurrentOrderId(currentOrder)}`
+                                    : "Chưa tạo đơn"
                             }}
                         </v-chip>
                     </v-card-title>
@@ -291,9 +310,9 @@
                                         placeholder="Nhập mã rồi bấm áp dụng" variant="outlined" density="comfortable"
                                         :disabled="!getCurrentOrderId(currentOrder)">
                                         <template #append>
-                                            <v-btn color="primary" variant="tonal"
-                                                :disabled="!getCurrentOrderId(currentOrder) || !String(couponCode || '').trim()"
-                                                @click="handleApplyCoupon">
+                                            <v-btn color="primary" variant="tonal" :disabled="!getCurrentOrderId(currentOrder) ||
+                                                !String(couponCode || '').trim()
+                                                " @click="handleApplyCoupon">
                                                 Áp dụng mã
                                             </v-btn>
                                         </template>
@@ -381,7 +400,8 @@
                 <v-card-actions>
                     <v-spacer />
                     <v-btn variant="text" @click="bankingDialog = false">Đóng</v-btn>
-                    <v-btn color="success" variant="flat" :loading="confirmingBankingPayment" @click="confirmBankingPayment">
+                    <v-btn color="success" variant="flat" :loading="confirmingBankingPayment"
+                        @click="confirmBankingPayment">
                         Xác nhận thanh toán
                     </v-btn>
                 </v-card-actions>
@@ -399,11 +419,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch, onBeforeUnmount } from "vue"
 import posApi from "@/api/posApi"
 import paymentApi from "@/api/paymentApi"
 
 const loading = ref(false)
+const customerLoading = ref(false)
 const productKeyword = ref("")
 const customerKeyword = ref("")
 const products = ref([])
@@ -418,6 +439,8 @@ const selectedPromotionCode = ref(null)
 const bankingDialog = ref(false)
 const bankingInfo = ref(null)
 const confirmingBankingPayment = ref(false)
+let customerSearchTimer = null
+
 
 const guest = ref({
     customerName: "",
@@ -519,16 +542,93 @@ function getPaymentStatusLabel(status) {
     }
 }
 
+function stripPhoneFromDisplayName(value) {
+    if (!value) return ""
+
+    return String(value)
+        .replace(/\s*[-–]\s*\+?\d{8,15}\s*$/, "")
+        .trim()
+}
+
+function normalizeCustomer(customer) {
+    const accountId =
+        customer?.accountId ??
+        customer?.id ??
+        customer?.accountID ??
+        null
+
+    const rawName =
+        customer?.fullName ||
+        customer?.username ||
+        customer?.name ||
+        customer?.customerName ||
+        customer?.displayName ||
+        customer?.email ||
+        ""
+
+    const plainName =
+        stripPhoneFromDisplayName(rawName) ||
+        (accountId ? `Khách hàng #${accountId}` : "Khách hàng")
+
+    const displayPhone =
+        customer?.phoneNumber ||
+        customer?.phone ||
+        customer?.displayPhone ||
+        ""
+
+    const displayEmail =
+        customer?.email ||
+        customer?.displayEmail ||
+        ""
+
+    return {
+        ...customer,
+        accountId,
+        plainName,
+        displayPhone,
+        displayEmail,
+        displayName: plainName,
+        displayLabel: [plainName, displayPhone].filter(Boolean).join(" - "),
+        displaySubtitle: [displayPhone, displayEmail].filter(Boolean).join(" • "),
+    }
+}
+
 function getCustomerId(customer) {
-    return customer.accountId || customer.id || customer.accountID
+    return customer?.accountId || customer?.id || customer?.accountID || null
 }
 
 function getCustomerName(customer) {
-    return customer?.fullName || customer?.username || customer?.name || ""
+    return (
+        customer?.plainName ||
+        customer?.displayName ||
+        customer?.fullName ||
+        customer?.username ||
+        customer?.name ||
+        customer?.customerName ||
+        stripPhoneFromDisplayName(customer?.displayName) ||
+        customer?.email ||
+        ""
+    )
 }
 
 function getCustomerPhone(customer) {
-    return customer?.phoneNumber || customer?.phone || ""
+    return customer?.displayPhone || customer?.phoneNumber || customer?.phone || ""
+}
+
+function getCustomerOptionName(item) {
+    const raw = item?.raw || item || {}
+    return getCustomerName(raw) || "Khách hàng"
+}
+
+function getCustomerOptionSubtitle(item) {
+    const raw = item?.raw || item || {}
+
+    return (
+        [getCustomerPhone(raw), raw?.displayEmail || raw?.email]
+            .filter(Boolean)
+            .join(" • ") ||
+        "Chưa có số điện thoại / email"
+    )
 }
 
 function getProductColorId(product) {
@@ -562,6 +662,10 @@ function getItemColorName(item) {
 
 function getItemSizeName(item) {
     return item.sizeName || "-"
+}
+
+function getTrackingCode(order) {
+    return order?.trackingCode || order?.tracking_code || "-"
 }
 
 function buildPromotionComboItem(promo) {
@@ -611,6 +715,30 @@ function getSelectedPromotionCodeValue() {
     return String(selected).trim()
 }
 
+function buildCustomerPayload() {
+    const isAccountCustomer = customerMode.value === "account"
+
+    return {
+        accountId: isAccountCustomer
+            ? (selectedCustomer.value
+                ? getCustomerId(selectedCustomer.value)
+                : (currentOrder.value?.customerId || null))
+            : null,
+        customerName: isAccountCustomer
+            ? (selectedCustomer.value
+                ? getCustomerName(selectedCustomer.value)
+                : (guest.value.customerName || null))
+            : (guest.value.customerName || null),
+        customerPhone: isAccountCustomer
+            ? (selectedCustomer.value
+                ? getCustomerPhone(selectedCustomer.value)
+                : (guest.value.customerPhone || null))
+            : (guest.value.customerPhone || null),
+        note: guest.value.note || null,
+        shippingAddress: guest.value.shippingAddress || null,
+    }
+}
+
 function resetOrderForm() {
     selectedCustomer.value = null
     customerMode.value = "guest"
@@ -619,6 +747,8 @@ function resetOrderForm() {
     promotionOptions.value = []
     bankingDialog.value = false
     bankingInfo.value = null
+    customerKeyword.value = ""
+    customers.value = []
 
     guest.value = {
         customerName: "",
@@ -645,7 +775,19 @@ function syncFormFromOrder(order) {
     guest.value.shippingAddress = order.shippingAddress || ""
 
     couponCode.value = ""
+    customerKeyword.value = ""
     customerMode.value = order.customerId ? "account" : "guest"
+
+    if (order.customerId) {
+        selectedCustomer.value = normalizeCustomer({
+            accountId: order.customerId,
+            fullName: order.customerName || "",
+            phoneNumber: order.customerPhone || "",
+            email: order.email || "",
+        })
+    } else {
+        selectedCustomer.value = null
+    }
 
     if (order.paymentMethod) {
         checkoutForm.value.method = order.paymentMethod
@@ -658,11 +800,54 @@ function syncFormFromOrder(order) {
     }
 }
 
-function selectCustomer(customer) {
-    selectedCustomer.value = customer
-    customerMode.value = "account"
-    guest.value.customerName = getCustomerName(customer)
-    guest.value.customerPhone = getCustomerPhone(customer)
+function handleCustomerSelect(customer) {
+    if (!customer || typeof customer !== "object") {
+        selectedCustomer.value = null
+        guest.value.customerName = ""
+        guest.value.customerPhone = ""
+        return
+    }
+
+    const normalizedCustomer = normalizeCustomer(customer)
+    selectedCustomer.value = normalizedCustomer
+    guest.value.customerName = normalizedCustomer.plainName || ""
+    guest.value.customerPhone = normalizedCustomer.displayPhone || ""
+}
+
+async function loadCustomers(keyword = "") {
+    try {
+        customerLoading.value = true
+        const { data } = await posApi.searchCustomers(String(keyword || "").trim())
+        customers.value = Array.isArray(data) ? data.map(normalizeCustomer) : []
+    } catch (error) {
+        customers.value = []
+        showMessage(error.response?.data?.message || "Không tải được khách hàng", "error")
+    } finally {
+        customerLoading.value = false
+    }
+}
+
+function handleCustomerSearch(value) {
+    customerKeyword.value = value || ""
+
+    if (customerSearchTimer) {
+        clearTimeout(customerSearchTimer)
+    }
+
+    customerSearchTimer = setTimeout(() => {
+        loadCustomers(customerKeyword.value)
+    }, 300)
+}
+
+function clearCustomerSearch() {
+    customerKeyword.value = ""
+    loadCustomers("")
+}
+
+async function openCustomerSearch() {
+    if (!customers.value.length) {
+        await loadCustomers(customerKeyword.value)
+    }
 }
 
 async function saveOrderInfo() {
@@ -675,18 +860,7 @@ async function saveOrderInfo() {
 
         loading.value = true
 
-        const payload = {
-            accountId:
-                customerMode.value === "account"
-                    ? (selectedCustomer.value
-                        ? getCustomerId(selectedCustomer.value)
-                        : (currentOrder.value?.customerId || null))
-                    : null,
-            customerName: guest.value.customerName || null,
-            customerPhone: guest.value.customerPhone || null,
-            note: guest.value.note || null,
-            shippingAddress: guest.value.shippingAddress || null,
-        }
+        const payload = buildCustomerPayload()
 
         const { data } = await posApi.updateOrderInfo(orderId, payload)
         currentOrder.value = data
@@ -718,15 +892,6 @@ async function loadProducts() {
 
 async function searchProducts() {
     await loadProducts()
-}
-
-async function searchCustomers() {
-    try {
-        const { data } = await posApi.searchCustomers(customerKeyword.value)
-        customers.value = data || []
-    } catch (error) {
-        showMessage(error.response?.data?.message || "Không tải được khách hàng", "error")
-    }
 }
 
 async function loadPromotions() {
@@ -786,16 +951,7 @@ async function createPendingOrder() {
 
         loading.value = true
 
-        const payload = {
-            accountId:
-                customerMode.value === "account" && selectedCustomer.value
-                    ? getCustomerId(selectedCustomer.value)
-                    : null,
-            customerName: guest.value.customerName || null,
-            customerPhone: guest.value.customerPhone || null,
-            note: guest.value.note || null,
-            shippingAddress: guest.value.shippingAddress || null,
-        }
+        const payload = buildCustomerPayload()
 
         const { data } = await posApi.createOfflineOrder(payload)
         currentOrder.value = data
@@ -848,16 +1004,7 @@ async function ensureOrderCreated() {
         throw new Error("Bạn đã đạt tối đa 10 đơn hàng chờ")
     }
 
-    const payload = {
-        accountId:
-            customerMode.value === "account" && selectedCustomer.value
-                ? getCustomerId(selectedCustomer.value)
-                : null,
-        customerName: guest.value.customerName || null,
-        customerPhone: guest.value.customerPhone || null,
-        note: guest.value.note || null,
-        shippingAddress: guest.value.shippingAddress || null,
-    }
+    const payload = buildCustomerPayload()
 
     const { data } = await posApi.createOfflineOrder(payload)
     currentOrder.value = data
@@ -1071,11 +1218,8 @@ async function handleCheckout() {
             bankingInfo.value = bankRes.data
             bankingDialog.value = true
 
-            pendingOrders.value = pendingOrders.value.filter(
-                (x) => getCurrentOrderId(x) !== orderId
-            )
-
             showMessage("Đã tạo yêu cầu chuyển khoản")
+            return
         }
     } catch (error) {
         showMessage(error.response?.data?.message || "Thanh toán thất bại", "error")
@@ -1094,11 +1238,13 @@ async function confirmBankingPayment() {
 
         confirmingBankingPayment.value = true
         await paymentApi.confirmPayment(orderId)
-        
         bankingDialog.value = false
+        bankingInfo.value = null
         currentOrder.value = null
-        checkoutForm.value = { method: "CASH", cashReceived: null }
-        
+        checkoutForm.value = {
+            method: "CASH",
+            cashReceived: null,
+        }
         await loadPendingOrders()
         showMessage("Xác nhận thanh toán thành công")
     } catch (error) {
@@ -1113,6 +1259,7 @@ function printReceipt(order = currentOrder.value) {
     if (!order || !orderId) return
 
     const items = order.items || order.orderDetails || []
+    const trackingCode = getTrackingCode(order)
 
     const htmlItems = items
         .map((item, index) => {
@@ -1137,35 +1284,83 @@ function printReceipt(order = currentOrder.value) {
     const html = `
     <html>
       <head>
-        <title>Hoa don #${orderId}</title>
+        <title>Hoa don ban hang</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h2, p { margin: 6px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-          table, th, td { border: 1px solid #333; }
-          th, td { padding: 8px; text-align: left; font-size: 14px; }
-          .summary { margin-top: 16px; width: 320px; margin-left: auto; }
-          .summary div { display: flex; justify-content: space-between; margin: 6px 0; }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 24px;
+            color: #222;
+          }
+          h2 {
+            margin: 0 0 12px 0;
+            text-align: center;
+          }
+          p {
+            margin: 6px 0;
+            font-size: 14px;
+          }
+          .header-box {
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #999;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+          }
+          table, th, td {
+            border: 1px solid #333;
+          }
+          th, td {
+            padding: 8px;
+            text-align: left;
+            font-size: 14px;
+          }
+          .summary {
+            margin-top: 16px;
+            width: 340px;
+            margin-left: auto;
+          }
+          .summary div {
+            display: flex;
+            justify-content: space-between;
+            margin: 6px 0;
+          }
+          .total {
+            font-size: 18px;
+            font-weight: bold;
+          }
+          .footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 13px;
+          }
         </style>
       </head>
       <body>
-        <h2>HOA DON BAN HANG</h2>
-        <p><strong>Ma don:</strong> #${orderId}</p>
-        <p><strong>Khach hang:</strong> ${order.customerName || "Khach le"}</p>
-        <p><strong>So dien thoai:</strong> ${order.customerPhone || ""}</p>
-        <p><strong>Trang thai:</strong> ${order.status || ""}</p>
-        <p><strong>Phuong thuc thanh toan:</strong> ${getPaymentMethodLabel(order.paymentMethod || checkoutForm.value.method)}</p>
+        <h2>HÓA ĐƠN BÁN HÀNG</h2>
+
+        <div class="header-box">
+          <p><strong>Mã vận đơn:</strong> ${trackingCode}</p>
+          <p><strong>Khách hàng:</strong> ${order.customerName || "Khách lẻ"}</p>
+          <p><strong>Số điện thoại:</strong> ${order.customerPhone || ""}</p>
+          <p><strong>Địa chỉ giao hàng:</strong> ${order.shippingAddress || ""}</p>
+          <p><strong>Ghi chú:</strong> ${order.note || ""}</p>
+          <p><strong>Trạng thái:</strong> ${order.status || ""}</p>
+          <p><strong>Phương thức thanh toán:</strong> ${getPaymentMethodLabel(order.paymentMethod || checkoutForm.value.method)}</p>
+        </div>
 
         <table>
           <thead>
             <tr>
               <th>STT</th>
-              <th>San pham</th>
-              <th>Mau</th>
+              <th>Sản phẩm</th>
+              <th>Màu</th>
               <th>Size</th>
               <th>SL</th>
-              <th>Don gia</th>
-              <th>Thanh tien</th>
+              <th>Đơn giá</th>
+              <th>Thành tiền</th>
             </tr>
           </thead>
           <tbody>
@@ -1174,14 +1369,18 @@ function printReceipt(order = currentOrder.value) {
         </table>
 
         <div class="summary">
-          <div><span>Tam tinh:</span><strong>${formatCurrency(orderSubtotal)}</strong></div>
-          <div><span>Giam gia:</span><strong>${formatCurrency(orderDiscount)}</strong></div>
-          <div><span>Tong tien:</span><strong>${formatCurrency(orderTotal)}</strong></div>
+          <div><span>Tạm tính:</span><strong>${formatCurrency(orderSubtotal)}</strong></div>
+          <div><span>Giảm giá:</span><strong>${formatCurrency(orderDiscount)}</strong></div>
+          <div class="total"><span>Tổng tiền:</span><strong>${formatCurrency(orderTotal)}</strong></div>
           ${String(order.paymentMethod || checkoutForm.value.method).toUpperCase() === "CASH"
-            ? `<div><span>Tien khach dua:</span><strong>${formatCurrency(checkoutForm.value.cashReceived || 0)}</strong></div>
-               <div><span>Tien thua:</span><strong>${formatCurrency(changeAmount.value)}</strong></div>`
+            ? `<div><span>Tiền khách đưa:</span><strong>${formatCurrency(checkoutForm.value.cashReceived || 0)}</strong></div>
+               <div><span>Tiền thừa:</span><strong>${formatCurrency(changeAmount.value)}</strong></div>`
             : ""
         }
+        </div>
+
+        <div class="footer">
+          <p>Cảm ơn quý khách đã mua hàng!</p>
         </div>
       </body>
     </html>
@@ -1195,6 +1394,22 @@ function printReceipt(order = currentOrder.value) {
     printWindow.print()
 }
 
+watch(customerMode, async (mode) => {
+    if (mode === "account") {
+        await loadCustomers(customerKeyword.value)
+    } else {
+        customerKeyword.value = ""
+        customers.value = []
+        selectedCustomer.value = null
+    }
+})
+
+onBeforeUnmount(() => {
+    if (customerSearchTimer) {
+        clearTimeout(customerSearchTimer)
+    }
+})
+
 onMounted(async () => {
     await loadProducts()
     await loadPendingOrders()
@@ -1204,5 +1419,9 @@ onMounted(async () => {
 <style scoped>
 .border {
     border: 1px solid #e0e0e0;
+}
+
+.customer-account-select :deep(.v-field) {
+    border-radius: 12px;
 }
 </style>
