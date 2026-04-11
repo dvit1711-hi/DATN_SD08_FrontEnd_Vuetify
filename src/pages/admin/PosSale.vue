@@ -162,8 +162,8 @@
                             <v-chip v-for="order in pendingOrders" :key="getCurrentOrderId(order)"
                                 :color="getCurrentOrderId(order) === getCurrentOrderId(currentOrder) ? 'primary' : ''"
                                 :variant="getCurrentOrderId(order) === getCurrentOrderId(currentOrder)
-                                        ? 'flat'
-                                        : 'outlined'
+                                    ? 'flat'
+                                    : 'outlined'
                                     " @click="switchOrder(order)">
                                 #{{ getCurrentOrderId(order) }} - {{ order.customerName || "Khách lẻ" }}
                                 <v-icon end size="18" @click.stop="closePendingOrder(order)">
@@ -439,8 +439,8 @@ const selectedPromotionCode = ref(null)
 const bankingDialog = ref(false)
 const bankingInfo = ref(null)
 const confirmingBankingPayment = ref(false)
-
 let customerSearchTimer = null
+
 
 const guest = ref({
     customerName: "",
@@ -1238,7 +1238,6 @@ async function confirmBankingPayment() {
 
         confirmingBankingPayment.value = true
         await paymentApi.confirmPayment(orderId)
-
         bankingDialog.value = false
         bankingInfo.value = null
         currentOrder.value = null
@@ -1246,7 +1245,6 @@ async function confirmBankingPayment() {
             method: "CASH",
             cashReceived: null,
         }
-
         await loadPendingOrders()
         showMessage("Xác nhận thanh toán thành công")
     } catch (error) {

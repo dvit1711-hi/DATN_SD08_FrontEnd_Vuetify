@@ -99,6 +99,12 @@ const router = createRouter({
         { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
         { path: 'brand-material', component: AdminBrandMetarial, name: 'AdminBrandMaterial' },
         { path: 'color-size', component: AdminColorSize, name: 'AdminColorSize' },
+        {
+      path: 'pos',
+      component: PosSale,
+      name: 'AdminPosSale',
+      meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
+    },
       ],
     },
 
@@ -108,7 +114,7 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['ROLE_STAFF'] },
       children: [
         { path: '', redirect: { name: 'StaffPosSale' } },
-        { path: 'pos', component: PosSale, name: 'StaffPosSale', meta: { requiresAuth: true, roles: ['ROLE_STAFF'] } },
+        { path: 'pos', component: PosSale, name: 'StaffPosSale', meta: { requiresAuth: true, roles: ['ROLE_STAFF' , 'ROLE_ADMIN'] } },
       ],
     },
 

@@ -1,0 +1,104 @@
+.sticky-card {
+  position: sticky;
+  top: 20px;
+}
+
+.star-filter-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.star-filter-btn:hover {
+  background: #f9f9f9;
+}
+
+.star-filter-btn.active {
+  background: #ffeaa7;
+  border-color: #ffd700;
+  color: #333;
+  font-weight: 500;
+}
+
+.all-reviews-btn.active {
+  background: #c8e6c9;
+  border-color: #4caf50;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.reviews-container {
+  margin-top: 2rem;
+}
+
+.reviews-wrapper {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  animation: slideUp 0.3s ease-in;
+}
+
+.reviews-list {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.review-card {
+  transition: all 0.3s ease;
+  background: #ffffff;
+}
+
+.review-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.review-avatar-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.review-avatar {
+  border: 2px solid #ddd;
+  transition: all 0.3s ease;
+}
+
+.review-card:hover .review-avatar {
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.review-comment {
+  line-height: 1.6;
+  color: #424242;
+  word-break: break-word;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

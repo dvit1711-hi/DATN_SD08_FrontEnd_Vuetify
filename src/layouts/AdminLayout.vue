@@ -72,8 +72,11 @@
                             prepend-icon="mdi-tag" active-color="primary" />
 
                         <!-- Color & Size -->
-                        <v-list-item :to="{ name: 'AdminColorSize' }" title="Color & Size"
-                            prepend-icon="mdi-palette" active-color="primary" />
+                        <v-list-item :to="{ name: 'AdminColorSize' }" title="Color & Size" prepend-icon="mdi-palette"
+                            active-color="primary" />
+
+                        <v-list-item :to="{ name: 'AdminPosSale' }" title="Bán hàng tại quầy"
+                            prepend-icon="mdi-cash-register" active-color="primary" />
 
                         <v-divider class="my-2" />
 
