@@ -58,17 +58,17 @@
             <td>
               <div class="thumb-list">
                 <img
-                  v-for="img in variant.images.slice(0, 4)"
+                  v-for="img in variant.images.slice(0, 5)"
                   :key="img.imageID"
                   :src="img.imageUrl"
                   class="thumb-img"
                   :class="{ 'thumb-main': img.isMain }"
                 />
                 <span
-                  v-if="variant.images.length > 4"
+                  v-if="variant.images.length > 5"
                   class="text-caption text-grey"
                 >
-                  +{{ variant.images.length - 4 }}
+                  +{{ variant.images.length - 5 }}
                 </span>
               </div>
             </td>
