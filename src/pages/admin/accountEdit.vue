@@ -37,7 +37,7 @@
 
                                 <VCol cols="12" md="6">
                                     <VSelect v-model="form.statusId" label="New Status" :items="statusOptions"
-                                        item-title="title" item-value="value" />
+                                        item-title="title" item-value="value" placeholder="Chọn trạng thái" clearable />
                                 </VCol>
 
                                 <VCol cols="12" class="d-flex gap-3">
@@ -45,7 +45,7 @@
                                         Lưu trạng thái
                                     </VBtn>
 
-                                    <VBtn color="secondary" variant="tonal" @click="goBack">
+                                    <VBtn color="secondary" variant="tonal" @click="cancelEdit">
                                         Hủy
                                     </VBtn>
                                 </VCol>
@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, onMounted, computed } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import accountApi from "@/api/accountApi"
 
@@ -83,22 +83,73 @@ const form = ref({
 
 const statusOptions = ref([])
 
+const currentStatusId = computed(() => Number(account.value.statusId))
+const selectedStatusId = computed(() =>
+    form.value.statusId !== null && form.value.statusId !== undefined
+        ? Number(form.value.statusId)
+        : null
+)
+
+const hasChanges = computed(() => {
+    return selectedStatusId.value !== null && selectedStatusId.value !== currentStatusId.value
+})
+
+const getStatusTitleById = id => {
+    const found = statusOptions.value.find(item => Number(item.value) === Number(id))
+    return found?.title || ""
+}
+
+const getConfirmMessageByStatus = statusTitle => {
+    switch ((statusTitle || "").toLowerCase()) {
+        case "active":
+            return `Bạn có chắc muốn chuyển tài khoản "${account.value.username}" sang trạng thái Active không?`
+        case "inactive":
+            return `Bạn có chắc muốn chuyển tài khoản "${account.value.username}" sang trạng thái Inactive không?`
+        case "locked":
+            return `Bạn có chắc muốn khóa tài khoản "${account.value.username}" không?\n\nNgười dùng sẽ không thể đăng nhập sau khi bị khóa.`
+        case "banned":
+            return `Bạn có chắc muốn cấm tài khoản "${account.value.username}" không?`
+        case "pending":
+            return `Bạn có chắc muốn chuyển tài khoản "${account.value.username}" sang trạng thái Pending không?`
+        default:
+            return `Bạn có chắc muốn cập nhật trạng thái tài khoản "${account.value.username}" không?`
+    }
+}
+
+const getSuccessMessageByStatus = statusTitle => {
+    switch ((statusTitle || "").toLowerCase()) {
+        case "active":
+            return "Cập nhật trạng thái sang Active thành công!"
+        case "inactive":
+            return "Cập nhật trạng thái sang Inactive thành công!"
+        case "locked":
+            return "Khóa tài khoản thành công!"
+        case "banned":
+            return "Cập nhật trạng thái sang Banned thành công!"
+        case "pending":
+            return "Cập nhật trạng thái sang Pending thành công!"
+        default:
+            return "Cập nhật trạng thái thành công!"
+    }
+}
+
 const loadStatuses = async () => {
     try {
         const res = await accountApi.getStatuses()
 
         statusOptions.value = (res.data || []).map(st => ({
             title: st.statusName,
-            value: st.id,
+            value: Number(st.id),
         }))
     } catch (err) {
         console.error("Lỗi load status list:", err)
 
         statusOptions.value = [
-            { title: "ACTIVE", value: 1 },
-            { title: "INACTIVE", value: 2 },
-            { title: "LOCKED", value: 3 },
-            { title: "BANNED", value: 4 },
+            { title: "Active", value: 1 },
+            { title: "Banned", value: 2 },
+            { title: "Inactive", value: 3 },
+            { title: "Locked", value: 4 },
+            { title: "Pending", value: 5 },
         ]
     }
 }
@@ -113,7 +164,7 @@ const loadAccount = async () => {
             username: acc.username || "",
             email: acc.email || "",
             images: acc.images || "",
-            statusId: acc.status?.id || acc.statusID || acc.statusId || null,
+            statusId: Number(acc.status?.id || acc.statusID || acc.statusId || 0) || null,
             statusName: acc.status?.statusName || acc.statusName || "UNKNOWN",
         }
 
@@ -130,8 +181,6 @@ const goToAccountList = () => {
 
 const saveStatus = async () => {
     try {
-        saving.value = true
-
         if (!account.value.id) {
             alert("Không tìm thấy accountId!")
             return
@@ -142,11 +191,26 @@ const saveStatus = async () => {
             return
         }
 
+        if (Number(form.value.statusId) === Number(account.value.statusId)) {
+            alert("Trạng thái mới đang trùng với trạng thái hiện tại!")
+            return
+        }
+
+        const selectedStatusTitle = getStatusTitleById(form.value.statusId)
+
+        const confirmed = window.confirm(getConfirmMessageByStatus(selectedStatusTitle))
+        if (!confirmed) return
+
+        saving.value = true
+
         await accountApi.updateStatus(account.value.id, {
-            id: form.value.statusId,
+            id: Number(form.value.statusId),
         })
 
-        alert("Cập nhật trạng thái thành công!")
+        account.value.statusId = Number(form.value.statusId)
+        account.value.statusName = selectedStatusTitle || account.value.statusName
+
+        alert(getSuccessMessageByStatus(selectedStatusTitle))
         goToAccountList()
     } catch (err) {
         console.error("Lỗi update status:", err)
@@ -157,15 +221,34 @@ const saveStatus = async () => {
     }
 }
 
+const cancelEdit = () => {
+    if (hasChanges.value) {
+        const confirmed = window.confirm(
+            "Bạn có thay đổi chưa lưu. Bạn có chắc muốn hủy không?"
+        )
+        if (!confirmed) return
+    }
+
+    form.value.statusId = account.value.statusId
+    goToAccountList()
+}
+
+const goBack = () => {
+    if (hasChanges.value) {
+        const confirmed = window.confirm(
+            "Bạn có thay đổi chưa lưu. Bạn có chắc muốn quay lại không?"
+        )
+        if (!confirmed) return
+    }
+
+    goToAccountList()
+}
+
 const getImage = img => {
     if (!img) return "/default-avatar.png"
     if (img.startsWith("data:image")) return img
     if (img.startsWith("http://") || img.startsWith("https://")) return img
     return `http://localhost:8080${img}`
-}
-
-const goBack = () => {
-    goToAccountList()
 }
 
 onMounted(async () => {

@@ -918,7 +918,9 @@ async function loadPromotions() {
 async function loadPendingOrders(preferredOrderId = null) {
     try {
         const { data } = await posApi.getPendingOrders()
-        pendingOrders.value = data || []
+
+        const allOrders = Array.isArray(data) ? data : []
+        pendingOrders.value = allOrders.filter(isPendingOrder)
 
         const targetId = preferredOrderId || getCurrentOrderId(currentOrder.value)
 
@@ -1252,6 +1254,12 @@ async function confirmBankingPayment() {
     } finally {
         confirmingBankingPayment.value = false
     }
+}
+
+function isPendingOrder(order) {
+    return String(order?.status || "")
+        .trim()
+        .toUpperCase() === "PENDING"
 }
 
 function printReceipt(order = currentOrder.value) {
