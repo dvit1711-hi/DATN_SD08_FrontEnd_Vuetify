@@ -23,7 +23,39 @@
               variant="outlined"
               density="comfortable"
               hide-details
-            />
+            >
+              <template #selection>
+                <div v-if="selectedColor" class="color-option">
+                  <span
+                    class="color-swatch"
+                    :style="{
+                      backgroundColor: selectedColor.colorCode || '#ddd',
+                    }"
+                  ></span>
+                  <span>{{ selectedColor.colorName }}</span>
+                </div>
+                <span v-else class="text-grey">Chọn màu</span>
+              </template>
+
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props" class="color-list-item">
+                  <template #prepend>
+                    <span
+                      class="color-swatch-large"
+                      :style="{
+                        backgroundColor: item?.colorCode || '#ddd',
+                      }"
+                    ></span>
+                  </template>
+
+                  <template #title>
+                    {{
+                      item?.colorName || item?.title || "Không có tên màu"
+                    }}
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
           </v-col>
 
           <v-col cols="12" md="6">
@@ -126,8 +158,8 @@
               :disabled="remainingSlots === 0"
             />
             <div class="text-caption text-grey mt-2">
-              Tối đa 5 ảnh cho mỗi biến thể. 
-              Hiện có {{ totalImagesCount }}/5 ảnh.
+              Tối đa 5 ảnh cho mỗi biến thể. Hiện có {{ totalImagesCount }}/5
+              ảnh.
             </div>
           </div>
 
@@ -211,7 +243,6 @@ const totalImagesCount = computed(
 );
 const remainingSlots = computed(() => Math.max(0, 5 - totalImagesCount.value));
 
-
 watch(
   () => props.variant,
   (val) => {
@@ -267,6 +298,12 @@ const handleClose = () => {
   localOpen.value = false;
   newFiles.value = [];
 };
+
+const selectedColor = computed(() => {
+  return props.colors.find(
+    (color) => Number(color.colorID) === Number(form.value.colorID),
+  );
+});
 </script>
 
 <style scoped>
@@ -317,5 +354,43 @@ const handleClose = () => {
   border-radius: 999px;
   background: #f1f1f1;
   font-size: 13px;
+}
+.color-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-list-item :deep(.v-list-item__prepend) {
+  margin-inline-end: 0;
+}
+
+.color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid #cfcfcf;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.color-swatch-large {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid #cfcfcf;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.color-item-content {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+.color-item-content .ml-2 {
+  margin-left: 12px;
 }
 </style>
