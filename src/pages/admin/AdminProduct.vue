@@ -122,7 +122,9 @@
           <template #item.materialName="{ item }">
             {{ item.materialName || "—" }}
           </template>
-
+          <template #item.variantCount="{ item }">
+              {{ item.variantCount ?? 0 }}
+          </template>
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
               <v-btn
@@ -192,10 +194,10 @@ const headers = [
   { title: "Mô tả", key: "description", width: "240px" },
   { title: "Thương hiệu", key: "name" },
   { title: "Chất liệu", key: "materialName" },
+  { title: "Số biến thể", key: "variantCount", width: "120px" },
   { title: "Trạng thái", key: "status", width: "120px" },
   { title: "Thao tác", key: "actions", width: "150px", sortable: false },
 ];
-
 onMounted(() => {
   loadProducts();
   loadBrands();

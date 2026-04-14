@@ -22,7 +22,7 @@
         <v-range-slider
           v-model="filters.priceRange"
           :min="0"
-          :max="100000000"
+          :max="10000000"
           :step="50000"
           label="Giá"
           class="mb-3"
@@ -168,7 +168,7 @@ const sizes = ref([]);
 const loadingBrands = ref(false);
 
 const filters = ref({
-  priceRange: [0, 100000000],
+  priceRange: [0, 10000000],
   selectedBrands: [],
   selectedColors: [],
   selectedMaterials: [],
@@ -203,7 +203,7 @@ const applyFilters = () => {
 
 const resetFilters = () => {
   filters.value = {
-    priceRange: [0, 100000000],
+    priceRange: [0, 10000000],
     selectedBrands: [],
     selectedColors: [],
     selectedMaterials: [],

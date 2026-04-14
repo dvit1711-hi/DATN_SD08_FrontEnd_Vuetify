@@ -1,267 +1,45 @@
 <template>
   <div v-if="product" class="product-detail">
-    <h2>{{ product.productName }}</h2>
-    <p>{{ product.description }}</p>
-    <p>Thương hiệu: {{ product.brandName || "—" }}</p>
-    <p>Chất liệu: {{ product.materialName || "—" }}</p>
+    <div class="page-head mb-5">
+      <div>
+        <h2 class="mb-1">{{ product.productName }}</h2>
+        <p class="mb-1">Mô tả: {{ product.description || "—" }}</p>
+        <p class="mb-1">Thương hiệu: {{ product.brandName || "—" }}</p>
+        <p>Chất liệu: {{ product.materialName || "—" }}</p>
+      </div>
 
-    <div class="header-actions mb-3">
       <v-btn color="primary" @click="openAddVariantDialog">
         Thêm biến thể sản phẩm
       </v-btn>
     </div>
 
-    <div class="color-list">
-      <div
-        v-for="variant in sortedVariants"
-        :key="variant.productColorID"
-        class="color-card card mb-3"
-        :class="{ 'inactive-card': variant.status === 'INACTIVE' }"
-      >
-        <div class="color-header">
-          <div class="color-item">
-            <div
-              class="color-box"
-              :style="{ backgroundColor: variant.colorCode }"
-            ></div>
-            <span class="color-name">
-              {{ variant.colorName }} - Size {{ variant.sizeName || "—" }}
-            </span>
-          </div>
+    <VariantColorTable
+      v-for="group in groupedByColor"
+      :key="group.colorID"
+      :group="group"
+      @edit="startEdit"
+      @delete="deleteProductColor"
+    />
 
-          <div class="action-buttons">
-            <v-btn
-              color="warning"
-              size="small"
-              variant="tonal"
-              class="action-color-btn"
-              @click="startEdit(variant)"
-            >
-              Sửa
-            </v-btn>
+    <VariantDialog
+      v-model:open="dialogAddVariant"
+      mode="add"
+      :colors="colors"
+      :sizes="sizes"
+      :variant="newVariantPreview"
+      @submit="addProductColor"
+    />
 
-            <v-btn
-              color="error"
-              size="small"
-              variant="tonal"
-              class="delete-color-btn"
-              @click="deleteProductColor(variant.productColorID)"
-            >
-              Xóa
-            </v-btn>
-          </div>
-        </div>
-
-        <p class="stock-text">Giá: {{ formatPrice(variant.price) }}đ</p>
-        <p class="stock-text">Stock quantity: {{ variant.stockQuantity }}</p>
-
-        <p class="stock-text">
-          Trạng thái:
-          <v-chip
-            :color="variant.status === 'ACTIVE' ? 'success' : 'grey'"
-            size="small"
-            variant="tonal"
-            class="ms-2"
-          >
-            {{ variant.status || "ACTIVE" }}
-          </v-chip>
-        </p>
-
-        <p>Ảnh:</p>
-
-        <div class="image-gallery">
-          <img
-            v-for="(img, index) in variant.images"
-            :key="index"
-            :src="img"
-            class="product-image"
-          />
-        </div>
-
-        <div class="add-image">
-          <input
-            type="file"
-            :id="'file-' + variant.productColorID"
-            @change="onFileSelected($event, variant.productColorID)"
-            accept="image/*"
-            class="file-input"
-          />
-
-          <v-btn
-            color="success"
-            variant="tonal"
-            class="action-btn"
-            @click="addImage(variant.productColorID)"
-            :disabled="
-              variant.images.length >= 5 ||
-              !selectedFiles[variant.productColorID]
-            "
-          >
-            Thêm ảnh
-          </v-btn>
-
-          <v-btn
-            color="error"
-            variant="tonal"
-            class="action-btn"
-            @click="deleteAllImages(variant.productColorID)"
-            :disabled="!variant.images || variant.images.length === 0"
-          >
-            Xóa ảnh
-          </v-btn>
-
-          <span v-if="variant.images.length >= 5" class="limit-text">
-            Tối đa là 5 ảnh
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Dialog sửa thông tin biến thể -->
-    <v-dialog v-model="dialogEdit" width="500px">
-      <v-card v-if="editingVariantId">
-        <v-card-title class="text-h6 font-weight-bold">
-          Sửa thông tin - {{ editData.colorName }} - Size {{ editData.sizeName }}
-        </v-card-title>
-
-        <v-divider></v-divider>
-
-        <v-card-text class="pa-4">
-          <v-select
-            v-model="editData.colorID"
-            :items="colors"
-            item-title="colorName"
-            item-value="colorID"
-            label="Chọn màu"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-select
-            v-model="editData.sizeID"
-            :items="sizes"
-            item-title="sizeName"
-            item-value="sizeID"
-            label="Chọn size"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-text-field
-            v-model.number="editData.price"
-            type="number"
-            label="Giá"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-text-field
-            v-model.number="editData.stockQuantity"
-            type="number"
-            label="Stock Quantity"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-select
-            v-model="editData.status"
-            :items="statusOptions"
-            label="Trạng thái"
-            variant="outlined"
-            density="compact"
-          />
-        </v-card-text>
-
-        <v-divider></v-divider>
-
-        <v-card-actions class="pa-4">
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="cancelEdit">
-            Hủy
-          </v-btn>
-          <v-btn color="success" variant="raised" @click="saveEdit">
-            Lưu
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Dialog thêm biến thể sản phẩm -->
-    <v-dialog v-model="dialogAddVariant" width="500px">
-      <v-card>
-        <v-card-title class="text-h6 font-weight-bold">
-          Thêm biến thể sản phẩm
-        </v-card-title>
-
-        <v-divider></v-divider>
-
-        <v-card-text class="pa-4">
-          <v-select
-            v-model="newVariant.colorID"
-            :items="colors"
-            item-title="colorName"
-            item-value="colorID"
-            label="Chọn màu"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-select
-            v-model="newVariant.sizeID"
-            :items="sizes"
-            item-title="sizeName"
-            item-value="sizeID"
-            label="Chọn size"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-text-field
-            v-model.number="newVariant.price"
-            type="number"
-            label="Giá"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-text-field
-            v-model.number="newVariant.stockQuantity"
-            type="number"
-            label="Stock Quantity"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-select
-            v-model="newVariant.status"
-            :items="statusOptions"
-            label="Trạng thái"
-            variant="outlined"
-            density="compact"
-          />
-        </v-card-text>
-
-        <v-divider></v-divider>
-
-        <v-card-actions class="pa-4">
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="cancelAddVariant">
-            Hủy
-          </v-btn>
-          <v-btn color="primary" variant="raised" @click="addProductColor">
-            Thêm
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <VariantDialog
+      v-model:open="dialogEdit"
+      mode="edit"
+      :colors="colors"
+      :sizes="sizes"
+      :variant="editVariant"
+      @submit="saveEdit"
+      @delete-image="deleteImage"
+      @set-main="setMainImage"
+    />
 
     <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
       {{ snackbarMessage }}
@@ -271,38 +49,72 @@
 
 <script>
 import axios from "axios";
+import VariantColorTable from "@/pages/admin/product/VariantColorTable.vue";
+import VariantDialog from "@/pages/admin/product/VariantDialog.vue";
 
 export default {
+  name: "AdminProductDetail",
+  components: {
+    VariantColorTable,
+    VariantDialog,
+  },
   props: ["id"],
   data() {
     return {
       product: null,
       colors: [],
       sizes: [],
-      statusOptions: ["ACTIVE", "INACTIVE"],
-      newVariant: {
+      dialogEdit: false,
+      dialogAddVariant: false,
+      editVariant: null,
+      snackbar: false,
+      snackbarMessage: "",
+      snackbarColor: "success",
+      newVariantPreview: {
         colorID: null,
         sizeID: null,
         price: 0,
         stockQuantity: 0,
         status: "ACTIVE",
+        images: [],
       },
-      selectedFiles: {},
-      dialogEdit: false,
-      editingVariantId: null,
-      editData: {},
-      dialogAddVariant: false,
-      snackbar: false,
-      snackbarMessage: "",
-      snackbarColor: "success",
     };
   },
 
   computed: {
-    sortedVariants() {
-      if (!this.product?.colors) return [];
-      return [...this.product.colors].sort(
-        (a, b) => b.productColorID - a.productColorID
+    groupedByColor() {
+      if (!this.product?.colors?.length) return [];
+
+      const groups = new Map();
+
+      for (const variant of this.product.colors) {
+        const colorId = variant.colorID;
+
+        if (!groups.has(colorId)) {
+          groups.set(colorId, {
+            colorID: colorId,
+            colorName: variant.colorName,
+            colorCode: variant.colorCode,
+            items: [],
+            mainImageUrl: null,
+          });
+        }
+
+        const group = groups.get(colorId);
+        group.items.push(variant);
+
+        const mainImage = (variant.images || []).find((img) => img.isMain);
+        if (!group.mainImageUrl && mainImage?.imageUrl) {
+          group.mainImageUrl = mainImage.imageUrl;
+        }
+
+        if (!group.mainImageUrl && variant.images?.length) {
+          group.mainImageUrl = variant.images[0].imageUrl;
+        }
+      }
+
+      return Array.from(groups.values()).sort((a, b) =>
+        a.colorName.localeCompare(b.colorName),
       );
     },
   },
@@ -321,22 +133,11 @@ export default {
     },
 
     getResponseMessage(data, fallback) {
-      // Nếu là string, trả về trực tiếp
       if (typeof data === "string") return data;
-      
-      // Nếu không có dữ liệu hoặc null, trả về fallback
       if (!data) return fallback;
-      
-      // Kiểm tra các trường hợp phổ biến từ ApiResponse backend
       if (typeof data.message === "string") return data.message;
       if (typeof data.error === "string") return data.error;
-      
-      // Nếu là object, trả về fallback thay vì stringify
       return fallback;
-    },
-
-    formatPrice(price) {
-      return new Intl.NumberFormat("vi-VN").format(Number(price) || 0);
     },
 
     loadProductDetail() {
@@ -347,11 +148,13 @@ export default {
         })
         .catch((err) => {
           console.error(err);
-          const message = this.getResponseMessage(
-            err?.response?.data || err?.message || err,
-            "Không tải được chi tiết sản phẩm"
+          this.showSnackbar(
+            this.getResponseMessage(
+              err?.response?.data || err?.message,
+              "Không tải được chi tiết sản phẩm",
+            ),
+            "error",
           );
-          this.showSnackbar(message, "error");
         });
     },
 
@@ -363,11 +166,13 @@ export default {
         })
         .catch((err) => {
           console.error(err);
-          const message = this.getResponseMessage(
-            err?.response?.data || err?.message || err,
-            "Không tải được danh sách màu"
+          this.showSnackbar(
+            this.getResponseMessage(
+              err?.response?.data || err?.message,
+              "Không tải được danh sách màu",
+            ),
+            "error",
           );
-          this.showSnackbar(message, "error");
         });
     },
 
@@ -379,238 +184,245 @@ export default {
         })
         .catch((err) => {
           console.error(err);
-          const message = this.getResponseMessage(
-            err?.response?.data || err?.message || err,
-            "Không tải được danh sách size"
+          this.showSnackbar(
+            this.getResponseMessage(
+              err?.response?.data || err?.message,
+              "Không tải được danh sách size",
+            ),
+            "error",
           );
-          this.showSnackbar(message, "error");
         });
     },
 
-    addProductColor() {
-      if (!this.newVariant.colorID) {
-        this.showSnackbar("Chọn màu!", "warning");
-        return;
-      }
-
-      if (!this.newVariant.sizeID) {
-        this.showSnackbar("Chọn size!", "warning");
-        return;
-      }
-
-      if (this.newVariant.price == null || this.newVariant.price < 0) {
-        this.showSnackbar("Giá phải >= 0", "warning");
-        return;
-      }
-
-      if (this.newVariant.stockQuantity < 0) {
-        this.showSnackbar("Stock phải >= 0", "warning");
-        return;
-      }
-
-      axios
-        .post(
-          `http://localhost:8080/api/product-color/${this.id}/color`,
-          this.newVariant
-        )
-        .then((res) => {
-          this.newVariant = {
-            colorID: null,
-            sizeID: null,
-            price: 0,
-            stockQuantity: 0,
-            status: "ACTIVE",
-          };
-          this.dialogAddVariant = false;
-          const message = this.getResponseMessage(
-            res?.data,
-            "Thêm biến thể thành công"
-          );
-          this.showSnackbar(message);
-          this.loadProductDetail();
-        })
-        .catch((err) => {
-          console.error(err);
-          const message = this.getResponseMessage(
-            err?.response?.data || err?.message || err,
-            "Thêm biến thể thất bại"
-          );
-          this.showSnackbar(message, "error");
-        });
+    formatPrice(price) {
+      return new Intl.NumberFormat("vi-VN").format(Number(price) || 0);
     },
 
     openAddVariantDialog() {
-      this.dialogAddVariant = true;
-    },
-
-    cancelAddVariant() {
-      this.dialogAddVariant = false;
-      this.newVariant = {
+      this.newVariantPreview = {
         colorID: null,
         sizeID: null,
         price: 0,
         stockQuantity: 0,
         status: "ACTIVE",
+        images: [],
       };
+      this.dialogAddVariant = true;
     },
 
-    onFileSelected(event, productColorId) {
-      const file = event.target.files[0];
-      if (file) {
-        this.selectedFiles = {
-          ...this.selectedFiles,
-          [productColorId]: file,
-        };
+    async addProductColor({ form, files }) {
+      try {
+        if (!form.colorID) {
+          this.showSnackbar("Chọn màu!", "warning");
+          return;
+        }
+        if (!form.sizeID) {
+          this.showSnackbar("Chọn size!", "warning");
+          return;
+        }
+        if (form.price == null || form.price < 0) {
+          this.showSnackbar("Giá phải >= 0", "warning");
+          return;
+        }
+        if (form.stockQuantity < 0) {
+          this.showSnackbar("Stock phải >= 0", "warning");
+          return;
+        }
+        if ((files?.length || 0) > 5) {
+          this.showSnackbar("Mỗi biến thể chỉ được tối đa 5 ảnh", "warning");
+          return;
+        }
+
+        const res = await axios.post(
+          `http://localhost:8080/api/product-color/${this.id}/color`,
+          form,
+        );
+
+        const createdVariantId = res?.data?.id || res?.data?.productColorID;
+
+        if (createdVariantId && files?.length) {
+          for (const file of files) {
+            await axios.post(
+              `http://localhost:8080/api/image/color/${createdVariantId}/image`,
+              {
+                imageUrl: `/images/${file.name}`,
+                isMain: false,
+              },
+            );
+          }
+        }
+
+        this.dialogAddVariant = false;
+        this.showSnackbar(
+          this.getResponseMessage(res?.data, "Thêm biến thể thành công"),
+        );
+        this.loadProductDetail();
+      } catch (err) {
+        console.error(err);
+        this.showSnackbar(
+          this.getResponseMessage(
+            err?.response?.data || err?.message,
+            "Thêm biến thể thất bại",
+          ),
+          "error",
+        );
       }
-    },
-
-    addImage(productColorId) {
-      const file = this.selectedFiles[productColorId];
-      if (!file) return;
-
-      axios
-        .post(`http://localhost:8080/api/image/color/${productColorId}/image`, {
-          imageUrl: `/images/${file.name}`,
-          isMain: false,
-        })
-        .then((res) => {
-          this.selectedFiles[productColorId] = null;
-          const message = this.getResponseMessage(
-            res?.data,
-            "Thêm ảnh thành công"
-          );
-          this.showSnackbar(message);
-          this.loadProductDetail();
-        })
-        .catch((err) => {
-          console.error(err);
-          const message = this.getResponseMessage(
-            err?.response?.data || err?.message || err,
-            "Thêm ảnh thất bại"
-          );
-          this.showSnackbar(message, "error");
-        });
-    },
-
-    deleteProductColor(productColorId) {
-      if (!confirm("Bạn chắc có muốn xóa biến thể này không?")) return;
-
-      axios
-        .delete(`http://localhost:8080/api/product-color/${productColorId}`)
-        .then((res) => {
-          const message = this.getResponseMessage(
-            res?.data,
-            "Xử lý biến thể thành công"
-          );
-          this.showSnackbar(message);
-          this.loadProductDetail();
-        })
-        .catch((err) => {
-          console.error(err);
-          const message = this.getResponseMessage(
-            err?.response?.data || err?.message || err,
-            "Xóa biến thể thất bại"
-          );
-          this.showSnackbar(message, "error");
-        });
-    },
-
-    deleteAllImages(productColorId) {
-      if (!confirm("Bạn có chắc muốn xóa tất cả ảnh của biến thể này không?")) {
-        return;
-      }
-
-      axios
-        .delete(`http://localhost:8080/api/image/product-color/${productColorId}`)
-        .then((res) => {
-          const message = this.getResponseMessage(
-            res?.data,
-            "Xóa ảnh thành công"
-          );
-          this.showSnackbar(message);
-          this.loadProductDetail();
-        })
-        .catch((err) => {
-          console.error(err);
-          const message = this.getResponseMessage(
-            err?.response?.data || err?.message || err,
-            "Xóa ảnh thất bại"
-          );
-          this.showSnackbar(message, "error");
-        });
     },
 
     startEdit(variant) {
-      this.editingVariantId = variant.productColorID;
-      this.editData = {
-        colorID: variant.colorID,
-        sizeID: variant.sizeID,
-        colorName: variant.colorName,
-        sizeName: variant.sizeName,
-        price: variant.price,
-        stockQuantity: variant.stockQuantity,
-        status: variant.status || "ACTIVE",
-      };
+      this.editVariant = JSON.parse(JSON.stringify(variant));
       this.dialogEdit = true;
     },
 
-    cancelEdit() {
-      this.dialogEdit = false;
-      this.editingVariantId = null;
-      this.editData = {};
+    async saveEdit({ form, files }) {
+      try {
+        if (!this.editVariant?.productColorID) return;
+
+        if (!form.colorID) {
+          this.showSnackbar("Chọn màu!", "warning");
+          return;
+        }
+        if (!form.sizeID) {
+          this.showSnackbar("Chọn size!", "warning");
+          return;
+        }
+        if (form.price == null || form.price < 0) {
+          this.showSnackbar("Giá phải >= 0", "warning");
+          return;
+        }
+        if (form.stockQuantity < 0) {
+          this.showSnackbar("Stock phải >= 0", "warning");
+          return;
+        }
+        if ((files?.length || 0) > 5) {
+          this.showSnackbar("Mỗi biến thể chỉ được tối đa 5 ảnh", "warning");
+          return;
+        }
+
+        await axios.put(
+          `http://localhost:8080/api/product-color/${this.editVariant.productColorID}`,
+          form,
+        );
+
+        if (files?.length) {
+          for (const file of files) {
+            await axios.post(
+              `http://localhost:8080/api/image/color/${this.editVariant.productColorID}/image`,
+              {
+                imageUrl: `/images/${file.name}`,
+                isMain: false,
+              },
+            );
+          }
+        }
+
+        this.dialogEdit = false;
+        this.editVariant = null;
+        this.showSnackbar("Cập nhật biến thể thành công");
+        this.loadProductDetail();
+      } catch (err) {
+        console.error(err);
+        this.showSnackbar(
+          this.getResponseMessage(
+            err?.response?.data || err?.message,
+            "Cập nhật thất bại",
+          ),
+          "error",
+        );
+      }
     },
 
-    saveEdit() {
-      if (!this.editData.colorID) {
-        this.showSnackbar("Chọn màu!", "warning");
-        return;
-      }
-
-      if (!this.editData.sizeID) {
-        this.showSnackbar("Chọn size!", "warning");
-        return;
-      }
-
-      if (this.editData.price == null || this.editData.price < 0) {
-        this.showSnackbar("Giá phải >= 0", "warning");
-        return;
-      }
-
-      if (this.editData.stockQuantity < 0) {
-        this.showSnackbar("Stock phải >= 0", "warning");
-        return;
-      }
-
-      axios
-        .put(
-          `http://localhost:8080/api/product-color/${this.editingVariantId}`,
-          {
-            colorID: this.editData.colorID,
-            sizeID: this.editData.sizeID,
-            price: this.editData.price,
-            stockQuantity: this.editData.stockQuantity,
-            status: this.editData.status,
-          }
+    async deleteProductColor(variant) {
+      if (
+        !confirm(
+          `Bạn chắc chắn muốn xóa biến thể ${variant.colorName} - ${variant.sizeName}?`,
         )
-        .then((res) => {
-          this.dialogEdit = false;
-          this.editingVariantId = null;
-          this.editData = {};
-          const message = this.getResponseMessage(
-            res?.data,
-            "Cập nhật biến thể thành công"
+      ) {
+        return;
+      }
+
+      try {
+        const res = await axios.delete(
+          `http://localhost:8080/api/product-color/${variant.productColorID}`,
+        );
+        this.showSnackbar(
+          this.getResponseMessage(res?.data, "Xử lý biến thể thành công"),
+        );
+        this.loadProductDetail();
+      } catch (err) {
+        console.error(err);
+        this.showSnackbar(
+          this.getResponseMessage(
+            err?.response?.data || err?.message,
+            "Xóa biến thể thất bại",
+          ),
+          "error",
+        );
+      }
+    },
+
+    async deleteImage(image) {
+      if (!confirm("Bạn có chắc muốn xóa ảnh này không?")) return;
+
+      try {
+        await axios.delete(`http://localhost:8080/api/image/${image.imageID}`);
+        this.showSnackbar("Xóa ảnh thành công");
+        this.loadProductDetail();
+
+        if (this.editVariant?.productColorID) {
+          const fresh = await axios.get(
+            `http://localhost:8080/api/product/detail/${this.id}`,
           );
-          this.showSnackbar(message);
-          this.loadProductDetail();
-        })
-        .catch((err) => {
-          console.error(err);
-          const message = this.getResponseMessage(
-            err?.response?.data || err?.message || err,
-            "Cập nhật thất bại"
+          this.product = fresh.data;
+          const current = this.product.colors.find(
+            (v) => v.productColorID === this.editVariant.productColorID,
           );
-          this.showSnackbar(message, "error");
-        });
+          this.editVariant = current
+            ? JSON.parse(JSON.stringify(current))
+            : null;
+        }
+      } catch (err) {
+        console.error(err);
+        this.showSnackbar(
+          this.getResponseMessage(
+            err?.response?.data || err?.message,
+            "Xóa ảnh thất bại",
+          ),
+          "error",
+        );
+      }
+    },
+
+    async setMainImage(image) {
+      try {
+        await axios.put(
+          `http://localhost:8080/api/image/${image.imageID}/set-main`,
+        );
+        this.showSnackbar("Đã cập nhật ảnh chính");
+        this.loadProductDetail();
+
+        if (this.editVariant?.productColorID) {
+          const fresh = await axios.get(
+            `http://localhost:8080/api/product/detail/${this.id}`,
+          );
+          this.product = fresh.data;
+          const current = this.product.colors.find(
+            (v) => v.productColorID === this.editVariant.productColorID,
+          );
+          this.editVariant = current
+            ? JSON.parse(JSON.stringify(current))
+            : null;
+        }
+      } catch (err) {
+        console.error(err);
+        this.showSnackbar(
+          this.getResponseMessage(
+            err?.response?.data || err?.message,
+            "Đặt ảnh chính thất bại",
+          ),
+          "error",
+        );
+      }
     },
   },
 };
@@ -618,122 +430,16 @@ export default {
 
 <style scoped>
 .product-detail {
-  max-width: 900px;
+  max-width: 1180px;
   margin: auto;
-  font-family: Arial, sans-serif;
+  padding: 12px 0 32px;
 }
 
-.header-actions {
-  margin: 16px 0;
-}
-
-.add-color,
-.color-card {
-  padding: 16px;
-  border-radius: 8px;
-  background: #f9f9f9;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.image-gallery {
+.page-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.product-image {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-
-.add-image {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-
-.action-btn {
-  min-width: 110px;
-  height: 38px;
-  border-radius: 10px;
-  font-weight: 600;
-  text-transform: none;
-}
-
-.file-input {
-  padding: 6px;
-  border: 1px solid #dcdcdc;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.limit-text {
-  color: #d32f2f;
-  font-size: 0.9em;
-  font-weight: 500;
-}
-
-.color-card {
-  position: relative;
-  padding: 16px;
-  border-radius: 12px;
-  background: #f9f9f9;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.inactive-card {
-  opacity: 0.78;
-  border: 1px solid #bdbdbd;
-  background: #f1f1f1;
-}
-
-.color-header {
-  display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 8px;
-}
-
-.color-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.action-color-btn {
-  min-width: 60px;
-}
-
-.delete-color-btn {
-  min-width: 60px;
-}
-
-.color-name {
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.color-box {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-.stock-text {
-  margin: 6px 0 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 </style>
