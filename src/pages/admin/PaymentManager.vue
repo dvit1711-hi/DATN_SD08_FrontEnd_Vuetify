@@ -3,7 +3,6 @@
     <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-6">
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Xác nhận thanh toán</h1>
-        <p class="text-body-2 text-grey">Online = mua trên mạng | Offline = khách lẻ tại quầy</p>
       </div>
 
       <v-btn color="primary" prepend-icon="mdi-refresh" @click="loadOrders" :loading="isLoading">
@@ -342,6 +341,58 @@ const formatDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN')
 }
 
+const parseOrderDateToTimestamp = (value) => {
+  if (!value) return 0
+
+  if (value instanceof Date) {
+    const time = value.getTime()
+    return Number.isNaN(time) ? 0 : time
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+
+    const vnMatch = trimmed.match(
+      /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/
+    )
+
+    if (vnMatch) {
+      const [, dd, mm, yyyy, hh = '00', mi = '00', ss = '00'] = vnMatch
+      const date = new Date(
+        Number(yyyy),
+        Number(mm) - 1,
+        Number(dd),
+        Number(hh),
+        Number(mi),
+        Number(ss)
+      )
+      const time = date.getTime()
+      return Number.isNaN(time) ? 0 : time
+    }
+
+    const parsed = new Date(trimmed)
+    const time = parsed.getTime()
+    return Number.isNaN(time) ? 0 : time
+  }
+
+  return 0
+}
+
+const sortOrdersNewestFirst = (list = []) => {
+  return [...list].sort((a, b) => {
+    const timeDiff =
+      parseOrderDateToTimestamp(b?.orderDate) - parseOrderDateToTimestamp(a?.orderDate)
+
+    if (timeDiff !== 0) return timeDiff
+
+    return Number(b?.orderId || 0) - Number(a?.orderId || 0)
+  })
+}
+
 const getDisplayOrderCode = (order) => {
   return order?.trackingCode || `#${order?.orderId || '-'}`
 }
@@ -429,8 +480,13 @@ const searchedOrders = computed(() => {
   })
 })
 
-const onlineOrders = computed(() => searchedOrders.value.filter(isOnlineOrder))
-const offlineOrders = computed(() => searchedOrders.value.filter(isOfflineOrder))
+const onlineOrders = computed(() => {
+  return sortOrdersNewestFirst(searchedOrders.value.filter(isOnlineOrder))
+})
+
+const offlineOrders = computed(() => {
+  return sortOrdersNewestFirst(searchedOrders.value.filter(isOfflineOrder))
+})
 
 const currentTabOrders = computed(() => {
   return paymentTab.value === 'online' ? onlineOrders.value : offlineOrders.value
@@ -851,7 +907,7 @@ const loadOrders = async () => {
   try {
     const token = localStorage.getItem('token')
     const res = await paymentApi.getAllOrders(token)
-    orders.value = (res.data || []).sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+    orders.value = sortOrdersNewestFirst(res.data || [])
   } catch (error) {
     console.error('Lỗi tải danh sách thanh toán:', error)
     snackbarMessage.value = 'Không tải được danh sách đơn hàng'

@@ -66,55 +66,103 @@ const form = ref({
 const isPasswordVisible = ref(false)
 const isLoading = ref(false)
 
-const normalizeRoles = (rawRoles) => {
-  if (!Array.isArray(rawRoles)) return []
+const normalizeRoles = rawRoles => {
+  if (!rawRoles) return []
 
-  return rawRoles
-    .map((role) => {
+  const rolesArray = Array.isArray(rawRoles) ? rawRoles : [...rawRoles]
+
+  return rolesArray
+    .map(role => {
       if (typeof role === "string") return role
       return role?.authority || role?.roleName || role?.name || ""
     })
     .filter(Boolean)
-    .map((role) => (role.startsWith("ROLE_") ? role : `ROLE_${role}`))
+    .map(role => (role.startsWith("ROLE_") ? role : `ROLE_${role}`))
+}
+
+const clearOldAuth = () => {
+  localStorage.removeItem("token")
+  localStorage.removeItem("accessToken")
+  localStorage.removeItem("accountId")
+  localStorage.removeItem("username")
+  localStorage.removeItem("email")
+  localStorage.removeItem("roles")
+  localStorage.removeItem("userRole")
+  localStorage.removeItem("cartId")
 }
 
 const login = async () => {
   try {
-    if (!form.value.email || !form.value.password) {
-      alert("Vui lòng nhập email và mật khẩu")
+    if (!form.value.email?.trim() || !form.value.password?.trim()) {
+      alert("Vui lòng nhập đầy đủ email và mật khẩu")
       return
     }
 
     isLoading.value = true
+    clearOldAuth()
 
     const res = await loginApi.login({
-      email: form.value.email,
+      email: form.value.email.trim(),
       password: form.value.password,
     })
 
-    const normalizedRoles = normalizeRoles(res.data.roles || [])
+    console.log("LOGIN RESPONSE =", res.data)
+
+    const payload = res.data?.data || res.data || {}
+
+    const accessToken =
+      payload.accessToken ||
+      payload.token ||
+      res.data?.accessToken ||
+      res.data?.token ||
+      null
+
+    const accountId =
+      payload.accountId ||
+      res.data?.accountId ||
+      null
+
+    const username =
+      payload.username ||
+      res.data?.username ||
+      ""
+
+    const email =
+      payload.email ||
+      res.data?.email ||
+      ""
+
+    const normalizedRoles = normalizeRoles(
+      payload.roles || res.data?.roles || []
+    )
+
+    if (!accessToken) {
+      alert("Response login không có token. Mở F12 > Network > login để xem backend đang trả field gì.")
+      return
+    }
 
     userStore.login({
-      accountId: res.data.accountId,
-      token: res.data.token,
-      username: res.data.username,
-      email: res.data.email,
+      accountId,
+      token: accessToken,
+      username,
+      email,
       roles: normalizedRoles,
     })
 
-    // đảm bảo router guard đọc được
-    localStorage.setItem("token", res.data.token)
-    localStorage.setItem("accountId", String(res.data.accountId))
-    localStorage.setItem("username", res.data.username || "")
-    localStorage.setItem("email", res.data.email || "")
+    localStorage.setItem("token", accessToken)
+    localStorage.setItem("accessToken", accessToken)
+    localStorage.setItem("accountId", String(accountId || ""))
+    localStorage.setItem("username", username)
+    localStorage.setItem("email", email)
     localStorage.setItem("roles", JSON.stringify(normalizedRoles))
+
     if (normalizedRoles.length > 0) {
       localStorage.setItem("userRole", normalizedRoles[0])
     }
 
     window.dispatchEvent(new Event("auth-changed"))
 
-    alert(res.data.message || "Đăng nhập thành công!")
+    alert(res.data?.message || "Đăng nhập thành công!")
 
     if (normalizedRoles.includes("ROLE_ADMIN")) {
       router.push({ name: "AdminDashboard" })
