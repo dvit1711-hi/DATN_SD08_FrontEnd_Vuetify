@@ -213,19 +213,19 @@ export default {
     async addProductColor({ form, files }) {
       try {
         if (!form.colorID) {
-          this.showSnackbar("Chọn màu!", "warning");
+          this.showSnackbar("Vui lòng chọn màu!", "warning");
           return;
         }
         if (!form.sizeID) {
-          this.showSnackbar("Chọn size!", "warning");
+          this.showSnackbar("Vui lòng chọn size!", "warning");
           return;
         }
         if (form.price == null || form.price < 0) {
-          this.showSnackbar("Giá phải >= 0", "warning");
+          this.showSnackbar("Giá phải lớn hơn hoặc bằng 0", "warning");
           return;
         }
         if (form.stockQuantity < 0) {
-          this.showSnackbar("Stock phải >= 0", "warning");
+          this.showSnackbar("Stock phải lớn hơn hoặc bằng 0", "warning");
           return;
         }
         if ((files?.length || 0) > 5) {
@@ -238,10 +238,25 @@ export default {
           form,
         );
 
-        const createdVariantId = res?.data?.id || res?.data?.productColorID;
+        console.log("create variant response:", res.data);
+
+        const createdVariantId =
+          res?.data?.data ||
+          res?.data?.result ||
+          res?.data?.id ||
+          res?.data?.productColorID;
+
+        console.log("createdVariantId:", createdVariantId);
+        console.log("files selected:", files);
 
         if (createdVariantId && files?.length) {
           for (const file of files) {
+            console.log(
+              "posting image for variant:",
+              createdVariantId,
+              file.name,
+            );
+
             await axios.post(
               `http://localhost:8080/api/image/color/${createdVariantId}/image`,
               {
@@ -279,23 +294,23 @@ export default {
         if (!this.editVariant?.productColorID) return;
 
         if (!form.colorID) {
-          this.showSnackbar("Chọn màu!", "warning");
+          this.showSnackbar("Vui lòng chọn màu!", "warning");
           return;
         }
         if (!form.sizeID) {
-          this.showSnackbar("Chọn size!", "warning");
+          this.showSnackbar("Vui lòng chọn size!", "warning");
           return;
         }
         if (form.price == null || form.price < 0) {
-          this.showSnackbar("Giá phải >= 0", "warning");
+          this.showSnackbar("Giá phải lớn hơn hoặc bằng 0", "warning");
           return;
         }
         if (form.stockQuantity < 0) {
-          this.showSnackbar("Stock phải >= 0", "warning");
+          this.showSnackbar("Stock phải lớn hơn hoặc bằng 0", "warning");
           return;
         }
         if ((files?.length || 0) > 5) {
-          this.showSnackbar("Mỗi biến thể chỉ được tối đa 5 ảnh", "warning");
+          this.showSnackbar("Tối đa là 5 ảnh", "warning");
           return;
         }
 
