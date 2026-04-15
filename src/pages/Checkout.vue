@@ -302,69 +302,35 @@
               </v-card-text>
             </v-card>
 
-            <!-- All available discount coupons -->
+            <!-- All available discount coupons as combobox -->
             <v-card class="mb-4" variant="outlined">
               <v-card-title class="text-subtitle-2 font-weight-bold d-flex align-center ga-2">
                 <v-icon>mdi-tag-multiple</v-icon>
-                Tất cả mã giảm giá có sẵn
+                Tất cả mã giảm giá có sẵn ({{ availableCoupons.length }})
               </v-card-title>
               <v-divider />
               <v-card-text>
-                <v-progress-linear v-if="isLoadingAvailableCoupons" indeterminate color="primary" class="mb-4" />
-                
-                <div v-if="!isLoadingAvailableCoupons && availableCoupons.length === 0" class="text-center py-6">
-                  <p class="text-body-2 text-grey">Hiện không có mã giảm giá nào khả dụng</p>
+                <div v-if="availableCoupons.length === 0" class="text-center py-4">
+                  <p class="text-body-2 text-grey">{{ isLoadingAvailableCoupons ? 'Đang tải...' : 'Hiện không có mã giảm giá nào khả dụng' }}</p>
                 </div>
 
-                <v-row v-else-if="!isLoadingAvailableCoupons" dense class="ga-3">
-                  <v-col v-for="coupon in availableCoupons" :key="coupon.id" cols="12" sm="6" md="4">
-                    <v-card 
-                      class="coupon-card h-100" 
-                      variant="outlined"
-                      :class="{ 'selected': couponCode === coupon.couponCode }"
-                      @click="applyAvailableCoupon(coupon)"
-                    >
-                      <v-card-text class="d-flex flex-column h-100 pa-4">
-                        <div class="d-flex align-center justify-space-between mb-3">
-                          <div class="text-subtitle-2 font-weight-bold text-primary">{{ coupon.couponCode }}</div>
-                          <v-icon 
-                            :color="couponCode === coupon.couponCode ? 'primary' : 'grey'"
-                            size="small"
-                          >
-                            {{ couponCode === coupon.couponCode ? 'mdi-check-circle' : 'mdi-circle-outline' }}
-                          </v-icon>
-                        </div>
-
-                        <div class="flex-grow-1 mb-3">
-                          <div class="text-caption text-grey">Giảm</div>
-                          <div class="text-h6 font-weight-bold text-success">
-                            {{ coupon.discountType === 'percent' ? coupon.discountValue + '%' : formatPrice(coupon.discountValue) + 'đ' }}
-                          </div>
-                        </div>
-
-                        <div v-if="coupon.minOrderValue > 0" class="mb-3">
-                          <div class="text-caption text-grey">Đơn tối thiểu</div>
-                          <div class="text-caption font-weight-medium">{{ formatPrice(coupon.minOrderValue) }}đ</div>
-                        </div>
-
-                        <div v-if="coupon.description" class="mb-3">
-                          <div class="text-caption text-grey">{{ coupon.description }}</div>
-                        </div>
-
-                        <v-btn
-                          color="primary"
-                          size="x-small"
-                          variant="flat"
-                          class="mt-auto"
-                          :loading="isApplyingCoupon && couponCode === coupon.couponCode"
-                          @click.stop="applyAvailableCoupon(coupon)"
-                        >
-                          {{ couponCode === coupon.couponCode ? 'Đã chọn' : 'Áp dụng' }}
-                        </v-btn>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                </v-row>
+                <v-select
+                  v-else
+                  v-model="selectedAvailableCoupon"
+                  :items="couponsDisplay"
+                  item-title="displayText"
+                  return-object
+                  label="Chọn mã giảm giá"
+                  variant="outlined"
+                  density="comfortable"
+                  clearable
+                  :loading="isLoadingAvailableCoupons"
+                  @update:model-value="(coupon) => {
+                    if (coupon) {
+                      applyAvailableCoupon(coupon)
+                    }
+                  }"
+                />
               </v-card-text>
             </v-card>
 
@@ -532,6 +498,7 @@ const selectedCoupon = ref(null)
 const isApplyingCoupon = ref(false)
 const availableCoupons = ref([])
 const isLoadingAvailableCoupons = ref(false)
+const selectedAvailableCoupon = ref(null)
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
 const showMBBankDialog = ref(false)
 const mbBankPaymentInfo = ref(null)
@@ -576,6 +543,17 @@ const selectedSavedAddressLabel = computed(() => formatAddress(selectedSavedAddr
 const totalQuantity = computed(() => checkoutItems.value.reduce((sum, item) => sum + item.quantity, 0))
 const totalPrice = computed(() => checkoutItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
 const finalTotal = computed(() => Math.max(0, totalPrice.value - discountAmount.value) + Math.max(0, Number(shippingFee.value) || 0))
+const couponsDisplay = computed(() => {
+  return availableCoupons.value.map(coupon => {
+    let displayText = coupon.couponCode
+    if (coupon.discountType === 'percent') {
+      displayText += ` - Giảm ${coupon.discountValue}%`
+    } else {
+      displayText += ` - Giảm ${formatPrice(coupon.discountValue)} đ`
+    }
+    return { ...coupon, displayText }
+  })
+})
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
 
