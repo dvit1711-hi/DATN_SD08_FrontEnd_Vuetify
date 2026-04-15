@@ -28,6 +28,8 @@ import AdminColorSize from '@/pages/admin/AdminColorSize.vue'
 import AddStaffAccount from '@/pages/admin/AddStaffAccount.vue'
 import PosSale from '@/pages/admin/PosSale.vue'
 import Promotion from '@/pages/Promotion.vue'
+import AdminStaffReport from '@/pages/admin/AdminStaffReport.vue'
+import StaffReport from '@/pages/admin/StaffReport.vue'
 
 function getRoles(): string[] {
   const roles = localStorage.getItem('roles')
@@ -99,13 +101,9 @@ const router = createRouter({
         { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
         { path: 'brand-material', component: AdminBrandMetarial, name: 'AdminBrandMaterial' },
         { path: 'color-size', component: AdminColorSize, name: 'AdminColorSize' },
-        {
-      path: 'pos',
-      component: PosSale,
-      name: 'AdminPosSale',
-      meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
-    },
-      ],
+        {path: 'pos', component: PosSale, name: 'AdminPosSale', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: 'reports/staff', component: AdminStaffReport, name: 'AdminStaffReport', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+      ]
     },
 
     {
@@ -115,6 +113,7 @@ const router = createRouter({
       children: [
         { path: '', redirect: { name: 'StaffPosSale' } },
         { path: 'pos', component: PosSale, name: 'StaffPosSale', meta: { requiresAuth: true, roles: ['ROLE_STAFF' , 'ROLE_ADMIN'] } },
+        { path: 'reports', component: StaffReport, name: 'StaffReport', meta: { requiresAuth: true, roles: ['ROLE_STAFF'] } },
       ],
     },
 

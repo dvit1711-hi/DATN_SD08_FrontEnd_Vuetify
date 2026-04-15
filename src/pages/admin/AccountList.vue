@@ -8,7 +8,7 @@
 
       <v-btn color="primary" class="add-staff-btn" prepend-icon="mdi-account-plus"
         @click="$router.push({ name: 'AddStaffAccount' })">
-        Thêm staff
+        Thêm nhân viên
       </v-btn>
     </div>
 
