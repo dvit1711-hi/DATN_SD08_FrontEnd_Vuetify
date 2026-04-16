@@ -40,9 +40,9 @@ export default {
   },
 
   getAdminCustomerSummary(keyword = "", employeeId = null, date = null) {
-    return apiClient.get("/admin/reports/customers/summary", {
+    return apiClient.get("/admin/reports/customers/search", {
       params: {
-        keyword,
+        keyword: keyword || undefined,
         employeeId: employeeId || undefined,
         date: date || undefined,
       },
@@ -52,19 +52,10 @@ export default {
   getAdminPurchaseHistory(keyword = "", employeeId = null, date = null) {
     return apiClient.get("/admin/reports/customers/purchase-history", {
       params: {
-        keyword,
+        keyword: keyword || undefined,
         employeeId: employeeId || undefined,
         date: date || undefined,
       },
     })
   },
-
-  getAdminStaffMonthSummary(employeeId = null, date = null) {
-  return apiClient.get("/admin/reports/staff/month-summary", {
-    params: {
-      employeeId: employeeId || undefined,
-      date: date || undefined,
-    },
-  })
-},
 }
