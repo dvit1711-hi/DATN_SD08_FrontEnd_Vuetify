@@ -1,6 +1,5 @@
 <template>
   <div class="review-container">
-    <!-- Header -->
     <v-container style="max-width: 1400px" fluid>
       <v-row class="mb-8">
         <v-col cols="12">
@@ -16,7 +15,6 @@
         </v-col>
       </v-row>
 
-      <!-- Search bar -->
       <v-row class="mb-6" v-if="paidOrders.length > 0">
         <v-col cols="12">
           <div class="search-bar-wrapper">
@@ -47,9 +45,7 @@
       </v-row>
     </v-container>
 
-    <!-- Main content -->
     <v-container style="max-width: 1400px">
-      <!-- Order list -->
       <template v-if="paidOrders.length === 0">
         <v-card class="text-center pa-12" elevation="0" border>
           <v-icon icon="mdi-package-variant-closed" size="80" class="text-grey-lighten-1"></v-icon>
@@ -60,7 +56,6 @@
       </template>
 
       <template v-else>
-        <!-- Orders and Products Display -->
         <v-row class="mb-8" v-if="!selectedOrderId">
           <v-col cols="12">
             <div class="mb-4">
@@ -127,7 +122,6 @@
           </v-col>
         </v-row>
 
-        <!-- Products in selected order -->
         <v-row v-if="selectedOrderId && selectedOrderProducts.length > 0" class="mb-8">
           <v-col cols="12">
             <div class="mb-4 d-flex justify-space-between align-center">
@@ -135,7 +129,7 @@
                 <v-btn
                   variant="text"
                   icon="mdi-chevron-left"
-                  @click="selectedOrderId = null; selectedProductId = null"
+                  @click="selectedOrderId = null; selectedProductId = null; selectedOrderProducts = []"
                 ></v-btn>
                 <span class="text-h6 font-weight-bold">Chọn sản phẩm để đánh giá</span>
               </div>
@@ -154,8 +148,11 @@
               class="product-card cursor-pointer h-100 transition-transform"
               elevation="0"
               border
-              :class="{ 'product-card-selected': selectedProductId === product.orderDetailId }"
-              @click="selectedProductId = product.orderDetailId; loadReviews()"
+              :class="{
+                'product-card-selected': selectedProductId === product.orderDetailId,
+                'product-card-reviewed': isProductReviewed(product.productId)
+              }"
+              @click="handleSelectProduct(product)"
             >
               <div class="product-image-container">
                 <v-img
@@ -168,7 +165,21 @@
 
               <v-card-item>
                 <div class="mb-3">
-                  <div class="text-body-2 font-weight-bold line-clamp-2">{{ product.productName }}</div>
+                  <div class="mb-2 d-flex justify-space-between align-start gap-2">
+                    <div class="text-body-2 font-weight-bold line-clamp-2">
+                      {{ product.productName }}
+                    </div>
+
+                    <v-chip
+                      v-if="isProductReviewed(product.productId)"
+                      size="x-small"
+                      color="success"
+                      variant="tonal"
+                    >
+                      Đã đánh giá
+                    </v-chip>
+                  </div>
+
                   <div class="text-caption text-grey">Màu: {{ product.colorName || "Không xác định" }}</div>
                   <div class="text-caption text-grey" v-if="product.quantity">
                     Số lượng: {{ product.quantity }}
@@ -184,10 +195,8 @@
           </v-col>
         </v-row>
 
-        <!-- Review section for selected product -->
-        <v-row v-if="selectedProductId" class="mb-8">
+        <v-row v-if="selectedProductId && !isProductReviewed(getSelectedProductIdForApi())" class="mb-8">
           <v-col cols="12" md="8">
-            <!-- Product info card -->
             <v-card class="mb-6" elevation="0" border>
               <v-row class="ma-0">
                 <v-col cols="12" md="4" class="pa-0">
@@ -227,7 +236,6 @@
               </v-row>
             </v-card>
 
-            <!-- Add review form -->
             <v-card class="mb-6" elevation="0" border>
               <v-card-item>
                 <div class="text-h6 font-weight-bold mb-6">Viết đánh giá của bạn</div>
@@ -288,7 +296,6 @@
             </v-card>
           </v-col>
 
-          <!-- Review stats sidebar -->
           <v-col cols="12" md="4">
             <v-card class="sticky-stats" elevation="0" border v-if="averageRating > 0">
               <v-card-item>
@@ -312,7 +319,6 @@
           </v-col>
         </v-row>
 
-        <!-- Reviews list -->
         <v-row v-if="selectedProductId">
           <v-col cols="12" md="8">
             <div class="mb-4">
@@ -396,7 +402,6 @@
       </template>
     </v-container>
 
-    <!-- Delete confirmation dialog -->
     <v-dialog v-model="showDeleteConfirm" max-width="400">
       <v-card>
         <v-card-text class="pt-6">
@@ -411,7 +416,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Snackbar -->
     <v-snackbar
       v-model="snackbar.show"
       :color="snackbar.color"
@@ -430,7 +434,6 @@
       </template>
     </v-snackbar>
 
-    <!-- Loading overlay -->
     <v-overlay :model-value="isLoading" persistent opacity="0.3">
       <v-progress-circular indeterminate color="primary" />
     </v-overlay>
@@ -446,6 +449,7 @@ const selectedProductId = ref(null)
 const paidOrders = ref([])
 const selectedOrderProducts = ref([])
 const reviews = ref([])
+const reviewedProductIds = ref(new Set())
 const selectedStarFilter = ref(null)
 const isLoading = ref(false)
 const isSubmitting = ref(false)
@@ -493,7 +497,10 @@ onMounted(async () => {
   if (accountIdStr) {
     try {
       currentUserId.value = parseInt(accountIdStr)
-      await loadPaidOrders()
+      await Promise.all([
+        loadPaidOrders(),
+        loadReviewedProducts(),
+      ])
     } catch (e) {
       console.log("Could not parse accountId from localStorage")
       currentUserId.value = null
@@ -509,6 +516,7 @@ const filteredPaidOrders = computed(() => {
   }
 
   const query = searchQuery.value.toLowerCase()
+
   return paidOrders.value.filter((order) => {
     if (order.orderId.toString().includes(query)) {
       return true
@@ -532,6 +540,10 @@ const filteredReviews = computed(() => {
   return reviews.value.filter((r) => r.rating === selectedStarFilter.value)
 })
 
+const isProductReviewed = (productId) => {
+  return productId && reviewedProductIds.value.has(productId)
+}
+
 const loadPaidOrders = async () => {
   if (!currentUserId.value) return
 
@@ -547,6 +559,22 @@ const loadPaidOrders = async () => {
     showSnackbar("Không thể tải danh sách đơn hàng đã thanh toán.", "error")
   } finally {
     isLoading.value = false
+  }
+}
+
+const loadReviewedProducts = async () => {
+  if (!currentUserId.value) return
+
+  try {
+    const response = await reviewApi.getReviewsByAccountId(currentUserId.value)
+    reviewedProductIds.value = new Set(
+      (response.data || [])
+        .map((review) => review.productId)
+        .filter(Boolean)
+    )
+  } catch (error) {
+    console.error("Failed to load reviewed products:", error)
+    reviewedProductIds.value = new Set()
   }
 }
 
@@ -566,6 +594,17 @@ const onOrderSelected = (orderId) => {
       quantity: item.quantity,
       orderDetailId: item.orderDetailId,
     }))
+  } else {
+    selectedOrderProducts.value = []
+  }
+}
+
+const handleSelectProduct = async (product) => {
+  selectedProductId.value = product.orderDetailId
+  await loadReviews()
+
+  if (isProductReviewed(product.productId)) {
+    showSnackbar("Sản phẩm này bạn đã đánh giá rồi.", "info")
   }
 }
 
@@ -658,6 +697,9 @@ const submitReview = async () => {
 
       showSnackbar("Cập nhật đánh giá thành công!", "success")
       editingReviewId.value = null
+      await loadReviewedProducts()
+      await loadPaidOrders()
+      await loadReviews()
     } else {
       await reviewApi.createReview({
         productId: productIdForApi,
@@ -667,10 +709,13 @@ const submitReview = async () => {
       })
 
       showSnackbar("Gửi đánh giá thành công!", "success")
-    }
+      resetForm()
+      await loadReviewedProducts()
+      await loadPaidOrders()
 
-    resetForm()
-    await loadReviews()
+      selectedProductId.value = null
+      await onOrderSelected(selectedOrderId.value)
+    }
   } catch (error) {
     console.error("Failed to submit review:", error)
 
@@ -715,6 +760,8 @@ const deleteReview = async () => {
     await reviewApi.deleteReview(deleteReviewId.value)
     showDeleteConfirm.value = false
     showSnackbar("Xóa đánh giá thành công!", "success")
+    await loadReviewedProducts()
+    await loadPaidOrders()
     await loadReviews()
   } catch (error) {
     console.error("Failed to delete review:", error)
@@ -877,6 +924,18 @@ const formatPrice = (value) => {
   background: linear-gradient(135deg, rgba(25, 118, 210, 0.02), rgba(25, 118, 210, 0.04));
 }
 
+.product-card-reviewed {
+  opacity: 0.6;
+  filter: grayscale(0.2);
+  background: #f8f8f8 !important;
+}
+
+.product-card-reviewed:hover {
+  transform: none !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+  border-color: #d0d0d0 !important;
+}
+
 .product-image-container {
   position: relative;
   overflow: hidden;
@@ -889,6 +948,10 @@ const formatPrice = (value) => {
 
 .product-card:hover .product-card-image {
   transform: scale(1.05);
+}
+
+.product-card-reviewed:hover .product-card-image {
+  transform: none !important;
 }
 
 .line-clamp-2 {

@@ -2,7 +2,7 @@
   <v-card class="mb-5 color-group-card" elevation="0" border>
     <v-card-text class="pa-4">
       <div class="d-flex align-start justify-space-between flex-wrap gap-4 mb-4">
-        <div class="d-flex align-center gap-3">
+        <div class="d-flex align-center gap-3" style="gap: 10px;">
           <div
             class="color-box"
             :style="{ backgroundColor: group.colorCode || '#eee' }"
