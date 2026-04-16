@@ -22,23 +22,25 @@
             </v-window>
         </div>
 
-        <div class="content-box">
+        <!-- <div class="content-box">
             <h2 class="mb-4">Trang chủ</h2>
             <p>Đây là trang chủ sau khi đăng nhập.</p>
-        </div>
-        <!-- <router-link to="/products">Đi đến trang giới thiệu</router-link> -->
+        </div> -->
+        <product-list></product-list>
     </div>
+    
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import ProductList from './ProductList.vue'
 
 const slide = ref(0)
 
 const banners = [
-    '/images/a2.jpg',
-    '/images/a1.jpg',
-    '/images/a3.jpg'
+    '/images/enhanced_a2.png',
+    '/images/enhanced_a1.png',
+    '/images/enhanced_a3.png'
 ]
 
 let interval = null
@@ -46,7 +48,7 @@ let interval = null
 onMounted(() => {
     interval = setInterval(() => {
         slide.value = (slide.value + 1) % banners.length
-    }, 3000)
+    }, 10000)
 })
 
 onBeforeUnmount(() => {
@@ -72,7 +74,7 @@ onBeforeUnmount(() => {
 
 .banner-item {
     position: relative;
-    height: 720px;
+    height: 500px;
 }
 
 .banner-image {
