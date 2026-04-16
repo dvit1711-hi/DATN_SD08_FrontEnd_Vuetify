@@ -148,6 +148,33 @@
               </button>
             </div>
           </div>
+          <!-- Tồn kho -->
+          <div class="mb-4" v-if="selectedVariant">
+            <h3 class="text-subtitle-1 font-weight-bold mb-2">
+              Tình trạng kho
+            </h3>
+
+            <div class="stock-info">
+              <span class="stock-label">Số lượng có sẵn: </span>
+              <span
+                class="stock-value"
+                :class="selectedVariantStock > 0 ? 'in-stock' : 'out-stock'"
+              >
+                {{
+                  selectedVariantStock > 0
+                    ? `${selectedVariantStock} sản phẩm`
+                    : "Hết hàng"
+                }}
+              </span>
+            </div>
+
+            <div
+              v-if="selectedVariantStock > 0 && selectedVariantStock <= 10"
+              class="stock-note text-red-darken-2"
+            >
+              Chỉ còn {{ selectedVariantStock }} sản phẩm, hãy đặt sớm
+            </div>
+          </div>
 
           <!-- Số lượng -->
           <div class="mb-4">
@@ -626,7 +653,7 @@ function showPrevImage() {
   if (!images.value.length) return;
 
   const currentIndex = images.value.findIndex(
-    (img) => img.imageUrl === mainImage.value
+    (img) => img.imageUrl === mainImage.value,
   );
   const prevIndex =
     currentIndex <= 0 ? images.value.length - 1 : currentIndex - 1;
@@ -638,7 +665,7 @@ function showNextImage() {
   if (!images.value.length) return;
 
   const currentIndex = images.value.findIndex(
-    (img) => img.imageUrl === mainImage.value
+    (img) => img.imageUrl === mainImage.value,
   );
   const nextIndex =
     currentIndex >= images.value.length - 1 ? 0 : currentIndex + 1;
