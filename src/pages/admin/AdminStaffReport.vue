@@ -35,6 +35,7 @@
             </v-col>
         </v-row>
 
+        <!-- Dashboard ngày -->
         <v-row class="mb-4">
             <v-col cols="12" md="4">
                 <v-card rounded="xl" elevation="2">
@@ -76,6 +77,36 @@
             </v-col>
         </v-row>
 
+        <!-- Dashboard tháng -->
+        <v-row class="mb-4">
+            <v-col cols="12" md="6">
+                <v-card rounded="xl" elevation="2">
+                    <v-card-text>
+                        <div class="text-subtitle-2 text-medium-emphasis">
+                            Tổng sản phẩm tháng {{ displaySelectedMonth || "tháng hiện tại" }}
+                        </div>
+                        <div class="text-h4 font-weight-bold mt-2">
+                            {{ monthSummary.totalProductsMonth || 0 }}
+                        </div>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+
+            <v-col cols="12" md="6">
+                <v-card rounded="xl" elevation="2">
+                    <v-card-text>
+                        <div class="text-subtitle-2 text-medium-emphasis">
+                            Doanh thu tháng {{ displaySelectedMonth || "tháng hiện tại" }}
+                        </div>
+                        <div class="text-h4 font-weight-bold mt-2">
+                            {{ formatCurrency(monthSummary.totalRevenueMonth) }}
+                        </div>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+
+        <!-- Danh sách nhân viên -->
         <v-row class="mb-4">
             <v-col cols="12">
                 <v-card rounded="xl" elevation="2">
@@ -110,13 +141,19 @@
                             :key="`${customer.customerType}-${customer.customerId}-${customer.customerName}`"
                             class="py-3">
                             <template #title>
-                                <div class="font-weight-medium">{{ customer.customerName || "Khách lẻ" }}</div>
+                                <div class="font-weight-medium">
+                                    {{ customer.customerName || "Khách lẻ" }}
+                                </div>
                             </template>
 
                             <template #subtitle>
                                 <div>{{ customer.customerPhone || "Chưa có SĐT" }}</div>
                                 <div class="mt-1">
-                                    {{ customer.customerType === "ACCOUNT" ? "Khách có tài khoản" : "Khách tại quầy" }}
+                                    {{
+                                        customer.customerType === "ACCOUNT"
+                                            ? "Khách có tài khoản"
+                                            : "Khách tại quầy"
+                                    }}
                                 </div>
                                 <div class="mt-1">Số đơn: {{ customer.totalOrders }}</div>
                                 <div>Tổng chi: {{ formatCurrency(customer.totalSpent) }}</div>
@@ -156,12 +193,13 @@
                                 <td :colspan="columns.length" class="bg-grey-lighten-5">
                                     <div class="pa-4">
                                         <div class="text-subtitle-1 font-weight-bold mb-2">
-                                            Đơn #{{ item.orderId }} - {{ item.trackingCode || "Chưa có mã vận đơn" }}
+                                            Đơn #{{ item.orderId }} -
+                                            {{ item.trackingCode || "Chưa có mã vận đơn" }}
                                         </div>
 
                                         <div class="mb-2">
-                                            Thanh toán: {{ item.paymentMethod || "-" }} / {{ item.paymentStatus || "-"
-                                            }}
+                                            Thanh toán: {{ item.paymentMethod || "-" }} /
+                                            {{ item.paymentStatus || "-" }}
                                         </div>
 
                                         <v-table density="comfortable">
@@ -224,6 +262,15 @@ const dashboard = ref({
     totalRevenueToday: 0,
 })
 
+const monthSummary = ref({
+    employeeId: null,
+    employeeName: "Tất cả nhân viên",
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    totalProductsMonth: 0,
+    totalRevenueMonth: 0,
+})
+
 const staffHeaders = [
     { title: "Tên nhân viên", key: "employeeName" },
     { title: "Email", key: "email" },
@@ -247,7 +294,18 @@ const historyHeaders = [
 function toApiDate(value) {
     if (!value) return null
 
-    if (typeof value === "string") return value
+    if (typeof value === "string") {
+        const parts = value.split("-")
+        if (parts.length === 3) return value
+
+        const d = new Date(value)
+        if (Number.isNaN(d.getTime())) return null
+
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, "0")
+        const day = String(d.getDate()).padStart(2, "0")
+        return `${year}-${month}-${day}`
+    }
 
     const d = new Date(value)
     if (Number.isNaN(d.getTime())) return null
@@ -264,6 +322,14 @@ const displaySelectedDate = computed(() => {
 
     const [year, month, day] = apiDate.split("-")
     return `${day}/${month}/${year}`
+})
+
+const displaySelectedMonth = computed(() => {
+    const apiDate = toApiDate(selectedDate.value)
+    if (!apiDate) return ""
+
+    const [year, month] = apiDate.split("-")
+    return `${month}/${year}`
 })
 
 async function loadStaffOptions() {
@@ -284,25 +350,41 @@ async function loadAll() {
         const employeeId = selectedEmployeeId.value || null
         const date = toApiDate(selectedDate.value)
 
-        console.log("date gửi lên:", date)
-
-        const [overviewRes, dashboardRes, customerRes, historyRes] = await Promise.all([
+        const [
+            overviewRes,
+            dashboardRes,
+            monthSummaryRes,
+            customerRes,
+            historyRes,
+        ] = await Promise.all([
             reportApi.getAdminStaffOverviewToday(employeeId, date),
             reportApi.getAdminStaffToday(employeeId, date),
+            reportApi.getAdminStaffMonthSummary(employeeId, date),
             reportApi.getAdminCustomerSummary(keyword.value, employeeId, date),
             reportApi.getAdminPurchaseHistory(keyword.value, employeeId, date),
         ])
 
-        staffOverview.value = overviewRes.data || []
-        dashboard.value = dashboardRes.data || {
+        staffOverview.value = overviewRes?.data || []
+
+        dashboard.value = dashboardRes?.data || {
             employeeId: null,
             employeeName: "Tất cả nhân viên",
             totalOrdersToday: 0,
             totalProductsToday: 0,
             totalRevenueToday: 0,
         }
-        customers.value = customerRes.data || []
-        purchaseHistory.value = historyRes.data || []
+
+        monthSummary.value = monthSummaryRes?.data || {
+            employeeId: null,
+            employeeName: "Tất cả nhân viên",
+            year: new Date().getFullYear(),
+            month: new Date().getMonth() + 1,
+            totalProductsMonth: 0,
+            totalRevenueMonth: 0,
+        }
+
+        customers.value = customerRes?.data || []
+        purchaseHistory.value = historyRes?.data || []
     } catch (error) {
         console.error("loadAll admin report error", error)
     } finally {

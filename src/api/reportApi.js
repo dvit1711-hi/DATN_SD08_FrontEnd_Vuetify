@@ -58,4 +58,13 @@ export default {
       },
     })
   },
+
+  getAdminStaffMonthSummary(employeeId = null, date = null) {
+  return apiClient.get("/admin/reports/staff/month-summary", {
+    params: {
+      employeeId: employeeId || undefined,
+      date: date || undefined,
+    },
+  })
+},
 }
