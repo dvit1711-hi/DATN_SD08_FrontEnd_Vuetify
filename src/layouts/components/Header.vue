@@ -57,8 +57,24 @@
 
         <!-- Search Bar -->
         <div class="flex-grow-1 mx-6" style="max-width: 600px;">
-          <v-text-field v-model="searchQuery" placeholder="Tìm kiếm sản phẩm..." prepend-inner-icon="mdi-magnify"
-            outlined dense hide-details class="bg-white rounded" @keyup.enter="handleSearch" />
+          <div class="search-bar-header">
+                          <v-text-field
+                v-model="searchQuery"
+                placeholder="Tìm kiếm"
+                variant="solo"
+                flat
+                hide-details
+                class="search-input-header"
+              />
+            <v-btn
+              icon="mdi-magnify"
+              variant="flat"
+              color="black"
+              size="x-large"
+              class="search-btn-header"
+              @click="handleSearch"
+            />
+          </div>
         </div>
 
         <!-- Right Side Actions -->
@@ -351,5 +367,64 @@ a:hover {
 
 .gap-6 {
   gap: 1.5rem;
+}
+
+.search-bar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-input-header {
+  flex: 1;
+}
+
+.search-input-header :deep(.v-field) {
+  background: white !important;
+  border-radius: 28px !important;
+  box-shadow: none !important;
+}
+
+.search-input-header :deep(.v-field:hover) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.search-input-header :deep(.v-field.v-field--focused) {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.search-input-header :deep(.v-field__input) {
+  font-size: 18px !important;
+  color: #000 !important;
+  padding: 0 8px !important;
+  font-weight: 700;
+}
+
+.search-input-header :deep(.v-field__input::placeholder) {
+  color: #666 !important;
+  font-size: 18px !important;
+  font-weight: 700;
+}
+
+.search-btn-header {
+  width: 60px !important;
+  height: 60px !important;
+  border-radius: 50% !important;
+  background: white !important;
+  border: none !important;
+  flex-shrink: 0;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+.search-btn-header:hover {
+  background: #f5f5f5 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+  transform: scale(1.05);
+}
+
+.search-btn-header :deep(.v-icon) {
+  color: #000 !important;
+  font-size: 28px !important;
 }
 </style>
