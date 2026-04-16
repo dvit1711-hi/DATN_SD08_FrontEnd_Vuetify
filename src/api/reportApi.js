@@ -16,7 +16,7 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-export default {
+const reportApi = {
   getAdminStaffOptions() {
     return apiClient.get("/admin/reports/staff/options")
   },
@@ -39,8 +39,17 @@ export default {
     })
   },
 
+  getAdminStaffMonthSummary(employeeId = null, date = null) {
+    return apiClient.get("/admin/reports/staff/month-summary", {
+      params: {
+        employeeId: employeeId || undefined,
+        date: date || undefined,
+      },
+    })
+  },
+
   getAdminCustomerSummary(keyword = "", employeeId = null, date = null) {
-    return apiClient.get("/admin/reports/customers/search", {
+    return apiClient.get("/admin/reports/customers/summary", {
       params: {
         keyword: keyword || undefined,
         employeeId: employeeId || undefined,
@@ -59,3 +68,5 @@ export default {
     })
   },
 }
+
+export default reportApi
