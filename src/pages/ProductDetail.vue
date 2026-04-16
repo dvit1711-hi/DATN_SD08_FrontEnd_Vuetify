@@ -95,7 +95,7 @@
             density="comfortable"
             icon="mdi-alert-circle"
             class="mb-4"
-            text="Biến thể đã chọn hiện đang hết hàng"
+            text="Sản phẩm đã chọn hiện đang hết hàng"
           />
 
           <!-- Chọn màu -->
@@ -536,14 +536,14 @@ async function handleAddToCart() {
   }
 
   if (!selectedVariant.value) {
-    snackbarMessage.value = "Vui lòng chọn biến thể";
+    snackbarMessage.value = "Vui lòng chọn sản phẩm";
     snackbarColor.value = "error";
     showSnackbar.value = true;
     return;
   }
 
   if (isSelectedVariantOutOfStock.value) {
-    snackbarMessage.value = "Biến thể đã chọn đang hết hàng";
+    snackbarMessage.value = "Sản phẩm đã chọn đang hết hàng";
     snackbarColor.value = "warning";
     showSnackbar.value = true;
     return;
