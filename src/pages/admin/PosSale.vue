@@ -65,9 +65,6 @@
                         <v-textarea v-model="guest.note" label="Ghi chú" variant="outlined" rows="2"
                             density="comfortable" class="mt-2" />
 
-                        <v-text-field v-model="guest.shippingAddress" label="Địa chỉ giao hàng" variant="outlined"
-                            density="comfortable" class="mt-2" />
-
                         <v-btn color="primary" variant="tonal" class="mt-2" block
                             :disabled="!getCurrentOrderId(currentOrder)" @click="saveOrderInfo">
                             Lưu thông tin đơn
@@ -440,7 +437,6 @@ const bankingDialog = ref(false)
 const bankingInfo = ref(null)
 const confirmingBankingPayment = ref(false)
 let customerSearchTimer = null
-
 
 const guest = ref({
     customerName: "",
@@ -1239,14 +1235,26 @@ async function confirmBankingPayment() {
         }
 
         confirmingBankingPayment.value = true
+
+        // Chỉ confirm trạng thái thanh toán
         await paymentApi.confirmPayment(orderId)
+
+        // Luôn lấy lại full dữ liệu đơn hàng để in hóa đơn
+        const { data: fullOrder } = await posApi.getOrder(orderId)
+
+        currentOrder.value = fullOrder
+
+        // In hóa đơn với dữ liệu đầy đủ
+        printReceipt(fullOrder)
+
         bankingDialog.value = false
         bankingInfo.value = null
-        currentOrder.value = null
+
         checkoutForm.value = {
             method: "CASH",
             cashReceived: null,
         }
+
         await loadPendingOrders()
         showMessage("Xác nhận thanh toán thành công")
     } catch (error) {
@@ -1266,12 +1274,21 @@ function printReceipt(order = currentOrder.value) {
     const orderId = getCurrentOrderId(order)
     if (!order || !orderId) return
 
-    const items = order.items || order.orderDetails || []
-    const trackingCode = getTrackingCode(order)
+    const items =
+        (Array.isArray(order.items) && order.items) ||
+        (Array.isArray(order.orderDetails) && order.orderDetails) ||
+        (Array.isArray(order.details) && order.details) ||
+        []
 
-    const htmlItems = items
-        .map((item, index) => {
-            return `
+    const trackingCode = getTrackingCode(order) || bankingInfo.value?.transferContent || "-"
+    const paymentMethod = String(order.paymentMethod || checkoutForm.value.method || "").toUpperCase()
+    const isCash = paymentMethod === "CASH"
+    const isBanking = paymentMethod === "BANKING"
+
+    const htmlItems = items.length
+        ? items
+            .map((item, index) => {
+                return `
         <tr>
           <td>${index + 1}</td>
           <td>${getItemProductName(item)}</td>
@@ -1282,12 +1299,38 @@ function printReceipt(order = currentOrder.value) {
           <td>${formatCurrency(getItemLineTotal(item))}</td>
         </tr>
       `
-        })
-        .join("")
+            })
+            .join("")
+        : `
+        <tr>
+          <td colspan="7" style="text-align:center;">Không có dữ liệu sản phẩm</td>
+        </tr>
+      `
 
-    const orderSubtotal = Number(order.subtotal || 0)
-    const orderDiscount = Number(order.discountAmount || 0)
-    const orderTotal = Number(order.totalAmount || 0)
+    const orderSubtotal = Number(
+        order.subtotal ??
+        order.subTotal ??
+        order.totalBeforeDiscount ??
+        0
+    )
+
+    const orderDiscount = Number(
+        order.discountAmount ??
+        order.discount ??
+        0
+    )
+
+    const orderTotal = Number(
+        order.totalAmount ??
+        order.total ??
+        0
+    )
+
+    const bankName = bankingInfo.value?.bankName || "MB Bank"
+    const accountNumber = bankingInfo.value?.accountNumber || ""
+    const accountName = bankingInfo.value?.accountName || ""
+    const transferContent = bankingInfo.value?.transferContent || trackingCode
+    const transferAmount = Number(bankingInfo.value?.amount || orderTotal)
 
     const html = `
     <html>
@@ -1327,16 +1370,23 @@ function printReceipt(order = currentOrder.value) {
           }
           .summary {
             margin-top: 16px;
-            width: 340px;
+            width: 360px;
             margin-left: auto;
           }
           .summary div {
             display: flex;
             justify-content: space-between;
+            gap: 12px;
             margin: 6px 0;
           }
           .total {
             font-size: 18px;
+            font-weight: bold;
+          }
+          .section-title {
+            margin-top: 14px;
+            margin-bottom: 8px;
+            font-size: 15px;
             font-weight: bold;
           }
           .footer {
@@ -1353,10 +1403,10 @@ function printReceipt(order = currentOrder.value) {
           <p><strong>Mã vận đơn:</strong> ${trackingCode}</p>
           <p><strong>Khách hàng:</strong> ${order.customerName || "Khách lẻ"}</p>
           <p><strong>Số điện thoại:</strong> ${order.customerPhone || ""}</p>
-          <p><strong>Địa chỉ giao hàng:</strong> ${order.shippingAddress || ""}</p>
           <p><strong>Ghi chú:</strong> ${order.note || ""}</p>
-          <p><strong>Trạng thái:</strong> ${order.status || ""}</p>
-          <p><strong>Phương thức thanh toán:</strong> ${getPaymentMethodLabel(order.paymentMethod || checkoutForm.value.method)}</p>
+          <p><strong>Trạng thái đơn:</strong> ${order.status || ""}</p>
+          <p><strong>Phương thức thanh toán:</strong> ${getPaymentMethodLabel(paymentMethod)}</p>
+          <p><strong>Trạng thái thanh toán:</strong> ${getPaymentStatusLabel(order.paymentStatus)}</p>
         </div>
 
         <table>
@@ -1380,9 +1430,25 @@ function printReceipt(order = currentOrder.value) {
           <div><span>Tạm tính:</span><strong>${formatCurrency(orderSubtotal)}</strong></div>
           <div><span>Giảm giá:</span><strong>${formatCurrency(orderDiscount)}</strong></div>
           <div class="total"><span>Tổng tiền:</span><strong>${formatCurrency(orderTotal)}</strong></div>
-          ${String(order.paymentMethod || checkoutForm.value.method).toUpperCase() === "CASH"
-            ? `<div><span>Tiền khách đưa:</span><strong>${formatCurrency(checkoutForm.value.cashReceived || 0)}</strong></div>
-               <div><span>Tiền thừa:</span><strong>${formatCurrency(changeAmount.value)}</strong></div>`
+
+          ${isCash
+            ? `
+                  <div class="section-title">THÔNG TIN THANH TOÁN TIỀN MẶT</div>
+                  <div><span>Tiền khách đưa:</span><strong>${formatCurrency(checkoutForm.value.cashReceived || 0)}</strong></div>
+                  <div><span>Tiền thừa:</span><strong>${formatCurrency(changeAmount.value)}</strong></div>
+                `
+            : ""
+        }
+
+          ${isBanking
+            ? `
+                  <div class="section-title">THÔNG TIN THANH TOÁN CHUYỂN KHOẢN</div>
+                  <div><span>Ngân hàng:</span><strong>${bankName}</strong></div>
+                  <div><span>Số tài khoản:</span><strong>${accountNumber}</strong></div>
+                  <div><span>Chủ tài khoản:</span><strong>${accountName}</strong></div>
+                  <div><span>Số tiền chuyển:</span><strong>${formatCurrency(transferAmount)}</strong></div>
+                  <div><span>Nội dung CK:</span><strong>${transferContent}</strong></div>
+                `
             : ""
         }
         </div>

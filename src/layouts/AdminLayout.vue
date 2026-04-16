@@ -78,6 +78,9 @@
                         <v-list-item :to="{ name: 'AdminPosSale' }" title="Bán hàng tại quầy"
                             prepend-icon="mdi-cash-register" active-color="primary" />
 
+                        <v-list-item title="Báo cáo nhân viên" prepend-icon="mdi-account-group"
+                            :to="{ name: 'AdminStaffReport' }" />
+
                         <v-divider class="my-2" />
 
                         <v-list-item :to="{ name: 'Home' }" title="Quay về cửa hàng" prepend-icon="mdi-store"
