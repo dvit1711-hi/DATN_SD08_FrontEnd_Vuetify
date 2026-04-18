@@ -32,23 +32,50 @@
       <v-expansion-panels v-else variant="accordion">
         <v-expansion-panel v-for="order in orders" :key="order.orderId" class="mb-3">
           <v-expansion-panel-title>
-            <div class="w-100 d-flex align-center justify-space-between flex-wrap ga-2">
-              <div>
-                <div class="font-weight-bold">Đơn #{{ order.orderId }}</div>
-                <div class="text-caption text-grey">{{ formatDate(order.orderDate) }}</div>
+            <div class="w-100 order-summary">
+              <div class="d-flex align-center justify-space-between flex-wrap ga-2">
+                <div>
+                  <div class="font-weight-bold">Đơn #{{ order.orderId }}</div>
+                  <div class="text-caption text-grey">{{ formatDate(order.orderDate) }}</div>
+                </div>
+
+                <div class="d-flex align-center ga-2 flex-wrap justify-end">
+                  <v-chip size="small" :color="getDisplayStatus(order).color" variant="tonal">
+                    {{ getDisplayStatus(order).label }}</v-chip>
+                  <v-chip v-if="order.couponCode" size="small" color="orange" variant="tonal">
+                    Mã: {{ order.couponCode }}
+                  </v-chip>
+                  <v-chip size="small" color="orange" variant="tonal">
+                    {{ getPaymentMethodLabel(order.paymentMethod) }}
+                  </v-chip>
+                  <div class="font-weight-bold text-black">{{ formatPrice(order.totalAmount) }}đ</div>
+                </div>
               </div>
 
-              <div class="d-flex align-center ga-2">
-                <v-chip size="small" :color="getDisplayStatus(order).color" variant="tonal">
-                  {{ getDisplayStatus(order).label }}
-                </v-chip>
-                <v-chip v-if="order.couponCode" size="small" color="orange" variant="tonal">
-                  Mã: {{ order.couponCode }}
-                </v-chip>
-                <v-chip size="small" color="orange" variant="tonal">
-                  {{ getPaymentMethodLabel(order.paymentMethod) }}
-                </v-chip>
-                <div class="font-weight-bold text-black">{{ formatPrice(order.totalAmount) }}đ</div>
+              <div class="order-preview mt-3">
+                <div class="order-preview-label text-caption text-grey">Ảnh sản phẩm</div>
+                <div class="order-preview-images">
+                  <template v-if="getOrderPreviewItems(order).length > 0">
+                    <v-avatar
+                      v-for="(item, index) in getOrderPreviewItems(order)"
+                      :key="`${order.orderId}-${item.orderDetailId || index}`"
+                      size="44"
+                      rounded="lg"
+                      class="order-preview-avatar"
+                    >
+                      <v-img :src="item.imageUrl || fallbackImage" cover />
+                    </v-avatar>
+
+                    <div
+                      v-if="getOrderPreviewOverflowCount(order) > 0"
+                      class="order-preview-avatar order-preview-avatar--more"
+                    >
+                      +{{ getOrderPreviewOverflowCount(order) }}
+                    </div>
+                  </template>
+
+                  <div v-else class="text-caption text-grey">Không có ảnh sản phẩm</div>
+                </div>
               </div>
             </div>
           </v-expansion-panel-title>
@@ -153,6 +180,16 @@ const ADMIN_UI_DELIVERED_ORDER_IDS_KEY = 'adminUiDeliveredOrderIds'
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const formatPrice = (value) => new Intl.NumberFormat('vi-VN').format(value || 0)
+const getOrderPreviewItems = (order, limit = 4) => {
+  const items = Array.isArray(order?.items) ? order.items : []
+  return items.slice(0, limit)
+}
+
+const getOrderPreviewOverflowCount = (order, limit = 4) => {
+  const items = Array.isArray(order?.items) ? order.items : []
+  return Math.max(items.length - limit, 0)
+}
+
 const formatOrderAddress = (shippingAddress) => {
   const value = String(shippingAddress || '').trim()
   return value.length > 0 ? value : 'Không có địa chỉ cho đơn này'
@@ -380,6 +417,40 @@ const getHiddenCancelledOnlineOrderIds = () => {
   }
 }
 
+const getOrderSortTime = (order) => {
+  const value = String(order?.orderDate || '').trim()
+
+  if (value) {
+    const ddMmYyyyMatch = value.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    )
+
+    if (ddMmYyyyMatch) {
+      const [, day, month, year, hour = '0', minute = '0', second = '0'] = ddMmYyyyMatch
+      const parsedTime = new Date(
+        Number.parseInt(year, 10),
+        Number.parseInt(month, 10) - 1,
+        Number.parseInt(day, 10),
+        Number.parseInt(hour, 10),
+        Number.parseInt(minute, 10),
+        Number.parseInt(second, 10)
+      ).getTime()
+
+      if (Number.isFinite(parsedTime)) {
+        return parsedTime
+      }
+    }
+
+    const parsedTime = new Date(value).getTime()
+    if (Number.isFinite(parsedTime)) {
+      return parsedTime
+    }
+  }
+
+  const orderId = Number.parseInt(order?.orderId, 10)
+  return Number.isFinite(orderId) ? orderId : 0
+}
+
 const loadOrders = async () => {
   if (!isLoggedIn.value) {
     orders.value = []
@@ -414,7 +485,13 @@ const loadOrders = async () => {
 
         return Number.isFinite(orderId) && confirmedOnlineOrderIds.has(orderId)
       })
-      .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+      .sort((a, b) => {
+        const timeDiff = getOrderSortTime(b) - getOrderSortTime(a)
+        if (timeDiff !== 0) return timeDiff
+
+        const orderIdDiff = Number.parseInt(b?.orderId, 10) - Number.parseInt(a?.orderId, 10)
+        return Number.isFinite(orderIdDiff) ? orderIdDiff : 0
+      })
   } catch (error) {
     console.error('Lỗi tải lịch sử mua hàng:', error)
     orders.value = []
@@ -457,6 +534,41 @@ onMounted(loadOrders)
 </script>
 
 <style scoped>
+.order-summary {
+  width: 100%;
+}
+
+.order-preview {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 12px;
+}
+
+.order-preview-images {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.order-preview-avatar {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  overflow: hidden;
+}
+
+.order-preview-avatar--more {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #f5f5f5;
+  color: #616161;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
 .tracking-card {
   border-radius: 12px;
 }
@@ -540,5 +652,11 @@ onMounted(loadOrders)
   margin-top: 2px;
   color: #6f6f6f;
   font-size: 0.75rem;
+}
+
+@media (max-width: 700px) {
+  .order-preview-images {
+    gap: 6px;
+  }
 }
 </style>
