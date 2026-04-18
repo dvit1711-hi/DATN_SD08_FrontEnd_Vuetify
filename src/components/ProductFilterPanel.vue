@@ -268,6 +268,8 @@ const toggleArrayValue = (arr, value) => {
   const idx = arr.indexOf(value);
   if (idx > -1) arr.splice(idx, 1);
   else arr.push(value);
+
+  emitPreview();
 };
 
 const toggleColor = (value) => {
@@ -311,7 +313,7 @@ const selectedFilterChips = computed(() => {
 });
 
 const removeChip = (chip) => {
-  if (chip.type === "brand") {
+  if (chip.type === "brand") {resetFilters
     localFilters.value.selectedBrands = localFilters.value.selectedBrands.filter((v) => v !== chip.value);
   }
   if (chip.type === "color") {
@@ -330,6 +332,7 @@ const removeChip = (chip) => {
 
 const resetFilters = () => {
   localFilters.value = defaultFilters();
+  emitPreview();
 };
 
 const applyFilters = () => {
@@ -369,6 +372,9 @@ const loadFilterData = async () => {
     value: Number(s.sizeID ?? s.id),
     label: s.sizeName,
   }));
+};
+const emitPreview = () => {
+  emit("update:modelValue", { ...localFilters.value });
 };
 
 onMounted(loadFilterData);
