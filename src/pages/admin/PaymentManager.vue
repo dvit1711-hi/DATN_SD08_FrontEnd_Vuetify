@@ -238,6 +238,41 @@
               </v-card>
             </v-col>
           </v-row>
+
+          <v-card variant="outlined" class="mt-4">
+            <v-card-title>Lịch sử chỉnh sửa đơn hàng</v-card-title>
+            <v-card-text>
+              <v-alert
+                v-if="selectedOrderEditHistory.length === 0"
+                type="info"
+                variant="tonal"
+                density="comfortable"
+                text="Chưa có lịch sử chỉnh sửa cho đơn hàng này"
+              />
+
+              <v-timeline
+                v-else
+                density="compact"
+                side="end"
+                truncate-line="both"
+                class="order-edit-timeline"
+              >
+                <v-timeline-item
+                  v-for="entry in selectedOrderEditHistory"
+                  :key="entry.id"
+                  dot-color="primary"
+                  size="small"
+                >
+                  <div class="text-subtitle-2 font-weight-bold">{{ entry.action }}</div>
+                  <div class="text-caption text-medium-emphasis mb-1">{{ formatDate(entry.createdAt) }}</div>
+                  <div class="text-body-2 mb-1">Lý do: {{ entry.reason }}</div>
+                  <div v-if="entry.transition" class="text-caption text-medium-emphasis">
+                    {{ entry.transition }}
+                  </div>
+                </v-timeline-item>
+              </v-timeline>
+            </v-card-text>
+          </v-card>
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -294,6 +329,7 @@ const detailDialog = ref(false)
 const selectedOrder = ref(null)
 const timelineRevealCount = ref(0)
 const timelineTimer = ref(null)
+const orderEditHistoryMap = ref({})
 
 const headers = [
   { title: 'Đơn hàng', key: 'orderInfo', sortable: false },
@@ -306,6 +342,7 @@ const headers = [
 
 const ONLINE_SHIPPING_STARTED_KEY = 'adminOnlineShippingStartedOrderIds'
 const UI_DELIVERED_ORDER_IDS_KEY = 'adminUiDeliveredOrderIds'
+const ORDER_EDIT_HISTORY_KEY = 'adminOrderEditHistoryLogs'
 
 const loadIdSet = (key) => {
   try {
@@ -327,6 +364,26 @@ const persistIdSet = (key, setValue) => {
 
 uiShippingStartedOrderIds.value = loadIdSet(ONLINE_SHIPPING_STARTED_KEY)
 uiDeliveredOrderIds.value = loadIdSet(UI_DELIVERED_ORDER_IDS_KEY)
+
+const loadOrderEditHistoryMap = () => {
+  try {
+    const raw = localStorage.getItem(ORDER_EDIT_HISTORY_KEY)
+    const parsed = JSON.parse(raw || '{}')
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {}
+    }
+
+    return parsed
+  } catch {
+    return {}
+  }
+}
+
+const persistOrderEditHistoryMap = (historyMap) => {
+  localStorage.setItem(ORDER_EDIT_HISTORY_KEY, JSON.stringify(historyMap || {}))
+}
+
+orderEditHistoryMap.value = loadOrderEditHistoryMap()
 
 const formatPrice = (value) => new Intl.NumberFormat('vi-VN').format(value || 0)
 
@@ -558,6 +615,14 @@ const getOrderVisualStage = (order) => {
   if (orderStatus === 'PAID') return 'COMPLETED'
 
   if (orderStatus === 'SHIPPING') {
+    if (isCodPaymentMethod(order) && isUiDeliveredOrder(order) && paymentStatus === 'UNPAID') {
+      return 'WAIT_PAYMENT_CONFIRM'
+    }
+
+    if (isCodPaymentMethod(order) && isUiDeliveredOrder(order) && paymentStatus === 'PAID') {
+      return 'WAIT_COMPLETE'
+    }
+
     if (isUiDeliveredOrder(order)) return 'DELIVERED'
     if (isUiShippingStartedOrder(order)) return 'IN_TRANSIT'
     return 'WAIT_SHIP'
@@ -573,14 +638,74 @@ const getOrderVisualStage = (order) => {
 
 const getOrderStatusLabel = (order) => {
   const stage = getOrderVisualStage(order)
+
   if (stage === 'WAIT_CONFIRM') return 'Chờ xác nhận'
+  if (stage === 'WAIT_PAYMENT_CONFIRM') return 'Chờ xác nhận thanh toán'
   if (stage === 'WAIT_SHIP') return 'Chờ giao hàng'
   if (stage === 'IN_TRANSIT') return 'Đang giao hàng'
   if (stage === 'DELIVERED') return 'Đã giao hàng'
+  if (stage === 'WAIT_COMPLETE') return 'Đã xác nhận thanh toán'
   if (stage === 'COMPLETED') return 'Hoàn thành'
   if (stage === 'CANCELLED') return 'Đã hủy'
+
   return 'Không xác định'
 }
+
+const formatHistoryReason = (reason, fallbackReason = 'Cập nhật bởi quản trị viên') => {
+  const normalized = String(reason || '').trim()
+  return normalized || fallbackReason
+}
+
+const getOrderTransitionLabel = (orderStatus, paymentStatus) => {
+  return `${getOrderStatusLabel({ orderStatus, paymentStatus })} / ${getPaymentStatusLabel(paymentStatus)}`
+}
+
+const appendOrderEditHistory = ({
+  order,
+  action,
+  reason,
+  fromOrderStatus,
+  fromPaymentStatus,
+  toOrderStatus,
+  toPaymentStatus,
+}) => {
+  const orderId = Number.parseInt(order?.orderId, 10)
+  if (!Number.isFinite(orderId)) return
+
+  const safeAction = String(action || '').trim() || 'Cập nhật đơn hàng'
+  const safeReason = formatHistoryReason(reason)
+  const historyMap = { ...orderEditHistoryMap.value }
+  const currentEntries = Array.isArray(historyMap[orderId]) ? [...historyMap[orderId]] : []
+  const hasTransition =
+    String(fromOrderStatus || '').trim() ||
+    String(fromPaymentStatus || '').trim() ||
+    String(toOrderStatus || '').trim() ||
+    String(toPaymentStatus || '').trim()
+
+  const transition = hasTransition
+    ? `${getOrderTransitionLabel(fromOrderStatus, fromPaymentStatus)} -> ${getOrderTransitionLabel(toOrderStatus, toPaymentStatus)}`
+    : ''
+
+  const nextEntry = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    action: safeAction,
+    reason: safeReason,
+    transition,
+    createdAt: new Date().toISOString(),
+  }
+
+  historyMap[orderId] = [nextEntry, ...currentEntries].slice(0, 50)
+  orderEditHistoryMap.value = historyMap
+  persistOrderEditHistoryMap(historyMap)
+}
+
+const selectedOrderEditHistory = computed(() => {
+  const orderId = Number.parseInt(selectedOrder.value?.orderId, 10)
+  if (!Number.isFinite(orderId)) return []
+
+  const list = orderEditHistoryMap.value?.[orderId]
+  return Array.isArray(list) ? list : []
+})
 
 const getPaymentStatusColor = (status) => {
   const normalized = String(status || '').toUpperCase()
@@ -592,14 +717,18 @@ const getPaymentStatusColor = (status) => {
 
 const getOrderStatusColor = (order) => {
   const stage = getOrderVisualStage(order)
-  if (stage === 'COMPLETED') return 'success'
-  if (stage === 'DELIVERED') return 'warning'
-  if (stage === 'WAIT_CONFIRM' || stage === 'WAIT_SHIP') return 'warning'
+
+  if (stage === 'WAIT_CONFIRM') return 'warning'
+  if (stage === 'WAIT_PAYMENT_CONFIRM') return 'warning'
+  if (stage === 'WAIT_SHIP') return 'success'
+  if (stage === 'WAIT_COMPLETE') return 'success'
   if (stage === 'IN_TRANSIT') return 'primary'
+  if (stage === 'DELIVERED') return 'warning'
+  if (stage === 'COMPLETED') return 'success'
   if (stage === 'CANCELLED') return 'error'
+
   return 'grey'
 }
-
 const buildTimelineSteps = (order) => {
   if (!order) return []
 
@@ -686,10 +815,10 @@ const buildTimelineSteps = (order) => {
   const uiShippingStarted = isUiShippingStartedOrder(order)
   const uiDelivered = isUiDeliveredOrder(order)
   const codFinalActionPending =
-    isCodPaymentMethod(order) &&
-    paymentStatus === 'PAID' &&
-    uiDelivered &&
-    orderStatus !== 'PAID'
+  isCodPaymentMethod(order) &&
+  paymentStatus === 'PAID' &&
+  uiDelivered &&
+  orderStatus !== 'PAID'
 
   let activeIndex = 0
 
@@ -706,29 +835,28 @@ const buildTimelineSteps = (order) => {
       activeIndex = 4
     }
   } else {
-    if (orderStatus === 'PAID') {
-      activeIndex = 5
-    } else if (paymentStatus === 'UNPAID' && (orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING')) {
-      activeIndex = 0
-    } else if (orderStatus === 'SHIPPING' && uiShippingStarted && !uiDelivered) {
-      activeIndex = 2
-    } else if (orderStatus === 'SHIPPING' && uiDelivered && paymentStatus === 'UNPAID') {
-      activeIndex = 3
-    } else if (uiDelivered && paymentStatus === 'PAID') {
-      activeIndex = 4
-    }
+  if (orderStatus === 'PAID') {
+    activeIndex = 5
+  } else if (paymentStatus === 'UNPAID' && (orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING')) {
+    activeIndex = 0
+  } else if (orderStatus === 'SHIPPING' && uiShippingStarted && !uiDelivered) {
+    activeIndex = 2
+  } else if (orderStatus === 'SHIPPING' && uiDelivered && paymentStatus === 'UNPAID') {
+    activeIndex = 4
+  } else if (uiDelivered && paymentStatus === 'PAID') {
+    activeIndex = 5
   }
+}
 
   return baseSteps.map((step, index) => {
     let state = 'pending'
     if (index < activeIndex) state = 'done'
     if (index === activeIndex) {
-      state = codFinalActionPending
-        ? 'current'
-        : activeIndex === baseSteps.length - 1
-          ? 'done'
-          : 'current'
-    }
+  state =
+    activeIndex === baseSteps.length - 1 && !codFinalActionPending
+      ? 'done'
+      : 'current'
+}
 
     const showTime = index === 0 || state === 'done' || state === 'current'
 
@@ -811,19 +939,22 @@ const canCancelOrder = (order) => {
   const orderStatus = String(order?.orderStatus || '').toUpperCase()
   return paymentStatus === 'UNPAID' && (orderStatus === 'PENDING_PAYMENT' || orderStatus === 'PENDING')
 }
-
 const canRevertOrder = (order) => {
   if (!order) return false
 
-  const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
-  const orderStatus = String(order?.orderStatus || '').toUpperCase()
+  const stage = getOrderVisualStage(order)
 
-  if (paymentStatus === 'PAID' || orderStatus === 'PAID') return true
-  if (paymentStatus === 'CANCELLED' || orderStatus === 'CANCELLED') return true
-  if (orderStatus === 'SHIPPING') return true
-  if (isUiDeliveredOrder(order)) return true
+  if (stage === 'COMPLETED') return false
+  if (stage === 'WAIT_CONFIRM') return false
 
-  return false
+  return [
+    'WAIT_SHIP',
+    'IN_TRANSIT',
+    'DELIVERED',
+    'WAIT_PAYMENT_CONFIRM',
+    'WAIT_COMPLETE',
+    'CANCELLED',
+  ].includes(stage)
 }
 
 const canStartShipping = (order) => {
@@ -845,13 +976,13 @@ const canStartShipping = (order) => {
 const canCompleteDelivery = (order) => {
   if (!order || !isOnlineOrder(order)) return false
 
-  const orderStatus = String(order?.orderStatus || '').toUpperCase()
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+  const stage = getOrderVisualStage(order)
 
-  if (orderStatus !== 'SHIPPING') return false
   if (paymentStatus === 'CANCELLED') return false
   if (isUiDeliveredOrder(order)) return false
-  return true
+
+  return stage === 'IN_TRANSIT'
 }
 
 const canCompleteOrder = (order) => {
@@ -921,6 +1052,8 @@ const loadOrders = async () => {
 const confirmPayment = async (order) => {
   if (!canConfirmOrder(order)) return
 
+  const fromOrderStatus = order?.orderStatus
+  const fromPaymentStatus = order?.paymentStatus
   confirmingOrderId.value = order.orderId
   try {
     const token = localStorage.getItem('token')
@@ -931,12 +1064,32 @@ const confirmPayment = async (order) => {
         paymentStatus: 'PAID',
         orderStatus: 'PAID',
       })
+
+      appendOrderEditHistory({
+        order,
+        action: 'Xác nhận thanh toán',
+        reason: 'Nhân viên xác nhận đã nhận tiền cho đơn offline',
+        fromOrderStatus,
+        fromPaymentStatus,
+        toOrderStatus: 'PAID',
+        toPaymentStatus: 'PAID',
+      })
     } else {
       applyOrderPatch(order, {
         paymentStatus: 'PAID',
         orderStatus: 'SHIPPING',
       })
       clearUiShippingStarted(order.orderId)
+
+      appendOrderEditHistory({
+        order,
+        action: 'Xác nhận thanh toán',
+        reason: 'Nhân viên xác nhận giao dịch thanh toán thành công',
+        fromOrderStatus,
+        fromPaymentStatus,
+        toOrderStatus: 'SHIPPING',
+        toPaymentStatus: 'PAID',
+      })
     }
 
     snackbarMessage.value = `Đã xác nhận thanh toán đơn ${getDisplayOrderCode(order)}`
@@ -958,6 +1111,8 @@ const cancelOrder = async (order) => {
   const confirmed = window.confirm(`Bạn có chắc muốn hủy đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
+  const fromOrderStatus = order?.orderStatus
+  const fromPaymentStatus = order?.paymentStatus
   cancellingOrderId.value = order.orderId
   try {
     const token = localStorage.getItem('token')
@@ -965,6 +1120,16 @@ const cancelOrder = async (order) => {
     applyOrderPatch(order, {
       paymentStatus: 'CANCELLED',
       orderStatus: 'CANCELLED',
+    })
+
+    appendOrderEditHistory({
+      order,
+      action: 'Hủy đơn hàng',
+      reason: 'Nhân viên hủy đơn trong quá trình xử lý',
+      fromOrderStatus,
+      fromPaymentStatus,
+      toOrderStatus: 'CANCELLED',
+      toPaymentStatus: 'CANCELLED',
     })
 
     snackbarMessage.value = `Đã hủy đơn ${getDisplayOrderCode(order)}`
@@ -1003,55 +1168,85 @@ const revertOrderStatus = async (order, reason) => {
     throw new Error('Vui lòng nhập lý do')
   }
 
+  const previousStage = getOrderVisualStage(order)
   const paymentStatus = String(order?.paymentStatus || '').toUpperCase()
+  const fromOrderStatus = order?.orderStatus
+  const fromPaymentStatus = order?.paymentStatus
 
-  if (isUiDeliveredOrder(order) && paymentStatus === 'UNPAID') {
+  if (previousStage === 'WAIT_PAYMENT_CONFIRM') {
+  clearUiDelivered(order.orderId)
+  markUiShippingStarted(order.orderId)
+  appendOrderEditHistory({
+    order,
+    action: 'Quay lại trạng thái trước',
+    reason: normalizedReason,
+    fromOrderStatus,
+    fromPaymentStatus,
+    toOrderStatus: order?.orderStatus,
+    toPaymentStatus: order?.paymentStatus,
+  })
+  startTimelineReveal()
+  snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Đang giao hàng (UI)`
+  snackbarColor.value = 'success'
+  showSnackbar.value = true
+  return
+}
+
+  if (isOnlineOrder(order) && isOnlinePaymentMethod(order) && isUiDeliveredOrder(order)) {
+  revertingOrderId.value = order.orderId
+  try {
+    const token = localStorage.getItem('token')
+    const response = await paymentApi.revertOrderStatusByAdmin(order.orderId, normalizedReason, token)
+
+    const responseOrderStatus = String(
+      response?.data?.orderStatus ||
+      response?.data?.status ||
+      'SHIPPING'
+    ).toUpperCase()
+
+    const responsePaymentStatus = String(
+      response?.data?.paymentStatus ||
+      'PAID'
+    ).toUpperCase()
+
     clearUiDelivered(order.orderId)
+
+    if (responseOrderStatus === 'SHIPPING' && responsePaymentStatus === 'PAID') {
+      markUiShippingStarted(order.orderId)
+    } else {
+      clearUiShippingStarted(order.orderId)
+    }
+
+    applyOrderPatch(order, {
+      orderStatus: responseOrderStatus,
+      paymentStatus: responsePaymentStatus,
+    })
+
+    appendOrderEditHistory({
+      order,
+      action: 'Quay lại trạng thái trước',
+      reason: normalizedReason,
+      fromOrderStatus,
+      fromPaymentStatus,
+      toOrderStatus: responseOrderStatus,
+      toPaymentStatus: responsePaymentStatus,
+    })
+
     startTimelineReveal()
-    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Đang vận chuyển (UI)`
+    snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Đang giao hàng (UI)`
     snackbarColor.value = 'success'
     showSnackbar.value = true
     return
+  } catch (error) {
+    console.error('Lỗi quay lại trạng thái online (đã giao hàng):', error)
+    snackbarMessage.value = error?.response?.data?.message || 'Quay lại trạng thái thất bại'
+    snackbarColor.value = 'error'
+    showSnackbar.value = true
+    throw error
+  } finally {
+    revertingOrderId.value = null
   }
-
-  if (isOnlineOrder(order) && isOnlinePaymentMethod(order) && isUiDeliveredOrder(order)) {
-    revertingOrderId.value = order.orderId
-    try {
-      const token = localStorage.getItem('token')
-      const response = await paymentApi.revertOrderStatusByAdmin(order.orderId, normalizedReason, token)
-
-      const responseOrderStatus = String(
-        response?.data?.orderStatus ||
-        response?.data?.status ||
-        'SHIPPING'
-      ).toUpperCase()
-
-      const responsePaymentStatus = String(
-        response?.data?.paymentStatus ||
-        'PAID'
-      ).toUpperCase()
-
-      clearUiDelivered(order.orderId)
-      applyOrderPatch(order, {
-        orderStatus: responseOrderStatus || 'SHIPPING',
-        paymentStatus: responsePaymentStatus || 'PAID',
-      })
-      startTimelineReveal()
-      snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Đang giao hàng (UI)`
-      snackbarColor.value = 'success'
-      showSnackbar.value = true
-      return
-    } catch (error) {
-      console.error('Lỗi quay lại trạng thái online (đã giao hàng):', error)
-      snackbarMessage.value = error?.response?.data?.message || 'Quay lại trạng thái thất bại'
-      snackbarColor.value = 'error'
-      showSnackbar.value = true
-      throw error
-    } finally {
-      revertingOrderId.value = null
-    }
-  }
-
+}
   if (isOnlineOrder(order) && isOnlinePaymentMethod(order) && isUiShippingStartedOrder(order)) {
     revertingOrderId.value = order.orderId
     try {
@@ -1073,6 +1268,15 @@ const revertOrderStatus = async (order, reason) => {
       applyOrderPatch(order, {
         orderStatus: responseOrderStatus || 'SHIPPING',
         paymentStatus: responsePaymentStatus || 'PAID',
+      })
+      appendOrderEditHistory({
+        order,
+        action: 'Quay lại trạng thái trước',
+        reason: normalizedReason,
+        fromOrderStatus,
+        fromPaymentStatus,
+        toOrderStatus: responseOrderStatus || 'SHIPPING',
+        toPaymentStatus: responsePaymentStatus || 'PAID',
       })
       startTimelineReveal()
       snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã quay lại bước Chờ giao hàng (UI)`
@@ -1113,14 +1317,33 @@ const revertOrderStatus = async (order, reason) => {
       orderStatus: responseOrderStatus || 'PENDING_PAYMENT',
     })
 
-    if (
-      isOnlineOrder(order) &&
-      isCodPaymentMethod(order) &&
-      (responseOrderStatus || '').toUpperCase() === 'SHIPPING' &&
-      (responsePaymentStatus || '').toUpperCase() === 'UNPAID'
-    ) {
+    appendOrderEditHistory({
+      order,
+      action: 'Quay lại trạng thái trước',
+      reason: normalizedReason,
+      fromOrderStatus,
+      fromPaymentStatus,
+      toOrderStatus: responseOrderStatus || 'PENDING_PAYMENT',
+      toPaymentStatus: responsePaymentStatus || 'UNPAID',
+    })
+
+    if (isOnlineOrder(order)) {
+  if (responseOrderStatus === 'PENDING' || responseOrderStatus === 'PENDING_PAYMENT') {
+    clearUiDelivered(order.orderId)
+    clearUiShippingStarted(order.orderId)
+  } else if (responseOrderStatus === 'SHIPPING') {
+    if (previousStage === 'WAIT_COMPLETE') {
       markUiDelivered(order.orderId)
+      markUiShippingStarted(order.orderId)
+    } else if (previousStage === 'DELIVERED') {
+      clearUiDelivered(order.orderId)
+      markUiShippingStarted(order.orderId)
+    } else if (previousStage === 'IN_TRANSIT') {
+      clearUiDelivered(order.orderId)
+      clearUiShippingStarted(order.orderId)
     }
+  }
+}
 
     snackbarMessage.value = `Đã quay lại trạng thái trước cho đơn ${getDisplayOrderCode(order)}`
     snackbarColor.value = 'success'
@@ -1163,6 +1386,8 @@ const startShipping = async (order) => {
   const confirmed = window.confirm(`Bắt đầu giao hàng cho đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
+  const fromOrderStatus = order?.orderStatus
+  const fromPaymentStatus = order?.paymentStatus
   startingShippingOrderId.value = order.orderId
   try {
     const token = localStorage.getItem('token')
@@ -1173,6 +1398,16 @@ const startShipping = async (order) => {
     })
     markUiShippingStarted(order.orderId)
     clearUiDelivered(order.orderId)
+
+    appendOrderEditHistory({
+      order,
+      action: 'Bắt đầu giao hàng',
+      reason: 'Nhân viên xác nhận bàn giao đơn cho đơn vị vận chuyển',
+      fromOrderStatus,
+      fromPaymentStatus,
+      toOrderStatus: 'SHIPPING',
+      toPaymentStatus: order?.paymentStatus,
+    })
 
     snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã chuyển sang Đang vận chuyển`
     snackbarColor.value = 'success'
@@ -1193,9 +1428,20 @@ const completeDelivery = async (order) => {
   const confirmed = window.confirm(`Xác nhận đã giao hàng đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
+  const fromOrderStatus = order?.orderStatus
+  const fromPaymentStatus = order?.paymentStatus
   completingDeliveryOrderId.value = order.orderId
   try {
     markUiDelivered(order.orderId)
+    appendOrderEditHistory({
+      order,
+      action: 'Xác nhận đã giao hàng',
+      reason: 'Nhân viên xác nhận đơn đã giao thành công',
+      fromOrderStatus,
+      fromPaymentStatus,
+      toOrderStatus: order?.orderStatus,
+      toPaymentStatus: order?.paymentStatus,
+    })
     startTimelineReveal()
     snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã giao hàng (UI)`
     snackbarColor.value = 'success'
@@ -1216,6 +1462,8 @@ const completeOrder = async (order) => {
   const confirmed = window.confirm(`Xác nhận hoàn thành đơn ${getDisplayOrderCode(order)}?`)
   if (!confirmed) return
 
+  const fromOrderStatus = order?.orderStatus
+  const fromPaymentStatus = order?.paymentStatus
   completingOrderId.value = order.orderId
   try {
     const token = localStorage.getItem('token')
@@ -1225,6 +1473,19 @@ const completeOrder = async (order) => {
       orderStatus: 'PAID',
       paymentStatus: 'PAID',
     })
+
+    appendOrderEditHistory({
+      order,
+      action: 'Hoàn thành đơn hàng',
+      reason: 'Nhân viên chốt hoàn tất đơn hàng',
+      fromOrderStatus,
+      fromPaymentStatus,
+      toOrderStatus: 'PAID',
+      toPaymentStatus: 'PAID',
+    })
+
+    clearUiDelivered(order.orderId)
+    clearUiShippingStarted(order.orderId)
 
     snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã hoàn thành`
     snackbarColor.value = 'success'
@@ -1238,7 +1499,6 @@ const completeOrder = async (order) => {
     completingOrderId.value = null
   }
 }
-
 onMounted(loadOrders)
 
 onBeforeUnmount(() => {
@@ -1393,5 +1653,11 @@ onBeforeUnmount(() => {
 
 .detail-row:last-child {
   border-bottom: 0;
+}
+
+.order-edit-timeline {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 </style>

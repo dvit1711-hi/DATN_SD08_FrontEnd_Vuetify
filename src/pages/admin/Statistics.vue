@@ -15,6 +15,17 @@
             </v-btn>
         </div>
 
+        <!-- Tổng quan -->
+        <v-row class="mb-6" dense>
+            <v-col cols="12" sm="6" md="3" v-for="item in overviewCards" :key="item.title">
+                <v-card rounded="xl" elevation="0" class="dashboard-card summary-card">
+                    <div class="summary-label">{{ item.title }}</div>
+                    <div class="summary-value">{{ item.value }}</div>
+                    <div v-if="item.subtitle" class="summary-subtitle">{{ item.subtitle }}</div>
+                </v-card>
+            </v-col>
+        </v-row>
+
         <!-- Trend -->
         <v-card rounded="xl" elevation="0" class="dashboard-card trend-card mb-6">
             <div class="section-header">
@@ -33,12 +44,15 @@
                         <v-card-text>
                             <v-date-picker v-model="selectedRange" />
                             <v-row class="mt-3" justify="space-around">
-                                <v-btn variant="text" size="small" color="primary" @click="selectQuickRange('7d')">7
-                                    ngày</v-btn>
-                                <v-btn variant="text" size="small" color="primary" @click="selectQuickRange('30d')">30
-                                    ngày</v-btn>
-                                <v-btn variant="text" size="small" color="primary" @click="selectQuickRange('90d')">90
-                                    ngày</v-btn>
+                                <v-btn variant="text" size="small" color="primary" @click="selectQuickRange('7d')">
+                                    7 ngày
+                                </v-btn>
+                                <v-btn variant="text" size="small" color="primary" @click="selectQuickRange('30d')">
+                                    30 ngày
+                                </v-btn>
+                                <v-btn variant="text" size="small" color="primary" @click="selectQuickRange('90d')">
+                                    90 ngày
+                                </v-btn>
                             </v-row>
                         </v-card-text>
                         <v-card-actions>
@@ -53,17 +67,6 @@
                 <ApexCharts type="line" height="320" :options="trendOptions" :series="trendSeries" />
             </div>
         </v-card>
-
-        <!-- Tổng quan -->
-        <v-row class="mb-6" dense>
-            <v-col cols="12" sm="6" md="3" v-for="item in overviewCards" :key="item.title">
-                <v-card rounded="xl" elevation="0" class="dashboard-card summary-card">
-                    <div class="summary-label">{{ item.title }}</div>
-                    <div class="summary-value">{{ item.value }}</div>
-                    <div v-if="item.subtitle" class="summary-subtitle">{{ item.subtitle }}</div>
-                </v-card>
-            </v-col>
-        </v-row>
 
         <!-- Đơn hàng -->
         <v-card rounded="xl" elevation="0" class="dashboard-card mb-6">
@@ -222,8 +225,9 @@
                         <div class="detail-item">
                             <span class="detail-label">Chi nhiều nhất</span>
                             <strong>{{ stats.topCustomerBySpending?.username || 'N/A' }}</strong>
-                            <span class="detail-value">({{ formatCurrency(stats.topCustomerBySpending?.totalSpent || 0)
-                            }})</span>
+                            <span class="detail-value">
+                                ({{ formatCurrency(stats.topCustomerBySpending?.totalSpent || 0) }})
+                            </span>
                         </div>
                     </div>
                 </v-col>
