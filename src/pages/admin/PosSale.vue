@@ -354,11 +354,6 @@
                         <v-btn color="success" size="large" block :disabled="!canCheckout" @click="handleCheckout">
                             Xác nhận thanh toán
                         </v-btn>
-
-                        <v-btn class="mt-2" color="secondary" size="large" block variant="tonal"
-                            :disabled="!getCurrentOrderId(currentOrder)" @click="printReceipt()">
-                            In hóa đơn
-                        </v-btn>
                     </v-card-text>
                 </v-card>
             </v-col>
