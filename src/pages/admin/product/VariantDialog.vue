@@ -103,6 +103,16 @@
               hide-details
             />
           </v-col>
+
+          <v-col cols="12">
+            <v-switch
+              v-model="form.isRepresentative"
+              color="primary"
+              inset
+              label="Đặt làm biến thể đại diện"
+              hide-details
+            />
+          </v-col>
         </v-row>
 
         <div class="mt-5">
@@ -232,6 +242,7 @@ const defaultForm = () => ({
   price: 0,
   stockQuantity: 0,
   status: "ACTIVE",
+  isRepresentative: false,
 });
 
 const form = ref(defaultForm());
@@ -258,6 +269,7 @@ watch(
       price: val.price ?? 0,
       stockQuantity: val.stockQuantity ?? 0,
       status: val.status || "ACTIVE",
+      isRepresentative: Boolean(val.isRepresentative),
     };
 
     newFiles.value = [];
@@ -355,6 +367,7 @@ const selectedColor = computed(() => {
   background: #f1f1f1;
   font-size: 13px;
 }
+
 .color-option {
   display: inline-flex;
   align-items: center;

@@ -19,6 +19,7 @@
       :group="group"
       @edit="startEdit"
       @delete="deleteProductColor"
+      @set-representative="setRepresentativeVariant"
     />
 
     <VariantDialog
@@ -76,6 +77,7 @@ export default {
         price: 0,
         stockQuantity: 0,
         status: "ACTIVE",
+        isRepresentative: false,
         images: [],
       },
     };
@@ -102,19 +104,38 @@ export default {
 
         const group = groups.get(colorId);
         group.items.push(variant);
-
-        const mainImage = (variant.images || []).find((img) => img.isMain);
-        if (!group.mainImageUrl && mainImage?.imageUrl) {
-          group.mainImageUrl = mainImage.imageUrl;
-        }
-
-        if (!group.mainImageUrl && variant.images?.length) {
-          group.mainImageUrl = variant.images[0].imageUrl;
-        }
       }
 
-      return Array.from(groups.values()).sort((a, b) =>
-        a.colorName.localeCompare(b.colorName),
+      const groupList = Array.from(groups.values()).map((group) => {
+        const sortedItems = [...group.items].sort((a, b) => {
+          const aRepresentative = a?.isRepresentative ? 0 : 1;
+          const bRepresentative = b?.isRepresentative ? 0 : 1;
+          if (aRepresentative !== bRepresentative) return aRepresentative - bRepresentative;
+
+          const aActive = String(a?.status || "").toUpperCase() === "ACTIVE" ? 0 : 1;
+          const bActive = String(b?.status || "").toUpperCase() === "ACTIVE" ? 0 : 1;
+          if (aActive !== bActive) return aActive - bActive;
+
+          return Number(a?.productColorID || 0) - Number(b?.productColorID || 0);
+        });
+
+        group.items = sortedItems;
+
+        const representativeVariant =
+          sortedItems.find((item) => item.isRepresentative) || sortedItems[0];
+
+        const repMainImage = (representativeVariant?.images || []).find((img) => img.isMain);
+        if (repMainImage?.imageUrl) {
+          group.mainImageUrl = repMainImage.imageUrl;
+        } else if (representativeVariant?.images?.length) {
+          group.mainImageUrl = representativeVariant.images[0].imageUrl;
+        }
+
+        return group;
+      });
+
+      return groupList.sort((a, b) =>
+        String(a.colorName || "").localeCompare(String(b.colorName || ""), "vi")
       );
     },
   },
@@ -205,6 +226,7 @@ export default {
         price: 0,
         stockQuantity: 0,
         status: "ACTIVE",
+        isRepresentative: false,
         images: [],
       };
       this.dialogAddVariant = true;
@@ -233,12 +255,15 @@ export default {
           return;
         }
 
+        const payload = {
+          ...form,
+          isRepresentative: Boolean(form.isRepresentative),
+        };
+
         const res = await axios.post(
           `http://localhost:8080/api/product-color/${this.id}/color`,
-          form,
+          payload,
         );
-
-        console.log("create variant response:", res.data);
 
         const createdVariantId =
           res?.data?.data ||
@@ -246,17 +271,8 @@ export default {
           res?.data?.id ||
           res?.data?.productColorID;
 
-        console.log("createdVariantId:", createdVariantId);
-        console.log("files selected:", files);
-
         if (createdVariantId && files?.length) {
           for (const file of files) {
-            console.log(
-              "posting image for variant:",
-              createdVariantId,
-              file.name,
-            );
-
             await axios.post(
               `http://localhost:8080/api/image/color/${createdVariantId}/image`,
               {
@@ -314,9 +330,14 @@ export default {
           return;
         }
 
+        const payload = {
+          ...form,
+          isRepresentative: Boolean(form.isRepresentative),
+        };
+
         await axios.put(
           `http://localhost:8080/api/product-color/${this.editVariant.productColorID}`,
-          form,
+          payload,
         );
 
         if (files?.length) {
@@ -341,6 +362,43 @@ export default {
           this.getResponseMessage(
             err?.response?.data || err?.message,
             "Cập nhật thất bại",
+          ),
+          "error",
+        );
+      }
+    },
+
+    async setRepresentativeVariant(variant) {
+      try {
+        const payload = {
+          colorID: variant.colorID,
+          sizeID: variant.sizeID,
+          price: variant.price,
+          stockQuantity: variant.stockQuantity,
+          status: variant.status || "ACTIVE",
+          isRepresentative: true,
+        };
+
+        await axios.put(
+          `http://localhost:8080/api/product-color/${variant.productColorID}`,
+          payload,
+        );
+
+        this.showSnackbar("Đã cập nhật biến thể đại diện");
+        this.loadProductDetail();
+
+        if (this.editVariant?.productColorID === variant.productColorID) {
+          this.editVariant = {
+            ...this.editVariant,
+            isRepresentative: true,
+          };
+        }
+      } catch (err) {
+        console.error(err);
+        this.showSnackbar(
+          this.getResponseMessage(
+            err?.response?.data || err?.message,
+            "Đặt biến thể đại diện thất bại",
           ),
           "error",
         );

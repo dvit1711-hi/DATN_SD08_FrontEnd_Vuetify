@@ -29,6 +29,7 @@
       <v-table density="comfortable" class="variant-table">
         <thead>
           <tr>
+            <th>Đại diện</th>
             <th>Size</th>
             <th>Giá</th>
             <th>Tồn kho</th>
@@ -39,10 +40,36 @@
         </thead>
         <tbody>
           <tr
-            v-for="variant in group.items"
+            v-for="variant in sortedItems"
             :key="variant.productColorID"
-            :class="{ 'inactive-row': variant.status === 'INACTIVE' }"
+            :class="{
+              'inactive-row': variant.status === 'INACTIVE',
+              'representative-row': variant.isRepresentative,
+            }"
           >
+            <td>
+              <div class="representative-cell">
+                <v-chip
+                  v-if="variant.isRepresentative"
+                  size="small"
+                  color="primary"
+                  variant="flat"
+                >
+                  Đại diện
+                </v-chip>
+
+                <v-btn
+                  v-else
+                  size="x-small"
+                  color="primary"
+                  variant="tonal"
+                  @click="$emit('set-representative', variant)"
+                >
+                  Đặt đại diện
+                </v-btn>
+              </div>
+            </td>
+
             <td>{{ variant.sizeName || "—" }}</td>
             <td>{{ formatPrice(variant.price) }}đ</td>
             <td>{{ variant.stockQuantity ?? 0 }}</td>
@@ -58,14 +85,14 @@
             <td>
               <div class="thumb-list">
                 <img
-                  v-for="img in variant.images.slice(0, 5)"
+                  v-for="img in (variant.images || []).slice(0, 5)"
                   :key="img.imageID"
                   :src="img.imageUrl"
                   class="thumb-img"
                   :class="{ 'thumb-main': img.isMain }"
                 />
                 <span
-                  v-if="variant.images.length > 5"
+                  v-if="(variant.images || []).length > 5"
                   class="text-caption text-grey"
                 >
                   +{{ variant.images.length - 5 }}
@@ -100,6 +127,8 @@
 </template>
 
 <script setup>
+import { computed } from "vue";
+
 const props = defineProps({
   group: {
     type: Object,
@@ -107,11 +136,25 @@ const props = defineProps({
   },
 });
 
-defineEmits(["edit", "delete"]);
+defineEmits(["edit", "delete", "set-representative"]);
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("vi-VN").format(Number(price) || 0);
 };
+
+const sortedItems = computed(() => {
+  return [...(props.group?.items || [])].sort((a, b) => {
+    const aRepresentative = a?.isRepresentative ? 0 : 1;
+    const bRepresentative = b?.isRepresentative ? 0 : 1;
+    if (aRepresentative !== bRepresentative) return aRepresentative - bRepresentative;
+
+    const aStatus = String(a?.status || "").toUpperCase() === "ACTIVE" ? 0 : 1;
+    const bStatus = String(b?.status || "").toUpperCase() === "ACTIVE" ? 0 : 1;
+    if (aStatus !== bStatus) return aStatus - bStatus;
+
+    return String(a?.sizeName || "").localeCompare(String(b?.sizeName || ""), "vi");
+  });
+});
 </script>
 
 <style scoped>
@@ -176,5 +219,15 @@ const formatPrice = (price) => {
 .inactive-row {
   opacity: 0.7;
   background: #f8f8f8;
+}
+
+.representative-row {
+  background: #f3f8ff;
+}
+
+.representative-cell {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
 }
 </style>

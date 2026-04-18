@@ -8,31 +8,31 @@
     </div>
 
     <div class="list-toolbar mb-4">
-  <div class="product-count">
-    {{ filteredProducts.length }} sản phẩm
-  </div>
+      <div class="product-count">
+        {{ filteredProducts.length }} sản phẩm
+      </div>
 
-  <div class="toolbar-actions">
-    <ProductFilterPanel
-      v-model="activeFilters"
-      :result-count="filteredProducts.length"
-      @apply="onFilterChanged"
-      class="toolbar-filter-btn"
-    />
+      <div class="toolbar-actions">
+        <ProductFilterPanel
+          v-model="activeFilters"
+          :result-count="filteredProducts.length"
+          @apply="onFilterChanged"
+          class="toolbar-filter-btn"
+        />
 
-    <v-select
-      v-model="sortBy"
-      :items="sortOptions"
-      item-title="title"
-      item-value="value"
-      label="Sắp xếp"
-      variant="outlined"
-      density="comfortable"
-      hide-details
-      class="toolbar-sort-select"
-    />
-  </div>
-</div>
+        <v-select
+          v-model="sortBy"
+          :items="sortOptions"
+          item-title="title"
+          item-value="value"
+          label="Sắp xếp"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          class="toolbar-sort-select"
+        />
+      </div>
+    </div>
 
     <div
       v-if="selectedFilterChips.length > 0"
@@ -59,7 +59,7 @@
     <v-row>
       <v-col
         v-for="p in filteredProducts"
-        :key="p.productColorID"
+        :key="p.productID"
         cols="12"
         sm="6"
         md="6"
@@ -71,13 +71,13 @@
           class="w-100 d-flex flex-column product-card"
           :to="{
             path: `/products/${p.productID}`,
-            query: { variant: p.productColorID },
+            query: { variant: p.defaultVariantId },
           }"
           variant="elevated"
         >
           <div class="product-image-wrapper">
             <v-img
-              :src="p.mainImage"
+              :src="p.displayImage"
               :alt="p.productName"
               height="240"
               cover
@@ -118,9 +118,9 @@
               <div class="d-flex gap-2 flex-wrap">
                 <button
                   v-for="c in getDisplayColors(p)"
-                  :key="c.productColorID || c.colorName"
+                  :key="c.colorID || c.colorName"
                   class="color-btn"
-                  :style="{ background: c.colorCode }"
+                  :style="{ background: c.colorCode || '#ddd' }"
                   :title="c.colorName"
                 />
               </div>
@@ -129,7 +129,7 @@
             <div class="mb-4">
               <div v-if="getProductDiscount(p)" class="price-section">
                 <div class="original-price">
-                  {{ formatPrice(p.price) }}đ
+                  {{ formatPrice(p.displayPrice) }}đ
                 </div>
                 <div class="discounted-price">
                   {{ formatPrice(getDiscountedPrice(p)) }}đ
@@ -138,7 +138,7 @@
 
               <div v-else class="price-section">
                 <span class="text-h6 font-weight-bold text-primary">
-                  {{ formatPrice(p.price) }}đ
+                  {{ formatPrice(p.displayPrice) }}đ
                 </span>
               </div>
             </div>
@@ -153,7 +153,7 @@
               variant="flat"
               block
               :disabled="isOutOfStock(p)"
-              @click.stop.prevent="addToCart(p)"
+              @click.stop.prevent="openQuickAddDialog(p)"
             >
               <v-icon start>mdi-shopping-cart</v-icon>
               {{ isOutOfStock(p) ? "Hết hàng" : "Thêm giỏ" }}
@@ -187,32 +187,211 @@
     >
       {{ snackbarMessage }}
     </v-snackbar>
+
+    <v-dialog
+      v-model="quickAddDialog"
+      max-width="980"
+      :persistent="quickAddSubmitting"
+    >
+      <v-card class="quick-add-dialog-card">
+        <div v-if="quickAddLoading" class="quick-add-loading">
+          <v-progress-circular indeterminate size="42" width="4" />
+          <div class="mt-3">Đang tải thông tin sản phẩm...</div>
+        </div>
+
+        <template v-else-if="quickAddDetail">
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            class="quick-add-close-btn"
+            @click="closeQuickAddDialog"
+          />
+
+          <v-row class="ma-0">
+            <v-col cols="12" md="6" class="quick-add-left">
+              <div class="quick-add-main-image-wrap">
+                <v-img
+                  :src="quickAddPreviewImage || quickAddProduct?.displayImage"
+                  :alt="quickAddDetail.productName"
+                  height="420"
+                  contain
+                  class="quick-add-main-image"
+                />
+              </div>
+
+              <div
+                v-if="quickAddSelectedImages.length > 0"
+                class="quick-add-thumb-list"
+              >
+                <button
+                  v-for="(img, index) in quickAddSelectedImages"
+                  :key="`${img.imageUrl}-${index}`"
+                  class="quick-add-thumb-btn"
+                  :class="{ active: quickAddPreviewImage === img.imageUrl }"
+                  @click="quickAddPreviewImage = img.imageUrl"
+                >
+                  <img :src="img.imageUrl" :alt="quickAddDetail.productName" />
+                </button>
+              </div>
+            </v-col>
+
+            <v-col cols="12" md="6" class="quick-add-right">
+              <div class="quick-add-title">
+                {{ quickAddDetail.productName }}
+              </div>
+
+              <div class="quick-add-brand" v-if="quickAddDetail.brandName">
+                {{ quickAddDetail.brandName }}
+              </div>
+
+              <div class="quick-add-price-wrap">
+                <template v-if="quickAddSelectedDiscount">
+                  <div class="quick-add-original-price">
+                    {{ formatPrice(quickAddSelectedVariant?.price || 0) }}đ
+                  </div>
+                  <div class="quick-add-sale-price">
+                    {{ formatPrice(quickAddDiscountedPrice) }}đ
+                  </div>
+                </template>
+
+                <template v-else>
+                  <div class="quick-add-sale-price">
+                    {{ formatPrice(quickAddSelectedVariant?.price || quickAddProduct?.displayPrice || 0) }}đ
+                  </div>
+                </template>
+              </div>
+
+              <div class="quick-add-section">
+                <div class="quick-add-label">Màu sắc</div>
+                <div class="quick-add-color-list">
+                  <button
+                    v-for="color in quickAddColorOptions"
+                    :key="color.colorID"
+                    class="quick-add-color-btn"
+                    :class="{ active: Number(quickAddSelectedColorId) === Number(color.colorID) }"
+                    :title="color.colorName"
+                    @click="selectQuickAddColor(color.colorID)"
+                  >
+                    <span
+                      class="quick-add-color-dot"
+                      :style="{ backgroundColor: color.colorCode || '#ddd' }"
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div class="quick-add-section">
+                <div class="quick-add-label">Kích thước</div>
+                <div class="quick-add-size-list">
+                  <button
+                    v-for="size in quickAddSizeOptions"
+                    :key="size.sizeID"
+                    class="quick-add-size-btn"
+                    :class="{
+                      active: Number(quickAddSelectedSizeId) === Number(size.sizeID),
+                      disabled: size.disabled,
+                    }"
+                    :disabled="size.disabled"
+                    @click="selectQuickAddSize(size.sizeID)"
+                  >
+                    {{ size.sizeName }}
+                  </button>
+                </div>
+              </div>
+
+              <div
+                v-if="quickAddSelectedVariant"
+                class="quick-add-stock"
+                :class="{ out: quickAddMaxQuantity <= 0 }"
+              >
+                <template v-if="quickAddMaxQuantity > 0">
+                  Còn {{ quickAddMaxQuantity }} sản phẩm
+                </template>
+                <template v-else>
+                  Biến thể này đã hết hàng
+                </template>
+              </div>
+
+              <div class="quick-add-section">
+                <div class="quick-add-label">Số lượng</div>
+                <div class="quick-add-qty">
+                  <button
+                    class="quick-add-qty-btn"
+                    @click="decreaseQuickAddQty"
+                    :disabled="quickAddQuantity <= 1"
+                  >
+                    −
+                  </button>
+
+                  <input
+                    v-model.number="quickAddQuantity"
+                    type="number"
+                    min="1"
+                    :max="quickAddMaxQuantity || 1"
+                    class="quick-add-qty-input"
+                    @input="onQuickAddQtyInput"
+                  />
+
+                  <button
+                    class="quick-add-qty-btn"
+                    @click="increaseQuickAddQty"
+                    :disabled="!quickAddHasValidSelection || quickAddQuantity >= quickAddMaxQuantity"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div class="quick-add-actions">
+                <v-btn
+                  variant="outlined"
+                  size="large"
+                  class="quick-add-btn"
+                  @click="closeQuickAddDialog"
+                  :disabled="quickAddSubmitting"
+                >
+                  Đóng
+                </v-btn>
+
+                <v-btn
+                  color="black"
+                  size="large"
+                  class="quick-add-btn"
+                  :loading="quickAddSubmitting"
+                  :disabled="!quickAddHasValidSelection"
+                  @click="confirmQuickAddToCart"
+                >
+                  Thêm vào giỏ
+                </v-btn>
+              </div>
+            </v-col>
+          </v-row>
+        </template>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { useUserStore } from "@/stores/user";
-import ProductFilterPanel from "@/components/ProductFilterPanel.vue";
-import productApi from "@/api/productApi";
-import productColorApi from "@/api/productColorApi";
-import ReviewApi from "@/api/ReviewApi";
-import { getActiveProductDiscounts } from "@/api/productDiscountApi";
+import { computed, onMounted, ref, watch } from "vue"
+import { useRoute, useRouter } from "vue-router"
+import { useUserStore } from "@/stores/user"
+import ProductFilterPanel from "@/components/ProductFilterPanel.vue"
+import productApi from "@/api/productApi"
+import { getActiveProductDiscounts } from "@/api/productDiscountApi"
 
-const router = useRouter();
-const route = useRoute();
-const userStore = useUserStore();
+const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
 
-const products = ref([]);
-const discountMap = ref(new Map());
-const productRatingsMap = ref(new Map());
+const products = ref([])
+const discountMap = ref(new Map())
 
-const showSnackbar = ref(false);
-const snackbarMessage = ref("");
-const snackbarColor = ref("success");
+const showSnackbar = ref(false)
+const snackbarMessage = ref("")
+const snackbarColor = ref("success")
 
-const sortBy = ref("default");
+const sortBy = ref("default")
 
 const sortOptions = [
   { title: "Mặc định", value: "default" },
@@ -220,14 +399,14 @@ const sortOptions = [
   { title: "Tên: Z-A", value: "nameDesc" },
   { title: "Giá: Tăng dần", value: "priceAsc" },
   { title: "Giá: Giảm dần", value: "priceDesc" },
-];
+]
 
 const priceOptions = [
   { value: "under1m", label: "Dưới 1,000,000đ", min: 0, max: 1000000 },
   { value: "1m-2m", label: "1,000,000đ - 2,000,000đ", min: 1000000, max: 2000000 },
   { value: "2m-3m", label: "2,000,000đ - 3,000,000đ", min: 2000000, max: 3000000 },
   { value: "above3m", label: "Trên 3,000,000đ", min: 3000000, max: 10000000 },
-];
+]
 
 const activeFilters = ref({
   selectedBrands: [],
@@ -235,254 +414,356 @@ const activeFilters = ref({
   selectedMaterials: [],
   selectedSizes: [],
   selectedPriceKeys: [],
-});
+})
 
 const filterSources = ref({
   brands: [],
   colors: [],
   materials: [],
   sizes: [],
-});
+})
+
+const quickAddDialog = ref(false)
+const quickAddLoading = ref(false)
+const quickAddSubmitting = ref(false)
+const quickAddProduct = ref(null)
+const quickAddDetail = ref(null)
+const quickAddSelectedColorId = ref(null)
+const quickAddSelectedSizeId = ref(null)
+const quickAddQuantity = ref(1)
+const quickAddPreviewImage = ref("")
+
+const supportsSizeFilter = computed(() =>
+  products.value.some((p) => Array.isArray(p.sizes) && p.sizes.length > 0)
+)
 
 const filteredProducts = computed(() => {
   const filtered = products.value.filter((product) => {
-    const productPrice = Number(product.price) || 0;
+    const productPrice = Number(product.displayPrice) || 0
 
     if (
       activeFilters.value.selectedBrands.length > 0 &&
       !activeFilters.value.selectedBrands.includes(Number(product.brandID))
     ) {
-      return false;
+      return false
     }
 
-    if (
-      activeFilters.value.selectedColors.length > 0 &&
-      !activeFilters.value.selectedColors.includes(Number(product.colorID))
-    ) {
-      return false;
+    if (activeFilters.value.selectedColors.length > 0) {
+      const colorIds = (product.colors || []).map((c) => Number(c.colorID))
+      const hasMatchedColor = activeFilters.value.selectedColors.some((id) =>
+        colorIds.includes(Number(id))
+      )
+
+      if (!hasMatchedColor) {
+        return false
+      }
     }
 
     if (
       activeFilters.value.selectedMaterials.length > 0 &&
       !activeFilters.value.selectedMaterials.includes(Number(product.materialID))
     ) {
-      return false;
+      return false
     }
 
-    if (
-      activeFilters.value.selectedSizes.length > 0 &&
-      !activeFilters.value.selectedSizes.includes(Number(product.sizeID))
-    ) {
-      return false;
+    if (supportsSizeFilter.value && activeFilters.value.selectedSizes.length > 0) {
+      const sizeIds = (product.sizes || []).map((s) => Number(s.sizeID))
+      const hasMatchedSize = activeFilters.value.selectedSizes.some((id) =>
+        sizeIds.includes(Number(id))
+      )
+
+      if (!hasMatchedSize) {
+        return false
+      }
     }
 
     if (activeFilters.value.selectedPriceKeys.length > 0) {
       const matchedPrice = activeFilters.value.selectedPriceKeys.some((key) => {
-        const option = priceOptions.find((p) => p.value === key);
-        if (!option) return false;
-        return productPrice >= option.min && productPrice <= option.max;
-      });
+        const option = priceOptions.find((p) => p.value === key)
+        if (!option) return false
+        return productPrice >= option.min && productPrice <= option.max
+      })
 
       if (!matchedPrice) {
-        return false;
+        return false
       }
     }
 
-    return true;
-  });
+    return true
+  })
 
-  const sorted = [...filtered];
+  const sorted = [...filtered]
 
   switch (sortBy.value) {
-  case "nameAsc":
-    sorted.sort((a, b) =>
-      String(a.productName || "").localeCompare(String(b.productName || ""), "vi")
-    );
-    break;
+    case "nameAsc":
+      sorted.sort((a, b) =>
+        String(a.productName || "").localeCompare(String(b.productName || ""), "vi")
+      )
+      break
 
-  case "nameDesc":
-    sorted.sort((a, b) =>
-      String(b.productName || "").localeCompare(String(a.productName || ""), "vi")
-    );
-    break;
+    case "nameDesc":
+      sorted.sort((a, b) =>
+        String(b.productName || "").localeCompare(String(a.productName || ""), "vi")
+      )
+      break
 
-  case "priceAsc":
-    sorted.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
-    break;
+    case "priceAsc":
+      sorted.sort((a, b) => Number(a.displayPrice || 0) - Number(b.displayPrice || 0))
+      break
 
-  case "priceDesc":
-    sorted.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
-    break;
+    case "priceDesc":
+      sorted.sort((a, b) => Number(b.displayPrice || 0) - Number(a.displayPrice || 0))
+      break
 
-  default:
-    break;
-}
+    default:
+      break
+  }
 
-  return sorted;
-});
+  return sorted
+})
 
 const selectedFilterChips = computed(() => {
-  const chips = [];
+  const chips = []
 
   const pushMapped = (selected, source, type) => {
     selected.forEach((value) => {
-      const found = source.find((item) => Number(item.value) === Number(value));
+      const found = source.find((item) => Number(item.value) === Number(value))
       if (found) {
         chips.push({
           type,
           value,
           label: found.label,
           key: `${type}-${value}`,
-        });
+        })
       }
-    });
-  };
+    })
+  }
 
-  pushMapped(activeFilters.value.selectedBrands, filterSources.value.brands, "brand");
-  pushMapped(activeFilters.value.selectedColors, filterSources.value.colors, "color");
-  pushMapped(activeFilters.value.selectedMaterials, filterSources.value.materials, "material");
-  pushMapped(activeFilters.value.selectedSizes, filterSources.value.sizes, "size");
+  pushMapped(activeFilters.value.selectedBrands, filterSources.value.brands, "brand")
+  pushMapped(activeFilters.value.selectedColors, filterSources.value.colors, "color")
+  pushMapped(activeFilters.value.selectedMaterials, filterSources.value.materials, "material")
+  pushMapped(activeFilters.value.selectedSizes, filterSources.value.sizes, "size")
 
   activeFilters.value.selectedPriceKeys.forEach((value) => {
-    const found = priceOptions.find((item) => item.value === value);
+    const found = priceOptions.find((item) => item.value === value)
     if (found) {
       chips.push({
         type: "price",
         value,
         label: found.label,
         key: `price-${value}`,
-      });
+      })
     }
-  });
+  })
 
-  return chips;
-});
+  return chips
+})
+
+const quickAddActiveVariants = computed(() => {
+  return (quickAddDetail.value?.colors || []).filter(
+    (item) => String(item?.status || "").toUpperCase() === "ACTIVE"
+  )
+})
+
+const quickAddColorOptions = computed(() => {
+  return uniqueBy(
+    quickAddActiveVariants.value.map((item) => ({
+      colorID: Number(item.colorID),
+      colorName: item.colorName,
+      colorCode: item.colorCode,
+    })),
+    "colorID"
+  )
+})
+
+const quickAddSizeOptions = computed(() => {
+  const colorId = Number(quickAddSelectedColorId.value)
+  if (!Number.isFinite(colorId)) return []
+
+  return uniqueBy(
+    quickAddActiveVariants.value
+      .filter((item) => Number(item.colorID) === colorId)
+      .map((item) => ({
+        sizeID: Number(item.sizeID),
+        sizeName: item.sizeName,
+        stockQuantity: Number(item.stockQuantity) || 0,
+        disabled: (Number(item.stockQuantity) || 0) <= 0,
+      })),
+    "sizeID"
+  )
+})
+
+const quickAddSelectedVariant = computed(() => {
+  const colorId = Number(quickAddSelectedColorId.value)
+  const sizeId = Number(quickAddSelectedSizeId.value)
+
+  if (!Number.isFinite(colorId) || !Number.isFinite(sizeId)) {
+    return null
+  }
+
+  return (
+    quickAddActiveVariants.value.find(
+      (item) =>
+        Number(item.colorID) === colorId &&
+        Number(item.sizeID) === sizeId
+    ) || null
+  )
+})
+
+const quickAddSelectedImages = computed(() => {
+  const images = quickAddSelectedVariant.value?.images || []
+  if (images.length > 0) return images
+
+  if (quickAddProduct.value?.displayImage) {
+    return [
+      {
+        imageUrl: quickAddProduct.value.displayImage,
+        isMain: true,
+      },
+    ]
+  }
+
+  return []
+})
+
+const quickAddMaxQuantity = computed(() => {
+  return Math.max(0, Number(quickAddSelectedVariant.value?.stockQuantity) || 0)
+})
+
+const quickAddHasValidSelection = computed(() => {
+  return Boolean(quickAddSelectedVariant.value) && quickAddMaxQuantity.value > 0
+})
+
+const quickAddSelectedDiscount = computed(() => {
+  const variantId = Number(quickAddSelectedVariant.value?.productColorID)
+  if (!Number.isFinite(variantId)) return null
+  return discountMap.value.get(variantId) || null
+})
+
+const quickAddDiscountedPrice = computed(() => {
+  const price = Number(quickAddSelectedVariant.value?.price) || 0
+  const discount = quickAddSelectedDiscount.value
+
+  if (!discount) return price
+
+  if (discount.discountType === "percent") {
+    const discountPercent = Number(discount.discountValue) || 0
+    const discountAmount = price * (discountPercent / 100)
+    const maxDiscount = Number(discount.maxDiscountValue) || Infinity
+    return Math.max(0, price - Math.min(discountAmount, maxDiscount))
+  }
+
+  return Math.max(0, price - (Number(discount.discountValue) || 0))
+})
+
+watch(
+  quickAddSelectedVariant,
+  (variant) => {
+    const mainImage = getMainImage(variant?.images || [])
+    quickAddPreviewImage.value = mainImage || quickAddProduct.value?.displayImage || ""
+    clampQuickAddQuantity()
+  },
+  { immediate: false }
+)
 
 const loadProducts = async () => {
   try {
-    const keyword = route.query.search?.toString().trim() || "";
+    const keyword = route.query.search?.toString().trim() || ""
 
-    const [res, stockRes, discountRes] = await Promise.all([
+    const [res, discountRes] = await Promise.all([
       productApi.getAllCard(keyword),
-      productColorApi.getAll(),
       getActiveProductDiscounts().catch((error) => {
         if (error?.response?.status === 401) {
-          return { data: [] };
+          return { data: [] }
         }
-        throw error;
+        throw error
       }),
-    ]);
+    ])
 
-    const stockMap = new Map();
-    (stockRes.data || []).forEach((pc) => {
-      const productColorId = Number.parseInt(pc.productColorID ?? pc.id, 10);
+    discountMap.value = new Map()
+    ;(discountRes.data || []).forEach((discount) => {
+      const productColorId = Number.parseInt(discount.productColorId, 10)
       if (Number.isFinite(productColorId)) {
-        stockMap.set(
-          productColorId,
-          Number.parseInt(pc.stockQuantity, 10) || 0,
-        );
+        discountMap.value.set(productColorId, discount)
       }
-    });
-
-    discountMap.value = new Map();
-    (discountRes.data || []).forEach((discount) => {
-      const productColorId = Number.parseInt(discount.productColorId, 10);
-      if (Number.isFinite(productColorId)) {
-        discountMap.value.set(productColorId, discount);
-      }
-    });
+    })
 
     products.value = (res.data || []).map((p) => ({
       ...p,
       productID: Number(p.productID),
-      productColorID: Number(p.productColorID),
       brandID: Number(p.brandID),
-      colorID: Number(p.colorID),
       materialID: Number(p.materialID),
-      sizeID: Number(p.sizeID),
-      price: Number(p.price) || 0,
-      stockQuantity: stockMap.get(Number.parseInt(p.productColorID, 10)) ?? 0,
-    }));
+      defaultVariantId: Number(p.defaultVariantId),
+      displayPrice: Number(p.displayPrice) || 0,
+      totalStock: Number(p.totalStock) || 0,
+      inStock: Boolean(p.inStock),
+      colors: Array.isArray(p.colors)
+        ? p.colors.map((c) => ({
+            ...c,
+            colorID: Number(c.colorID),
+          }))
+        : [],
+      sizes: Array.isArray(p.sizes)
+        ? p.sizes.map((s) => ({
+            ...s,
+            sizeID: Number(s.sizeID),
+          }))
+        : [],
+    }))
 
     filterSources.value.brands = uniqueBy(
       products.value
         .filter((p) => p.brandID && p.brandName)
         .map((p) => ({ value: Number(p.brandID), label: p.brandName })),
       "value"
-    );
+    )
 
     filterSources.value.colors = uniqueBy(
-      products.value
-        .filter((p) => p.colorID && p.colorName)
-        .map((p) => ({
-          value: Number(p.colorID),
-          label: p.colorName,
-          colorCode: p.colorCode,
-        })),
+      products.value.flatMap((p) =>
+        (p.colors || []).map((c) => ({
+          value: Number(c.colorID),
+          label: c.colorName,
+          colorCode: c.colorCode,
+        }))
+      ),
       "value"
-    );
+    )
 
     filterSources.value.materials = uniqueBy(
       products.value
         .filter((p) => p.materialID && p.materialName)
         .map((p) => ({ value: Number(p.materialID), label: p.materialName })),
       "value"
-    );
+    )
 
     filterSources.value.sizes = uniqueBy(
-      products.value
-        .filter((p) => p.sizeID && p.sizeName)
-        .map((p) => ({ value: Number(p.sizeID), label: p.sizeName })),
+      products.value.flatMap((p) =>
+        (p.sizes || []).map((s) => ({
+          value: Number(s.sizeID),
+          label: s.sizeName,
+        }))
+      ),
       "value"
-    );
-
-    await loadProductRatings();
+    )
   } catch (error) {
-    console.error("Lỗi tải sản phẩm:", error);
-    products.value = [];
+    console.error("Lỗi tải sản phẩm:", error)
+    products.value = []
   }
-};
+}
 
 const uniqueBy = (arr, key) => {
-  const map = new Map();
+  const map = new Map()
   arr.forEach((item) => {
     if (!map.has(item[key])) {
-      map.set(item[key], item);
+      map.set(item[key], item)
     }
-  });
-  return Array.from(map.values());
-};
-
-const loadProductRatings = async () => {
-  try {
-    const reviewsRes = await ReviewApi.getAllReviews();
-    const reviews = reviewsRes.data || [];
-
-    const productRatings = new Map();
-
-    reviews.forEach((review) => {
-      const productId = review.productID?.id || review.productID;
-      if (!productRatings.has(productId)) {
-        productRatings.set(productId, { total: 0, count: 0 });
-      }
-
-      const current = productRatings.get(productId);
-      current.total += review.rating;
-      current.count += 1;
-    });
-
-    productRatings.forEach((value, key) => {
-      const avgRating = value.count > 0 ? value.total / value.count : 0;
-      productRatingsMap.value.set(key, Math.round(avgRating));
-    });
-  } catch (error) {
-    console.error("Lỗi tải đánh giá sản phẩm:", error);
-  }
-};
+  })
+  return Array.from(map.values())
+}
 
 const onFilterChanged = (filters) => {
-  activeFilters.value = { ...filters };
-};
+  activeFilters.value = { ...filters }
+}
 
 const resetAllFilters = () => {
   activeFilters.value = {
@@ -491,185 +772,314 @@ const resetAllFilters = () => {
     selectedMaterials: [],
     selectedSizes: [],
     selectedPriceKeys: [],
-  };
-};
+  }
+}
 
 const removeFilterChip = (chip) => {
   if (chip.type === "brand") {
     activeFilters.value.selectedBrands = activeFilters.value.selectedBrands.filter(
       (v) => Number(v) !== Number(chip.value)
-    );
+    )
   }
 
   if (chip.type === "color") {
     activeFilters.value.selectedColors = activeFilters.value.selectedColors.filter(
       (v) => Number(v) !== Number(chip.value)
-    );
+    )
   }
 
   if (chip.type === "material") {
     activeFilters.value.selectedMaterials = activeFilters.value.selectedMaterials.filter(
       (v) => Number(v) !== Number(chip.value)
-    );
+    )
   }
 
   if (chip.type === "size") {
     activeFilters.value.selectedSizes = activeFilters.value.selectedSizes.filter(
       (v) => Number(v) !== Number(chip.value)
-    );
+    )
   }
 
   if (chip.type === "price") {
     activeFilters.value.selectedPriceKeys = activeFilters.value.selectedPriceKeys.filter(
       (v) => v !== chip.value
-    );
+    )
   }
-};
+}
 
 onMounted(async () => {
-  await loadProducts();
-});
+  await loadProducts()
+})
 
 watch(
   () => route.query.search,
   async () => {
-    await loadProducts();
+    await loadProducts()
   }
-);
+)
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat("vi-VN").format(price);
-};
+  return new Intl.NumberFormat("vi-VN").format(price)
+}
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
-  }).format(value);
-};
+  }).format(value)
+}
 
 const getProductDiscount = (product) => {
-  if (!product) return null;
-  const productColorId = Number.parseInt(product.productColorID, 10);
-  if (!Number.isFinite(productColorId)) return null;
-  return discountMap.value.get(productColorId) || null;
-};
+  if (!product) return null
+  const productColorId = Number.parseInt(product.defaultVariantId, 10)
+  if (!Number.isFinite(productColorId)) return null
+  return discountMap.value.get(productColorId) || null
+}
 
 const getDiscountedPrice = (product) => {
-  const discount = getProductDiscount(product);
-  if (!discount) return product.price;
+  const discount = getProductDiscount(product)
+  if (!discount) return product.displayPrice
 
-  const price = Number.parseFloat(product.price) || 0;
+  const price = Number.parseFloat(product.displayPrice) || 0
 
   if (discount.discountType === "percent") {
-    const discountPercent = Number.parseFloat(discount.discountValue) || 0;
-    const discountAmount = price * (discountPercent / 100);
-    const maxDiscount =
-      Number.parseFloat(discount.maxDiscountValue) || Infinity;
-    const actualDiscount = Math.min(discountAmount, maxDiscount);
-    return Math.max(0, price - actualDiscount);
+    const discountPercent = Number.parseFloat(discount.discountValue) || 0
+    const discountAmount = price * (discountPercent / 100)
+    const maxDiscount = Number.parseFloat(discount.maxDiscountValue) || Infinity
+    const actualDiscount = Math.min(discountAmount, maxDiscount)
+    return Math.max(0, price - actualDiscount)
   }
 
-  const discountAmount = Number.parseFloat(discount.discountValue) || 0;
-  return Math.max(0, price - discountAmount);
-};
+  const discountAmount = Number.parseFloat(discount.discountValue) || 0
+  return Math.max(0, price - discountAmount)
+}
 
 const isOutOfStock = (product) => {
-  return (Number.parseInt(product?.stockQuantity, 10) || 0) <= 0;
-};
+  return !Boolean(product?.inStock)
+}
 
 function getDisplayColors(product) {
-  if (Array.isArray(product?.colors) && product.colors.length > 0) {
-    return product.colors;
-  }
-
-  if (product?.colorCode || product?.colorName) {
-    return [
-      {
-        productColorID: product.productColorID,
-        colorCode: product.colorCode,
-        colorName: product.colorName,
-      },
-    ];
-  }
-
-  return [];
+  return Array.isArray(product?.colors) ? product.colors : []
 }
 
-async function resolveProductColorId(product) {
-  const directProductColorId = Number.parseInt(product?.productColorID, 10);
-  if (Number.isFinite(directProductColorId) && directProductColorId > 0) {
-    return directProductColorId;
-  }
-
-  if (Array.isArray(product?.colors) && product.colors.length > 0) {
-    const colorId = Number.parseInt(product.colors[0]?.productColorID, 10);
-    if (Number.isFinite(colorId) && colorId > 0) {
-      return colorId;
-    }
-  }
-
-  const productId = Number.parseInt(product?.productID, 10);
-  if (!Number.isFinite(productId) || productId <= 0) {
-    return null;
-  }
-
-  const detailRes = await productApi.getDetail(productId);
-  const fallbackColorId = Number.parseInt(
-    detailRes?.data?.colors?.[0]?.productColorID,
-    10,
-  );
-
-  return Number.isFinite(fallbackColorId) && fallbackColorId > 0
-    ? fallbackColorId
-    : null;
+function showMessage(message, color = "success") {
+  snackbarMessage.value = message
+  snackbarColor.value = color
+  showSnackbar.value = true
 }
 
-async function addToCart(product) {
+function normalizeDetail(detail) {
+  return {
+    ...detail,
+    colors: Array.isArray(detail?.colors)
+      ? detail.colors.map((item) => ({
+          ...item,
+          productColorID: Number(item.productColorID),
+          colorID: Number(item.colorID),
+          sizeID: Number(item.sizeID),
+          price: Number(item.price) || 0,
+          stockQuantity: Number(item.stockQuantity) || 0,
+          images: Array.isArray(item.images)
+            ? item.images.map((img) => ({
+                ...img,
+                isMain: Boolean(img.isMain),
+              }))
+            : [],
+        }))
+      : [],
+  }
+}
+
+function getMainImage(images = []) {
+  return (
+    images.find((img) => Boolean(img?.isMain))?.imageUrl ||
+    images[0]?.imageUrl ||
+    ""
+  )
+}
+
+function pickDefaultVariant(variants, preferredVariantId = null) {
+  const activeVariants = (variants || []).filter(
+    (item) => String(item?.status || "").toUpperCase() === "ACTIVE"
+  )
+
+  if (Number.isFinite(Number(preferredVariantId))) {
+    const preferred = activeVariants.find(
+      (item) => Number(item.productColorID) === Number(preferredVariantId)
+    )
+    if (preferred) return preferred
+  }
+
+  return [...activeVariants].sort((a, b) => {
+    const aStock = (Number(a.stockQuantity) || 0) > 0 ? 0 : 1
+    const bStock = (Number(b.stockQuantity) || 0) > 0 ? 0 : 1
+    if (aStock !== bStock) return aStock - bStock
+
+    const aMain = getMainImage(a.images || []) ? 0 : 1
+    const bMain = getMainImage(b.images || []) ? 0 : 1
+    if (aMain !== bMain) return aMain - bMain
+
+    return Number(a.productColorID || 0) - Number(b.productColorID || 0)
+  })[0] || null
+}
+
+function clampQuickAddQuantity() {
+  const max = quickAddMaxQuantity.value
+  if (max <= 0) {
+    quickAddQuantity.value = 1
+    return
+  }
+
+  if (quickAddQuantity.value < 1) {
+    quickAddQuantity.value = 1
+  }
+
+  if (quickAddQuantity.value > max) {
+    quickAddQuantity.value = max
+  }
+}
+
+function selectQuickAddColor(colorId) {
+  quickAddSelectedColorId.value = Number(colorId)
+
+  const candidate = [...quickAddActiveVariants.value]
+    .filter((item) => Number(item.colorID) === Number(colorId))
+    .sort((a, b) => {
+      const aStock = (Number(a.stockQuantity) || 0) > 0 ? 0 : 1
+      const bStock = (Number(b.stockQuantity) || 0) > 0 ? 0 : 1
+      if (aStock !== bStock) return aStock - bStock
+      return Number(a.productColorID || 0) - Number(b.productColorID || 0)
+    })[0]
+
+  quickAddSelectedSizeId.value = candidate ? Number(candidate.sizeID) : null
+}
+
+function selectQuickAddSize(sizeId) {
+  quickAddSelectedSizeId.value = Number(sizeId)
+}
+
+function decreaseQuickAddQty() {
+  if (quickAddQuantity.value > 1) {
+    quickAddQuantity.value -= 1
+  }
+}
+
+function increaseQuickAddQty() {
+  if (quickAddQuantity.value < quickAddMaxQuantity.value) {
+    quickAddQuantity.value += 1
+  }
+}
+
+function onQuickAddQtyInput() {
+  quickAddQuantity.value = Number(quickAddQuantity.value) || 1
+  clampQuickAddQuantity()
+}
+
+function resetQuickAddState() {
+  quickAddLoading.value = false
+  quickAddSubmitting.value = false
+  quickAddProduct.value = null
+  quickAddDetail.value = null
+  quickAddSelectedColorId.value = null
+  quickAddSelectedSizeId.value = null
+  quickAddQuantity.value = 1
+  quickAddPreviewImage.value = ""
+}
+
+function closeQuickAddDialog() {
+  quickAddDialog.value = false
+  resetQuickAddState()
+}
+
+async function openQuickAddDialog(product) {
   if (isOutOfStock(product)) {
-    snackbarMessage.value = "Sản phẩm đã hết hàng";
-    snackbarColor.value = "warning";
-    showSnackbar.value = true;
-    return;
+    showMessage("Sản phẩm đã hết hàng", "warning")
+    return
   }
 
   if (!userStore.isLoggedIn) {
-    snackbarMessage.value = "Vui lòng đăng nhập để thêm vào giỏ hàng";
-    snackbarColor.value = "warning";
-    showSnackbar.value = true;
-
+    showMessage("Vui lòng đăng nhập để thêm vào giỏ hàng", "warning")
     setTimeout(() => {
-      router.push("/login");
-    }, 1500);
-    return;
+      router.push("/login")
+    }, 1500)
+    return
   }
 
-  const productColorId = await resolveProductColorId(product);
-
-  if (!productColorId) {
-    snackbarMessage.value = "Không tìm thấy màu sản phẩm để thêm vào giỏ";
-    snackbarColor.value = "error";
-    showSnackbar.value = true;
-    return;
-  }
+  quickAddDialog.value = true
+  quickAddLoading.value = true
+  quickAddProduct.value = product
+  quickAddDetail.value = null
+  quickAddSelectedColorId.value = null
+  quickAddSelectedSizeId.value = null
+  quickAddQuantity.value = 1
+  quickAddPreviewImage.value = product?.displayImage || ""
 
   try {
-    await userStore.addToCartAPI(productColorId, 1);
-    window.dispatchEvent(new Event("cart-changed"));
+    const res = await productApi.getDetail(product.productID)
+    const detail = normalizeDetail(res.data)
 
-    snackbarMessage.value = `Đã thêm "${product.productName}" vào giỏ hàng`;
-    snackbarColor.value = "success";
-    showSnackbar.value = true;
+    quickAddDetail.value = detail
+
+    const defaultVariant = pickDefaultVariant(
+      detail.colors || [],
+      product.defaultVariantId
+    )
+
+    if (!defaultVariant) {
+      showMessage("Sản phẩm hiện chưa có biến thể khả dụng", "warning")
+      closeQuickAddDialog()
+      return
+    }
+
+    quickAddSelectedColorId.value = Number(defaultVariant.colorID)
+    quickAddSelectedSizeId.value = Number(defaultVariant.sizeID)
+    quickAddPreviewImage.value =
+      getMainImage(defaultVariant.images || []) || product.displayImage || ""
+
+    clampQuickAddQuantity()
   } catch (error) {
-    console.error("Lỗi thêm vào giỏ:", error);
-    snackbarMessage.value =
-      error?.response?.data?.message ||
-      "Không thể thêm vào giỏ hàng. Vui lòng thử lại";
-    snackbarColor.value = "error";
-    showSnackbar.value = true;
+    console.error("Lỗi tải chi tiết sản phẩm:", error)
+    showMessage("Không tải được thông tin biến thể sản phẩm", "error")
+    closeQuickAddDialog()
+  } finally {
+    quickAddLoading.value = false
+  }
+}
+
+async function confirmQuickAddToCart() {
+  if (!quickAddSelectedVariant.value) {
+    showMessage("Vui lòng chọn màu và kích thước", "warning")
+    return
+  }
+
+  if (quickAddMaxQuantity.value <= 0) {
+    showMessage("Biến thể này đã hết hàng", "warning")
+    return
+  }
+
+  quickAddSubmitting.value = true
+
+  try {
+    await userStore.addToCartAPI(
+      Number(quickAddSelectedVariant.value.productColorID),
+      Number(quickAddQuantity.value) || 1
+    )
+
+    window.dispatchEvent(new Event("cart-changed"))
+    showMessage(`Đã thêm "${quickAddDetail.value.productName}" vào giỏ hàng`, "success")
+    closeQuickAddDialog()
+  } catch (error) {
+    console.error("Lỗi thêm vào giỏ:", error)
+    showMessage(
+      error?.response?.data?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại",
+      "error"
+    )
+  } finally {
+    quickAddSubmitting.value = false
   }
 }
 </script>
 
 <style scoped src="@/assets/css/product-list.css"></style>
+
