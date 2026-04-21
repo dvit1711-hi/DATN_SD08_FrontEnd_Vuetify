@@ -160,8 +160,7 @@
                                 :color="getCurrentOrderId(order) === getCurrentOrderId(currentOrder) ? 'primary' : ''"
                                 :variant="getCurrentOrderId(order) === getCurrentOrderId(currentOrder)
                                     ? 'flat'
-                                    : 'outlined'
-                                    " @click="switchOrder(order)">
+                                    : 'outlined'" @click="switchOrder(order)">
                                 #{{ getCurrentOrderId(order) }} - {{ order.customerName || "Khách lẻ" }}
                                 <v-icon end size="18" @click.stop="closePendingOrder(order)">
                                     mdi-close-circle
@@ -308,8 +307,7 @@
                                         :disabled="!getCurrentOrderId(currentOrder)">
                                         <template #append>
                                             <v-btn color="primary" variant="tonal" :disabled="!getCurrentOrderId(currentOrder) ||
-                                                !String(couponCode || '').trim()
-                                                " @click="handleApplyCoupon">
+                                                !String(couponCode || '').trim()" @click="handleApplyCoupon">
                                                 Áp dụng mã
                                             </v-btn>
                                         </template>
@@ -361,7 +359,7 @@
 
         <v-dialog v-model="bankingDialog" max-width="520">
             <v-card rounded="lg">
-                <v-card-title>Thanh toán chuyển khoản MB Bank</v-card-title>
+                <v-card-title>Thanh toán chuyển khoản</v-card-title>
 
                 <v-card-text v-if="bankingInfo">
                     <div class="text-center mb-4">
@@ -412,6 +410,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, onBeforeUnmount } from "vue"
+import JsBarcode from "jsbarcode"
 import posApi from "@/api/posApi"
 import paymentApi from "@/api/paymentApi"
 
@@ -653,10 +652,6 @@ function getItemColorName(item) {
 
 function getItemSizeName(item) {
     return item.sizeName || "-"
-}
-
-function getTrackingCode(order) {
-    return order?.trackingCode || order?.tracking_code || "-"
 }
 
 function buildPromotionComboItem(promo) {
@@ -1231,15 +1226,11 @@ async function confirmBankingPayment() {
 
         confirmingBankingPayment.value = true
 
-        // Chỉ confirm trạng thái thanh toán
         await paymentApi.confirmPayment(orderId)
 
-        // Luôn lấy lại full dữ liệu đơn hàng để in hóa đơn
         const { data: fullOrder } = await posApi.getOrder(orderId)
-
         currentOrder.value = fullOrder
 
-        // In hóa đơn với dữ liệu đầy đủ
         printReceipt(fullOrder)
 
         bankingDialog.value = false
@@ -1265,202 +1256,520 @@ function isPendingOrder(order) {
         .toUpperCase() === "PENDING"
 }
 
-function printReceipt(order = currentOrder.value) {
-    const orderId = getCurrentOrderId(order)
-    if (!order || !orderId) return
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+}
+
+function formatDateTime(value) {
+    if (!value) return "-"
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+
+    const pad = (n) => String(n).padStart(2, "0")
+    return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+function getEmployeeName(order) {
+    return (
+        order?.employeeName ||
+        order?.staffName ||
+        order?.createdByName ||
+        order?.employee?.fullName ||
+        order?.employee?.name ||
+        "Nhân viên cửa hàng"
+    )
+}
+
+function getOrderCode(order) {
+    const rawId = getCurrentOrderId(order)
+
+    if (order?.trackingCode) return order.trackingCode
+    if (order?.tracking_code) return order.tracking_code
+    if (order?.orderCode) return order.orderCode
+    if (order?.code) return order.code
+
+    return `HD${String(rawId || 0).padStart(6, "0")}`
+}
+
+function getOrderCreatedAt(order) {
+    return (
+        order?.orderDate ||
+        order?.createdAt ||
+        order?.createdDate ||
+        order?.paymentTime ||
+        new Date().toISOString()
+    )
+}
+
+function getReceiptStoreInfo() {
+    return {
+        phone: "0123456789",
+        email: "fshoesweb@gmail.com",
+        address: "Địa chỉ cửa hàng của bạn",
+        logoUrl: "/images/logo1.jpg",
+    }
+}
+
+function buildReceiptHtml(order, options = {}) {
+    const store = getReceiptStoreInfo()
 
     const items =
-        (Array.isArray(order.items) && order.items) ||
-        (Array.isArray(order.orderDetails) && order.orderDetails) ||
-        (Array.isArray(order.details) && order.details) ||
+        (Array.isArray(order?.items) && order.items) ||
+        (Array.isArray(order?.orderDetails) && order.orderDetails) ||
+        (Array.isArray(order?.details) && order.details) ||
         []
 
-    const trackingCode = getTrackingCode(order) || bankingInfo.value?.transferContent || "-"
-    const paymentMethod = String(order.paymentMethod || checkoutForm.value.method || "").toUpperCase()
-    const isCash = paymentMethod === "CASH"
-    const isBanking = paymentMethod === "BANKING"
+    const orderId = getCurrentOrderId(order)
+    const orderCode = getOrderCode(order)
+    const orderDate = formatDateTime(getOrderCreatedAt(order))
+    const employeeName = getEmployeeName(order)
 
-    const htmlItems = items.length
-        ? items
-            .map((item, index) => {
-                return `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${getItemProductName(item)}</td>
-          <td>${getItemColorName(item)}</td>
-          <td>${getItemSizeName(item)}</td>
-          <td>${getItemQuantity(item)}</td>
-          <td>${formatCurrency(getItemPrice(item))}</td>
-          <td>${formatCurrency(getItemLineTotal(item))}</td>
-        </tr>
-      `
-            })
-            .join("")
-        : `
-        <tr>
-          <td colspan="7" style="text-align:center;">Không có dữ liệu sản phẩm</td>
-        </tr>
-      `
+    const paymentMethod = String(order?.paymentMethod || checkoutForm.value.method || "").toUpperCase()
+    const paymentStatus = String(order?.paymentStatus || "").toUpperCase()
 
     const orderSubtotal = Number(
-        order.subtotal ??
-        order.subTotal ??
-        order.totalBeforeDiscount ??
+        order?.subtotal ??
+        order?.subTotal ??
+        order?.totalBeforeDiscount ??
         0
     )
 
     const orderDiscount = Number(
-        order.discountAmount ??
-        order.discount ??
+        order?.discountAmount ??
+        order?.discount ??
+        0
+    )
+
+    const shippingFee = Number(
+        order?.shippingFee ??
+        order?.deliveryFee ??
         0
     )
 
     const orderTotal = Number(
-        order.totalAmount ??
-        order.total ??
+        order?.totalAmount ??
+        order?.total ??
         0
     )
 
-    const bankName = bankingInfo.value?.bankName || "MB Bank"
-    const accountNumber = bankingInfo.value?.accountNumber || ""
-    const accountName = bankingInfo.value?.accountName || ""
-    const transferContent = bankingInfo.value?.transferContent || trackingCode
+    const cashReceived = Number(options.cashReceived ?? 0)
+    const cashChange = Number(options.cashChange ?? 0)
+
+    const transferContent = bankingInfo.value?.transferContent || orderCode
     const transferAmount = Number(bankingInfo.value?.amount || orderTotal)
 
-    const html = `
-    <html>
-      <head>
-        <title>Hoa don ban hang</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            padding: 24px;
-            color: #222;
-          }
-          h2 {
-            margin: 0 0 12px 0;
-            text-align: center;
-          }
-          p {
-            margin: 6px 0;
-            font-size: 14px;
-          }
-          .header-box {
-            margin-bottom: 16px;
-            padding-bottom: 10px;
-            border-bottom: 1px dashed #999;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px;
-          }
-          table, th, td {
-            border: 1px solid #333;
-          }
-          th, td {
-            padding: 8px;
-            text-align: left;
-            font-size: 14px;
-          }
-          .summary {
-            margin-top: 16px;
-            width: 360px;
-            margin-left: auto;
-          }
-          .summary div {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            margin: 6px 0;
-          }
-          .total {
-            font-size: 18px;
-            font-weight: bold;
-          }
-          .section-title {
-            margin-top: 14px;
-            margin-bottom: 8px;
-            font-size: 15px;
-            font-weight: bold;
-          }
-          .footer {
-            margin-top: 24px;
-            text-align: center;
-            font-size: 13px;
-          }
-        </style>
-      </head>
-      <body>
-        <h2>HÓA ĐƠN BÁN HÀNG</h2>
-
-        <div class="header-box">
-          <p><strong>Mã vận đơn:</strong> ${trackingCode}</p>
-          <p><strong>Khách hàng:</strong> ${order.customerName || "Khách lẻ"}</p>
-          <p><strong>Số điện thoại:</strong> ${order.customerPhone || ""}</p>
-          <p><strong>Ghi chú:</strong> ${order.note || ""}</p>
-          <p><strong>Trạng thái đơn:</strong> ${order.status || ""}</p>
-          <p><strong>Phương thức thanh toán:</strong> ${getPaymentMethodLabel(paymentMethod)}</p>
-          <p><strong>Trạng thái thanh toán:</strong> ${getPaymentStatusLabel(order.paymentStatus)}</p>
-        </div>
-
-        <table>
-          <thead>
+    const itemRows = items.length
+        ? items.map((item, index) => `
             <tr>
-              <th>STT</th>
-              <th>Sản phẩm</th>
-              <th>Màu</th>
-              <th>Size</th>
-              <th>SL</th>
-              <th>Đơn giá</th>
-              <th>Thành tiền</th>
+                <td class="center">${index + 1}</td>
+                <td>
+                    <div class="product-name">${escapeHtml(getItemProductName(item))}</div>
+                    <div class="product-sub">
+                        ${escapeHtml(getItemColorName(item))} / ${escapeHtml(getItemSizeName(item))}
+                    </div>
+                </td>
+                <td class="center">${getItemQuantity(item)}</td>
+                <td class="right">${formatCurrency(getItemPrice(item))}</td>
+                <td class="right">${formatCurrency(getItemLineTotal(item))}</td>
+                <td class="center">${escapeHtml(order?.status || "")}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${htmlItems}
-          </tbody>
-        </table>
+        `).join("")
+        : `
+            <tr>
+                <td colspan="6" class="center empty-row">Không có sản phẩm</td>
+            </tr>
+        `
 
-        <div class="summary">
-          <div><span>Tạm tính:</span><strong>${formatCurrency(orderSubtotal)}</strong></div>
-          <div><span>Giảm giá:</span><strong>${formatCurrency(orderDiscount)}</strong></div>
-          <div class="total"><span>Tổng tiền:</span><strong>${formatCurrency(orderTotal)}</strong></div>
+    const headerLogoBlock = store.logoUrl
+        ? `<img src="${store.logoUrl}" alt="logo" class="header-logo" />`
+        : `<div class="header-logo-empty"></div>`
 
-          ${isCash
-            ? `
-                  <div class="section-title">THÔNG TIN THANH TOÁN TIỀN MẶT</div>
-                  <div><span>Tiền khách đưa:</span><strong>${formatCurrency(checkoutForm.value.cashReceived || 0)}</strong></div>
-                  <div><span>Tiền thừa:</span><strong>${formatCurrency(changeAmount.value)}</strong></div>
-                `
-            : ""
-        }
+    const watermarkBlock = store.logoUrl
+        ? `<img src="${store.logoUrl}" alt="logo" class="watermark-logo" />`
+        : ""
 
-          ${isBanking
-            ? `
-                  <div class="section-title">THÔNG TIN THANH TOÁN CHUYỂN KHOẢN</div>
-                  <div><span>Ngân hàng:</span><strong>${bankName}</strong></div>
-                  <div><span>Số tài khoản:</span><strong>${accountNumber}</strong></div>
-                  <div><span>Chủ tài khoản:</span><strong>${accountName}</strong></div>
-                  <div><span>Số tiền chuyển:</span><strong>${formatCurrency(transferAmount)}</strong></div>
-                  <div><span>Nội dung CK:</span><strong>${transferContent}</strong></div>
-                `
-            : ""
-        }
+    const barcodeBlock = `
+        <div class="barcode-box">
+            <svg id="barcode-order"></svg>
+            <div class="barcode-label">Mã hóa đơn: ${escapeHtml(orderCode)}</div>
         </div>
+    `
 
-        <div class="footer">
-          <p>Cảm ơn quý khách đã mua hàng!</p>
-        </div>
-      </body>
+    const cashBlock = paymentMethod === "CASH"
+        ? `
+            <div class="summary-row">
+                <span>Tiền khách đưa:</span>
+                <strong>${formatCurrency(cashReceived)}</strong>
+            </div>
+            <div class="summary-row">
+                <span>Tiền thừa:</span>
+                <strong>${formatCurrency(cashChange)}</strong>
+            </div>
+        `
+        : ""
+
+    const bankingBlock = paymentMethod === "BANKING"
+        ? `
+            <div class="banking-box">
+                <div><strong>Ngân hàng:</strong> ${escapeHtml(bankingInfo.value?.bankName || "MB Bank")}</div>
+                <div><strong>Số tài khoản:</strong> ${escapeHtml(bankingInfo.value?.accountNumber || "")}</div>
+                <div><strong>Chủ tài khoản:</strong> ${escapeHtml(bankingInfo.value?.accountName || "")}</div>
+                <div><strong>Nội dung CK:</strong> ${escapeHtml(transferContent)}</div>
+                <div><strong>Số tiền CK:</strong> ${formatCurrency(transferAmount)}</div>
+            </div>
+        `
+        : ""
+
+    return `
+    <html>
+        <head>
+            <title>Hóa đơn bán hàng #${orderId}</title>
+            <style>
+                @page {
+                    size: A5 portrait;
+                    margin: 10mm;
+                }
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                body {
+                    margin: 0;
+                    font-family: Arial, Helvetica, sans-serif;
+                    background: #fff;
+                    color: #111;
+                    font-size: 13px;
+                }
+
+                .receipt {
+                    position: relative;
+                    width: 100%;
+                    min-height: 100vh;
+                    padding: 8px 8px 0;
+                }
+
+                .content {
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .top-header {
+                    display: grid;
+                    grid-template-columns: 150px 1fr 220px;
+                    gap: 12px;
+                    align-items: center;
+                    margin-bottom: 8px;
+                }
+
+                .logo-box {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .header-logo {
+                    width: 140px;
+                    max-height: 80px;
+                    object-fit: contain;
+                }
+
+                .header-logo-empty {
+                    width: 140px;
+                    height: 80px;
+                }
+
+                .shop-info {
+                    text-align: center;
+                }
+
+                .shop-name {
+                    font-size: 28px;
+                    font-weight: 700;
+                    margin-bottom: 6px;
+                }
+
+                .shop-line {
+                    margin: 2px 0;
+                    font-size: 13px;
+                }
+
+                .barcode-box {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .barcode-label {
+                    margin-top: 6px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    text-align: center;
+                }
+
+                .title {
+                    text-align: center;
+                    font-size: 30px;
+                    font-weight: 800;
+                    margin: 14px 0 12px;
+                    text-transform: uppercase;
+                }
+
+                .meta {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 16px;
+                    margin-bottom: 10px;
+                }
+
+                .meta-col {
+                    width: 48%;
+                    line-height: 1.55;
+                }
+
+                .section-title {
+                    text-align: center;
+                    font-size: 15px;
+                    font-weight: 700;
+                    margin: 10px 0 6px;
+                    text-transform: uppercase;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 4px;
+                    background: transparent;
+                }
+
+                th, td {
+                    border: 1px solid #111;
+                    padding: 6px 7px;
+                    vertical-align: top;
+                    font-size: 12.5px;
+                }
+
+                th {
+                    text-align: center;
+                    font-weight: 700;
+                }
+
+                .center {
+                    text-align: center;
+                }
+
+                .right {
+                    text-align: right;
+                    white-space: nowrap;
+                }
+
+                .product-name {
+                    font-weight: 700;
+                    line-height: 1.35;
+                }
+
+                .product-sub {
+                    margin-top: 2px;
+                    color: #444;
+                    font-size: 11px;
+                }
+
+                .empty-row {
+                    padding: 14px 0;
+                }
+
+                .bottom-area {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 20px;
+                    margin-top: 12px;
+                }
+
+                .left-note {
+                    flex: 1;
+                    min-height: 120px;
+                }
+
+                .summary {
+                    width: 270px;
+                    margin-left: auto;
+                }
+
+                .summary-row {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 12px;
+                    margin: 4px 0;
+                    font-size: 14px;
+                }
+
+                .summary-row.total {
+                    font-size: 18px;
+                    font-weight: 800;
+                    margin-top: 8px;
+                }
+
+                .banking-box {
+                    margin-top: 10px;
+                    padding-top: 8px;
+                    border-top: 1px dashed #444;
+                    line-height: 1.55;
+                    font-size: 12.5px;
+                }
+
+                .watermark-logo {
+                    position: absolute;
+                    left: 50%;
+                    top: 57%;
+                    transform: translate(-50%, -50%);
+                    width: 320px;
+                    opacity: 0.06;
+                    z-index: 0;
+                    pointer-events: none;
+                }
+
+                .footer {
+                    text-align: center;
+                    margin-top: 16px;
+                    font-size: 12px;
+                    color: #333;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="receipt">
+                ${watermarkBlock}
+                <div class="content">
+                    <div class="top-header">
+                        <div class="logo-box">
+                            ${headerLogoBlock}
+                        </div>
+
+                        <div class="shop-info">
+                            <div class="shop-name">${escapeHtml(store.name)}</div>
+                            <div class="shop-line"><strong>Số điện thoại:</strong> ${escapeHtml(store.phone)}</div>
+                            <div class="shop-line"><strong>Email:</strong> ${escapeHtml(store.email)}</div>
+                            <div class="shop-line">${escapeHtml(store.address)}</div>
+                        </div>
+
+                        ${barcodeBlock}
+                    </div>
+
+                    <div class="title">HÓA ĐƠN BÁN HÀNG</div>
+
+                    <div class="meta">
+                        <div class="meta-col">
+                            <div><strong>Khách hàng:</strong> ${escapeHtml(order?.customerName || "Khách lẻ")}</div>
+                            <div><strong>Địa chỉ nhận hàng:</strong> ${escapeHtml(order?.shippingAddress || "Tại cửa hàng")}</div>
+                            <div><strong>Nhân viên:</strong> ${escapeHtml(employeeName)}</div>
+                        </div>
+
+                        <div class="meta-col" style="text-align:right;">
+                            <div><strong>Mã hóa đơn:</strong> ${escapeHtml(orderCode)}</div>
+                            <div><strong>Ngày tạo:</strong> ${escapeHtml(orderDate)}</div>
+                            <div><strong>Trạng thái:</strong> ${escapeHtml(order?.status || (paymentStatus === "PAID" ? "Hoàn thành" : ""))}</div>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Danh sách sản phẩm</div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">STT</th>
+                                <th>Tên sản phẩm</th>
+                                <th style="width: 70px;">Số lượng</th>
+                                <th style="width: 110px;">Đơn giá</th>
+                                <th style="width: 120px;">Thành tiền</th>
+                                <th style="width: 90px;">Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemRows}
+                        </tbody>
+                    </table>
+
+                    <div class="bottom-area">
+                        <div class="left-note"></div>
+
+                        <div class="summary">
+                            <div class="summary-row">
+                                <span>Tổng tiền hàng:</span>
+                                <strong>${formatCurrency(orderSubtotal)}</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Giảm giá:</span>
+                                <strong>${formatCurrency(orderDiscount)}</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Phí giao hàng:</span>
+                                <strong>${formatCurrency(shippingFee)}</strong>
+                            </div>
+                            <div class="summary-row total">
+                                <span>Tổng tiền cần thanh toán:</span>
+                                <strong>${formatCurrency(orderTotal)}</strong>
+                            </div>
+
+                            ${cashBlock}
+                            ${bankingBlock}
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        Cảm ơn quý khách đã mua hàng
+                    </div>
+                </div>
+            </div>
+        </body>
     </html>
-  `
+    `
+}
 
-    const printWindow = window.open("", "_blank")
+function printReceipt(order = currentOrder.value) {
+    const orderId = getCurrentOrderId(order)
+    if (!order || !orderId) return
+
+    const html = buildReceiptHtml(order, {
+        cashReceived: checkoutForm.value.method === "CASH"
+            ? Number(checkoutForm.value.cashReceived || 0)
+            : 0,
+        cashChange: checkoutForm.value.method === "CASH"
+            ? Number(changeAmount.value || 0)
+            : 0,
+    })
+
+    const printWindow = window.open("", "_blank", "width=900,height=1200")
     if (!printWindow) return
+
+    printWindow.document.open()
     printWindow.document.write(html)
     printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
+
+    printWindow.onload = () => {
+        const barcodeEl = printWindow.document.getElementById("barcode-order")
+
+        if (barcodeEl) {
+            JsBarcode(barcodeEl, getOrderCode(order), {
+                format: "CODE128",
+                width: 1.5,
+                height: 42,
+                displayValue: false,
+                margin: 0,
+            })
+        }
+
+        setTimeout(() => {
+            printWindow.focus()
+            printWindow.print()
+        }, 200)
+    }
 }
 
 watch(customerMode, async (mode) => {
