@@ -69,7 +69,7 @@
                 hide-details
               />
             </v-col>
-
+            
             <v-col cols="12" md="6">
               <v-select
                 v-model="form.status"
@@ -123,8 +123,21 @@
             {{ item.materialName || "—" }}
           </template>
           <template #item.variantCount="{ item }">
-              {{ item.variantCount ?? 0 }}
+            {{ item.variantCount ?? 0 }}
           </template>
+                      <template #item.totalStock="{ item }">
+              {{ item.totalStock ?? 0 }}
+            </template>
+
+            <template #item.inStock="{ item }">
+              <v-chip
+                size="small"
+                :color="item.inStock ? 'success' : 'error'"
+                variant="flat"
+              >
+                {{ item.inStock ? "Còn hàng" : "Hết hàng" }}
+              </v-chip>
+            </template>
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
               <v-btn
@@ -195,6 +208,8 @@ const headers = [
   { title: "Thương hiệu", key: "name" },
   { title: "Chất liệu", key: "materialName" },
   { title: "Số biến thể", key: "variantCount", width: "120px" },
+  { title: "Tổng tồn kho", key: "totalStock", width: "120px" },
+  { title: "Kho", key: "inStock", width: "120px" },
   { title: "Trạng thái", key: "status", width: "120px" },
   { title: "Thao tác", key: "actions", width: "150px", sortable: false },
 ];

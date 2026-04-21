@@ -12,7 +12,10 @@
                                 <p>
                                     Bộ sưu tập mũ phong cách trẻ trung, hiện đại và cá tính.
                                 </p>
-                                <v-btn color="white" class="banner-btn" rounded="xl">
+                                <v-btn :to="{
+                                    path: '/products',
+                                     query: { category: 'mũ lưỡi trai' }
+                                }" color="white" class="banner-btn" rounded="xl">
                                     Mua ngay
                                 </v-btn>
                             </div>
