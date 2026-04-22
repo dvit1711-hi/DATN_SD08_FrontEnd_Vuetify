@@ -1,4 +1,5 @@
 <template>
+  <div class="productList-container">
   <v-container class="py-8" fluid>
     <div class="mb-8">
       <h1 class="text-h4 font-weight-bold mb-2">Danh sách sản phẩm</h1>
@@ -34,10 +35,7 @@
       </div>
     </div>
 
-    <div
-      v-if="selectedFilterChips.length > 0"
-      class="active-filter-bar mb-4"
-    >
+    <div v-if="selectedFilterChips.length > 0" class="active-filter-bar mb-4">
       <button class="clear-all-chip" @click="resetAllFilters">
         Xóa lọc
       </button>
@@ -67,99 +65,13 @@
         xl="3"
         class="d-flex"
       >
-        <v-card
-          class="w-100 d-flex flex-column product-card"
-          :to="{
-            path: `/products/${p.productID}`,
-            query: { variant: p.defaultVariantId },
-          }"
-          variant="elevated"
-        >
-          <div class="product-image-wrapper">
-            <v-img
-              :src="p.displayImage"
-              :alt="p.productName"
-              height="240"
-              cover
-              class="product-image"
-            />
-
-            <div v-if="getProductDiscount(p)" class="discount-badge">
-              <span v-if="getProductDiscount(p).discountType === 'percent'">
-                -{{ getProductDiscount(p).discountValue }}%
-              </span>
-              <span v-else>
-                Giảm {{ formatCurrency(getProductDiscount(p).discountValue) }}
-              </span>
-            </div>
-          </div>
-
-          <v-card-text class="pa-4 flex-grow-1 d-flex flex-column">
-            <h3 class="text-subtitle-1 font-weight-bold mb-1 line-clamp-2">
-              {{ p.productName }}
-            </h3>
-
-            <div class="text-body-2 text-grey mb-2">
-              {{ p.brandName || "—" }}
-            </div>
-
-            <v-chip
-              v-if="isOutOfStock(p)"
-              size="x-small"
-              color="error"
-              variant="flat"
-              class="mb-2 out-of-stock-chip"
-            >
-              Hết hàng
-            </v-chip>
-
-            <div class="mb-3 flex-grow-1">
-              <div class="text-caption text-grey mb-2">Màu sắc:</div>
-              <div class="d-flex gap-2 flex-wrap">
-                <button
-                  v-for="c in getDisplayColors(p)"
-                  :key="c.colorID || c.colorName"
-                  class="color-btn"
-                  :style="{ background: c.colorCode || '#ddd' }"
-                  :title="c.colorName"
-                />
-              </div>
-            </div>
-
-            <div class="mb-4">
-              <div v-if="getProductDiscount(p)" class="price-section">
-                <div class="original-price">
-                  {{ formatPrice(p.displayPrice) }}đ
-                </div>
-                <div class="discounted-price">
-                  {{ formatPrice(getDiscountedPrice(p)) }}đ
-                </div>
-              </div>
-
-              <div v-else class="price-section">
-                <span class="text-h6 font-weight-bold text-primary">
-                  {{ formatPrice(p.displayPrice) }}đ
-                </span>
-              </div>
-            </div>
-          </v-card-text>
-
-          <v-divider />
-
-          <v-card-actions class="pa-3">
-            <v-btn
-              color="primary"
-              size="small"
-              variant="flat"
-              block
-              :disabled="isOutOfStock(p)"
-              @click.stop.prevent="openQuickAddDialog(p)"
-            >
-              <v-icon start>mdi-shopping-cart</v-icon>
-              {{ isOutOfStock(p) ? "Hết hàng" : "Thêm giỏ" }}
-            </v-btn>
-          </v-card-actions>
-        </v-card>
+        <ProductStorefrontCard
+          class="w-100"
+          :product="p"
+          :discount="getProductDiscount(p)"
+          :discounted-price="getDiscountedPrice(p)"
+          @quick-add="openQuickAddDialog"
+        />
       </v-col>
     </v-row>
 
@@ -188,188 +100,35 @@
       {{ snackbarMessage }}
     </v-snackbar>
 
-    <v-dialog
-      v-model="quickAddDialog"
-      max-width="980"
-      :persistent="quickAddSubmitting"
-    >
-      <v-card class="quick-add-dialog-card">
-        <div v-if="quickAddLoading" class="quick-add-loading">
-          <v-progress-circular indeterminate size="42" width="4" />
-          <div class="mt-3">Đang tải thông tin sản phẩm...</div>
-        </div>
-
-        <template v-else-if="quickAddDetail">
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            class="quick-add-close-btn"
-            @click="closeQuickAddDialog"
-          />
-
-          <v-row class="ma-0">
-            <v-col cols="12" md="6" class="quick-add-left">
-              <div class="quick-add-main-image-wrap">
-                <v-img
-                  :src="quickAddPreviewImage || quickAddProduct?.displayImage"
-                  :alt="quickAddDetail.productName"
-                  height="420"
-                  contain
-                  class="quick-add-main-image"
-                />
-              </div>
-
-              <div
-                v-if="quickAddSelectedImages.length > 0"
-                class="quick-add-thumb-list"
-              >
-                <button
-                  v-for="(img, index) in quickAddSelectedImages"
-                  :key="`${img.imageUrl}-${index}`"
-                  class="quick-add-thumb-btn"
-                  :class="{ active: quickAddPreviewImage === img.imageUrl }"
-                  @click="quickAddPreviewImage = img.imageUrl"
-                >
-                  <img :src="img.imageUrl" :alt="quickAddDetail.productName" />
-                </button>
-              </div>
-            </v-col>
-
-            <v-col cols="12" md="6" class="quick-add-right">
-              <div class="quick-add-title">
-                {{ quickAddDetail.productName }}
-              </div>
-
-              <div class="quick-add-brand" v-if="quickAddDetail.brandName">
-                {{ quickAddDetail.brandName }}
-              </div>
-
-              <div class="quick-add-price-wrap">
-                <template v-if="quickAddSelectedDiscount">
-                  <div class="quick-add-original-price">
-                    {{ formatPrice(quickAddSelectedVariant?.price || 0) }}đ
-                  </div>
-                  <div class="quick-add-sale-price">
-                    {{ formatPrice(quickAddDiscountedPrice) }}đ
-                  </div>
-                </template>
-
-                <template v-else>
-                  <div class="quick-add-sale-price">
-                    {{ formatPrice(quickAddSelectedVariant?.price || quickAddProduct?.displayPrice || 0) }}đ
-                  </div>
-                </template>
-              </div>
-
-              <div class="quick-add-section">
-                <div class="quick-add-label">Màu sắc</div>
-                <div class="quick-add-color-list">
-                  <button
-                    v-for="color in quickAddColorOptions"
-                    :key="color.colorID"
-                    class="quick-add-color-btn"
-                    :class="{ active: Number(quickAddSelectedColorId) === Number(color.colorID) }"
-                    :title="color.colorName"
-                    @click="selectQuickAddColor(color.colorID)"
-                  >
-                    <span
-                      class="quick-add-color-dot"
-                      :style="{ backgroundColor: color.colorCode || '#ddd' }"
-                    />
-                  </button>
-                </div>
-              </div>
-
-              <div class="quick-add-section">
-                <div class="quick-add-label">Kích thước</div>
-                <div class="quick-add-size-list">
-                  <button
-                    v-for="size in quickAddSizeOptions"
-                    :key="size.sizeID"
-                    class="quick-add-size-btn"
-                    :class="{
-                      active: Number(quickAddSelectedSizeId) === Number(size.sizeID),
-                      disabled: size.disabled,
-                    }"
-                    :disabled="size.disabled"
-                    @click="selectQuickAddSize(size.sizeID)"
-                  >
-                    {{ size.sizeName }}
-                  </button>
-                </div>
-              </div>
-
-              <div
-                v-if="quickAddSelectedVariant"
-                class="quick-add-stock"
-                :class="{ out: quickAddMaxQuantity <= 0 }"
-              >
-                <template v-if="quickAddMaxQuantity > 0">
-                  Còn {{ quickAddMaxQuantity }} sản phẩm
-                </template>
-                <template v-else>
-                  Biến thể này đã hết hàng
-                </template>
-              </div>
-
-              <div class="quick-add-section">
-                <div class="quick-add-label">Số lượng</div>
-                <div class="quick-add-qty">
-                  <button
-                    class="quick-add-qty-btn"
-                    @click="decreaseQuickAddQty"
-                    :disabled="quickAddQuantity <= 1"
-                  >
-                    −
-                  </button>
-
-                  <input
-                    v-model.number="quickAddQuantity"
-                    type="number"
-                    min="1"
-                    :max="quickAddMaxQuantity || 1"
-                    class="quick-add-qty-input"
-                    @input="onQuickAddQtyInput"
-                  />
-
-                  <button
-                    class="quick-add-qty-btn"
-                    @click="increaseQuickAddQty"
-                    :disabled="!quickAddHasValidSelection || quickAddQuantity >= quickAddMaxQuantity"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div class="quick-add-actions">
-                <v-btn
-                  variant="outlined"
-                  size="large"
-                  class="quick-add-btn"
-                  @click="closeQuickAddDialog"
-                  :disabled="quickAddSubmitting"
-                >
-                  Đóng
-                </v-btn>
-
-                <v-btn
-                  color="black"
-                  size="large"
-                  class="quick-add-btn"
-                  :loading="quickAddSubmitting"
-                  :disabled="!quickAddHasValidSelection"
-                  @click="confirmQuickAddToCart"
-                >
-                  Thêm vào giỏ
-                </v-btn>
-              </div>
-            </v-col>
-          </v-row>
-        </template>
-      </v-card>
-    </v-dialog>
+    <ProductQuickAddDialog
+      :model-value="quickAddDialog"
+      :loading="quickAddLoading"
+      :submitting="quickAddSubmitting"
+      :product="quickAddProduct"
+      :detail="quickAddDetail"
+      :preview-image="quickAddPreviewImage"
+      :selected-images="quickAddSelectedImages"
+      :selected-discount="quickAddSelectedDiscount"
+      :selected-variant="quickAddSelectedVariant"
+      :discounted-price="quickAddDiscountedPrice"
+      :color-options="quickAddColorOptions"
+      :selected-color-id="quickAddSelectedColorId"
+      :size-options="quickAddSizeOptions"
+      :selected-size-id="quickAddSelectedSizeId"
+      :max-quantity="quickAddMaxQuantity"
+      :has-valid-selection="quickAddHasValidSelection"
+      :quantity="quickAddQuantity"
+      @close="closeQuickAddDialog"
+      @update-preview-image="quickAddPreviewImage = $event"
+      @select-color="selectQuickAddColor"
+      @select-size="selectQuickAddSize"
+      @decrease-qty="decreaseQuickAddQty"
+      @increase-qty="increaseQuickAddQty"
+      @qty-input="onQuickAddQtyInput"
+      @confirm="confirmQuickAddToCart"
+    />
   </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -377,6 +136,8 @@ import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useUserStore } from "@/stores/user"
 import ProductFilterPanel from "@/components/ProductFilterPanel.vue"
+import ProductStorefrontCard from "@/components/product/ProductStorefrontCard.vue"
+import ProductQuickAddDialog from "@/components/product/ProductQuickAddDialog.vue"
 import productApi from "@/api/productApi"
 import { getActiveProductDiscounts } from "@/api/productDiscountApi"
 
@@ -500,21 +261,17 @@ const filteredProducts = computed(() => {
         String(a.productName || "").localeCompare(String(b.productName || ""), "vi")
       )
       break
-
     case "nameDesc":
       sorted.sort((a, b) =>
         String(b.productName || "").localeCompare(String(a.productName || ""), "vi")
       )
       break
-
     case "priceAsc":
       sorted.sort((a, b) => Number(a.displayPrice || 0) - Number(b.displayPrice || 0))
       break
-
     case "priceDesc":
       sorted.sort((a, b) => Number(b.displayPrice || 0) - Number(a.displayPrice || 0))
       break
-
     default:
       break
   }
@@ -656,15 +413,11 @@ const quickAddDiscountedPrice = computed(() => {
   return Math.max(0, price - (Number(discount.discountValue) || 0))
 })
 
-watch(
-  quickAddSelectedVariant,
-  (variant) => {
-    const mainImage = getMainImage(variant?.images || [])
-    quickAddPreviewImage.value = mainImage || quickAddProduct.value?.displayImage || ""
-    clampQuickAddQuantity()
-  },
-  { immediate: false }
-)
+watch(quickAddSelectedVariant, (variant) => {
+  const mainImage = getMainImage(variant?.images || [])
+  quickAddPreviewImage.value = mainImage || quickAddProduct.value?.displayImage || ""
+  clampQuickAddQuantity()
+})
 
 const loadProducts = async () => {
   try {
@@ -697,6 +450,7 @@ const loadProducts = async () => {
       displayPrice: Number(p.displayPrice) || 0,
       totalStock: Number(p.totalStock) || 0,
       inStock: Boolean(p.inStock),
+      hoverImage: p.hoverImage || p.displayImage || "",
       colors: Array.isArray(p.colors)
         ? p.colors.map((c) => ({
             ...c,
@@ -818,10 +572,6 @@ watch(
   }
 )
 
-const formatPrice = (price) => {
-  return new Intl.NumberFormat("vi-VN").format(price)
-}
-
 const formatCurrency = (value) => {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -839,7 +589,7 @@ const getProductDiscount = (product) => {
 
 const getDiscountedPrice = (product) => {
   const discount = getProductDiscount(product)
-  if (!discount) return product.displayPrice
+  if (!discount) return Number(product.displayPrice) || 0
 
   const price = Number.parseFloat(product.displayPrice) || 0
 
@@ -857,10 +607,6 @@ const getDiscountedPrice = (product) => {
 
 const isOutOfStock = (product) => {
   return !Boolean(product?.inStock)
-}
-
-function getDisplayColors(product) {
-  return Array.isArray(product?.colors) ? product.colors : []
 }
 
 function showMessage(message, color = "success") {
@@ -971,8 +717,8 @@ function increaseQuickAddQty() {
   }
 }
 
-function onQuickAddQtyInput() {
-  quickAddQuantity.value = Number(quickAddQuantity.value) || 1
+function onQuickAddQtyInput(value) {
+  quickAddQuantity.value = Number(value) || 1
   clampQuickAddQuantity()
 }
 
@@ -1082,4 +828,3 @@ async function confirmQuickAddToCart() {
 </script>
 
 <style scoped src="@/assets/css/product-list.css"></style>
-
