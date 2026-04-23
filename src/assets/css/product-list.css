@@ -86,3 +86,32 @@
 .no-result-text {
   color: #999;
 }
+.pagination-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.pagination-summary {
+  font-size: 18px;
+  font-weight: 700;
+  color: #222;
+}
+
+.pagination-wrap :deep(.v-pagination) {
+  gap: 8px;
+}
+
+.pagination-wrap :deep(.v-btn) {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+.pagination-wrap :deep(.v-pagination__item--is-active .v-btn) {
+  background: #111 !important;
+  color: #fff !important;
+}
