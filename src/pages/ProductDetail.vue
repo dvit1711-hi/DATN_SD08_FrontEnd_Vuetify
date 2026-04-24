@@ -6,106 +6,92 @@
   >
     <v-row>
       <!-- CỘT TRÁI: ẢNH -->
-      <v-col cols="7">
-        <v-row>
-          <!-- Thumbnail bên trái -->
-          <v-col cols="2">
-            <div class="d-flex flex-column ga-2">
-              <v-img
-                v-for="img in images"
-                :key="img.imageID || img.imageUrl"
+      <v-col cols="12" lg="7">
+        <div class="product-gallery">
+          <!-- thumbnails -->
+          <div class="product-gallery__thumbs" v-if="images.length > 0">
+            <button
+              v-for="img in images"
+              :key="img.imageID || img.imageUrl"
+              type="button"
+              class="gallery-thumb-btn"
+              :class="{ active: mainImage === img.imageUrl }"
+              @click="mainImage = img.imageUrl"
+            >
+              <img
                 :src="img.imageUrl"
-                height="96"
-                width="96"
-                class="thumb-img rounded cursor-pointer"
-                :class="{ 'thumb-active': mainImage === img.imageUrl }"
-                @click="mainImage = img.imageUrl"
+                :alt="product.productName"
+                class="gallery-thumb-img"
               />
-            </div>
-          </v-col>
+            </button>
+          </div>
 
-          <!-- Ảnh chính -->
-          <v-col cols="10">
-            <div class="main-image-wrap">
-              <v-icon
-                v-if="images.length > 1"
-                class="image-nav-icon image-nav-icon--left"
-                @click="showPrevImage"
-              >
-                mdi-chevron-left
-              </v-icon>
+          <!-- main image -->
+          <div class="product-gallery__main">
+            <v-icon
+              v-if="images.length > 1"
+              class="gallery-nav-icon gallery-nav-icon--left"
+              size="34"
+              @click="showPrevImage"
+            >
+              mdi-chevron-left
+            </v-icon>
 
-              <v-img
-                :src="mainImage"
-                height="560"
-                class="rounded main-product-image"
-                contain
-              />
+            <v-img :src="mainImage" class="gallery-main-image" contain />
 
-              <v-icon
-                v-if="images.length > 1"
-                class="image-nav-icon image-nav-icon--right"
-                @click="showNextImage"
-              >
-                mdi-chevron-right
-              </v-icon>
-            </div>
-          </v-col>
-          <!-- TAB CHI TIẾT -->
-          <ProductDetailTabs
-            :product="product"
-            :selected-variant="selectedVariant"
-          />
-        </v-row>
+            <v-icon
+              v-if="images.length > 1"
+              class="gallery-nav-icon gallery-nav-icon--right"
+              size="34"
+              @click="showNextImage"
+            >
+              mdi-chevron-right
+            </v-icon>
+          </div>
+        </div>
+
+        <ProductDetailTabs
+          :product="product"
+          :selected-variant="selectedVariant"
+        />
       </v-col>
-
       <!-- CỘT PHẢI: THÔNG TIN MUA HÀNG -->
-      <v-col cols="5">
-        <div>
-          <h1 class="text-h4 font-weight-bold mb-2">
+      <v-col cols="12" lg="5">
+        <div class="product-info-panel">
+          <h1 class="product-detail-title">
             {{ product.productName }}
           </h1>
 
-          <p class="text-body-2 text-grey mb-2">
+          <div class="product-style-code">
             Mã sản phẩm: #{{ product.productID }}
-          </p>
+          </div>
 
-          <div class="price mb-4">
-            <div
-              v-if="getVariantDiscount(selectedVariant)"
-              class="price-section"
-            >
+          <div class="product-detail-price mb-6">
+            <template v-if="getVariantDiscount(selectedVariant)">
               <div class="original-price">
                 {{ formatPrice(selectedVariant?.price || 0) }}đ
               </div>
               <div class="discounted-price">
                 {{ formatPrice(getDiscountedVariantPrice(selectedVariant)) }}đ
               </div>
-            </div>
+            </template>
 
-            <div v-else class="text-h5 font-weight-bold text-primary">
-              {{ formatPrice(selectedVariant?.price || 0) }}đ
-            </div>
+            <template v-else>
+              <div class="current-price">
+                {{ formatPrice(selectedVariant?.price || 0) }}đ
+              </div>
+            </template>
           </div>
 
-          <v-alert
-            v-if="isSelectedVariantOutOfStock"
-            type="warning"
-            variant="tonal"
-            density="comfortable"
-            icon="mdi-alert-circle"
-            class="mb-4"
-            text="Sản phẩm đã chọn hiện đang hết hàng"
-          />
+          <!-- màu -->
+          <div class="detail-section">
+            <div class="detail-label">Chọn màu</div>
 
-          <!-- Chọn màu -->
-          <div class="mb-4">
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">Chọn màu</h3>
-
-            <div class="d-flex gap-3 flex-wrap">
+            <div class="detail-color-list">
               <button
                 v-for="color in uniqueColors"
                 :key="color.colorID"
+                type="button"
                 class="color-dot-btn"
                 :class="{ active: selectedColorId === color.colorID }"
                 :title="color.colorName"
@@ -113,30 +99,33 @@
               >
                 <span
                   class="color-dot"
-                  :style="{ backgroundColor: color.colorCode }"
+                  :style="{ backgroundColor: color.colorCode || '#ddd' }"
                 ></span>
               </button>
             </div>
           </div>
 
-          <!-- Chọn size -->
-          <div class="mb-4" v-if="availableSizes.length > 0">
-            <div class="d-flex align-center gap-2 mb-2">
-              <h3 class="text-subtitle-1 font-weight-bold">Chọn kích thước</h3>
-
-              <v-btn
-                icon="mdi-information"
-                size="x-small"
-                variant="text"
+          <!-- size -->
+          <div class="detail-section" v-if="availableSizes.length > 0">
+            <div class="size-section-head">
+              <div class="detail-label">Chọn kích thước</div>
+              <button
+                type="button"
+                class="size-guide-link"
                 @click="openSizeDialog"
-                title="Hướng dẫn chọn size"
-              />
+              >
+                <v-icon size="17" class="size-guide-link__icon"
+                  >mdi-ruler</v-icon
+                >
+                <span>Hướng dẫn chọn kích thước</span>
+              </button>
             </div>
 
-            <div class="d-flex gap-2 flex-wrap">
+            <div class="detail-size-list">
               <button
                 v-for="variant in availableSizes"
                 :key="variant.productColorID"
+                type="button"
                 class="size-btn"
                 :class="{
                   active:
@@ -148,37 +137,27 @@
               </button>
             </div>
           </div>
-          <!-- Tồn kho -->
-          <div class="mb-4" v-if="selectedVariant">
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">
-              Tình trạng kho
-            </h3>
 
-            <div class="stock-info">
-              <span class="stock-label">Số lượng có sẵn: </span>
+          <!-- tồn kho -->
+          <div class="detail-section" v-if="selectedVariant">
+            <div class="stock-inline">
+              <span class="stock-inline__label">Tình trạng:</span>
               <span
-                class="stock-value"
+                class="stock-inline__value"
                 :class="selectedVariantStock > 0 ? 'in-stock' : 'out-stock'"
               >
                 {{
                   selectedVariantStock > 0
-                    ? `${selectedVariantStock} sản phẩm`
+                    ? `Còn ${selectedVariantStock} sản phẩm`
                     : "Hết hàng"
                 }}
               </span>
             </div>
-
-            <div
-              v-if="selectedVariantStock > 0 && selectedVariantStock <= 10"
-              class="stock-note text-red-darken-2"
-            >
-              Chỉ còn {{ selectedVariantStock }} sản phẩm, hãy đặt sớm
-            </div>
           </div>
 
-          <!-- Số lượng -->
-          <div class="mb-4">
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">Số lượng</h3>
+          <!-- số lượng -->
+          <div class="detail-section">
+            <div class="detail-label">Số lượng</div>
 
             <v-text-field
               v-model.number="quantity"
@@ -187,41 +166,32 @@
               :max="selectedVariantStock > 0 ? selectedVariantStock : 1"
               variant="outlined"
               density="comfortable"
+              hide-details
               :disabled="isSelectedVariantOutOfStock"
-              style="max-width: 150px"
+              class="detail-qty-input"
             />
           </div>
 
-          <!-- Nút hành động -->
-          <v-row class="gap-3">
-            <v-col cols="6">
-              <v-btn
-                color="primary"
-                block
-                @click="handleAddToCart"
-                :loading="isLoading"
-                :disabled="isLoading || isSelectedVariantOutOfStock"
-              >
-                <v-icon start>mdi-shopping-cart</v-icon>
-                {{
-                  isSelectedVariantOutOfStock ? "Hết hàng" : "Thêm vào giỏ hàng"
-                }}
-              </v-btn>
-            </v-col>
+          <!-- button -->
+          <div class="detail-action-row">
+            <button
+              type="button"
+              class="detail-action-btn detail-action-btn--black"
+              @click="handleAddToCart"
+              :disabled="isLoading || isSelectedVariantOutOfStock"
+            >
+              {{ isSelectedVariantOutOfStock ? "HẾT HÀNG" : "THÊM VÀO GIỎ" }}
+            </button>
 
-            <v-col cols="6">
-              <v-btn
-                color="black"
-                block
-                variant="outlined"
-                @click="handleBuyNow"
-                :loading="isLoading"
-                :disabled="isLoading || isSelectedVariantOutOfStock"
-              >
-                {{ isSelectedVariantOutOfStock ? "Hết hàng" : "Mua ngay" }}
-              </v-btn>
-            </v-col>
-          </v-row>
+            <button
+              type="button"
+              class="detail-action-btn detail-action-btn--red"
+              @click="handleBuyNow"
+              :disabled="isLoading || isSelectedVariantOutOfStock"
+            >
+              {{ isSelectedVariantOutOfStock ? "HẾT HÀNG" : "MUA NGAY" }}
+            </button>
+          </div>
         </div>
       </v-col>
     </v-row>
@@ -287,10 +257,6 @@
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div class="size-guide-footer">
-          <v-btn variant="text" @click="sizeDialog = false">Đóng</v-btn>
         </div>
       </v-card>
     </v-dialog>
