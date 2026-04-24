@@ -1,5 +1,5 @@
 <template>
-  <div class="header">
+  <div>
     <!-- Top Navigation Bar -->
     <v-toolbar color="#cdba96" dark height="36" class="px-8">
       <div
@@ -414,9 +414,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.header {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
 a {
   transition: opacity 0.2s ease;
 }
