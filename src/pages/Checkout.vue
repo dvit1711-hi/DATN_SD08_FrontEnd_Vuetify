@@ -524,6 +524,8 @@ const shippingInput = ref({
 })
 const ONLINE_CONFIRMED_ORDERS_KEY = 'onlineTransferConfirmedOrderIds'
 const HIDDEN_CANCELLED_ONLINE_ORDERS_KEY = 'hiddenCancelledOnlineOrderIds'
+const SELECTED_CART_ITEM_IDS_KEY = 'selectedCartItemIds'
+const QUICK_BUY_CONTEXT_KEY = 'quickBuyContext'
 
 const paymentMethods = [
   { label: 'Thanh toán khi nhận hàng (COD)', value: 'COD', description: 'Admin sẽ xác nhận thanh toán sau khi giao hàng.' },
@@ -858,15 +860,50 @@ const applyAvailableCoupon = async (coupon) => {
   }
 }
 
+const normalizeCheckoutItem = (item) => {
+  const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
+  return {
+    cartItemID: item.cartItemID,
+    cartID: item.cartID,
+    productColorID: colorId,
+    sizeID: Number.parseInt(item.sizeID, 10) || null,
+    sizeName: item.sizeName || '',
+    quantity: Number.parseInt(item.quantity, 10) || 1,
+    productName: item.productName || '',
+    price: Number(item.price) || 0,
+    colorName: item.colorName || '',
+    colorCode: item.colorCode || '',
+    mainImage: item.mainImage || '',
+    stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
+  }
+}
+
 const loadCheckoutItems = async () => {
-  const raw = sessionStorage.getItem('selectedCartItemIds')
-  if (!raw) {
-    checkoutItems.value = []
-    return
+  const rawSelectedIds = sessionStorage.getItem(SELECTED_CART_ITEM_IDS_KEY)
+  const rawQuickBuyContext = sessionStorage.getItem(QUICK_BUY_CONTEXT_KEY)
+
+  let selectedIds = []
+  if (rawSelectedIds) {
+    try {
+      const parsed = JSON.parse(rawSelectedIds)
+      if (Array.isArray(parsed)) {
+        selectedIds = parsed
+      }
+    } catch {
+      selectedIds = []
+    }
   }
 
-  const selectedIds = JSON.parse(raw)
-  if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
+  let quickBuyContext = null
+  if (rawQuickBuyContext) {
+    try {
+      quickBuyContext = JSON.parse(rawQuickBuyContext)
+    } catch {
+      quickBuyContext = null
+    }
+  }
+
+  if ((!Array.isArray(selectedIds) || selectedIds.length === 0) && !quickBuyContext) {
     checkoutItems.value = []
     return
   }
@@ -880,26 +917,35 @@ const loadCheckoutItems = async () => {
 
     const itemRes = await cartApi.getByCart(currentCartId)
 
-    const selectedSet = new Set(selectedIds)
-    checkoutItems.value = (itemRes.data || [])
-      .filter((item) => selectedSet.has(item.cartItemID))
-      .map((item) => {
+    const cartItems = itemRes.data || []
+
+    if (quickBuyContext) {
+      const targetProductColorId = Number.parseInt(quickBuyContext.productColorID, 10)
+      const matchedByColor = cartItems.filter((item) => {
         const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
-        return {
-          cartItemID: item.cartItemID,
-          cartID: item.cartID,
-          productColorID: colorId,
-          sizeID: Number.parseInt(item.sizeID, 10) || null,
-          sizeName: item.sizeName || '',
-          quantity: Number.parseInt(item.quantity, 10) || 1,
-          productName: item.productName || '',
-          price: Number(item.price) || 0,
-          colorName: item.colorName || '',
-          colorCode: item.colorCode || '',
-          mainImage: item.mainImage || '',
-          stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
-        }
+        return Number.isFinite(targetProductColorId) && colorId === targetProductColorId
       })
+
+      if (matchedByColor.length > 0) {
+        const latestMatchedItem = [...matchedByColor].sort((a, b) => {
+          const bId = Number.parseInt(b.cartItemID ?? b.id, 10) || 0
+          const aId = Number.parseInt(a.cartItemID ?? a.id, 10) || 0
+          return bId - aId
+        })[0]
+
+        const normalized = normalizeCheckoutItem(latestMatchedItem)
+        checkoutItems.value = [normalized]
+        sessionStorage.setItem(SELECTED_CART_ITEM_IDS_KEY, JSON.stringify([normalized.cartItemID]))
+        return
+      }
+
+      sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
+    }
+
+    const selectedSet = new Set(selectedIds)
+    checkoutItems.value = cartItems
+      .filter((item) => selectedSet.has(item.cartItemID))
+      .map((item) => normalizeCheckoutItem(item))
   } catch (error) {
     console.error('Lỗi tải dữ liệu checkout:', error)
     snackbarMessage.value = 'Không thể tải dữ liệu thanh toán'
@@ -1190,7 +1236,8 @@ const placeOrder = async () => {
       res.data?.data?.id ||
       res.data?.data?.orderId
 
-    sessionStorage.removeItem('selectedCartItemIds')
+    sessionStorage.removeItem(SELECTED_CART_ITEM_IDS_KEY)
+    sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
     window.dispatchEvent(new Event('cart-changed'))
 
     if (shouldShowBankQr) {
@@ -1234,6 +1281,7 @@ const placeOrder = async () => {
 }
 
 const goBackCart = () => {
+  sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
   router.push({ name: 'Cart' })
 }
 

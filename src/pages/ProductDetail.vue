@@ -272,6 +272,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
 import sizeApi from "@/api/sizeApi";
+import cartApi from "@/api/cartApi";
 import { getActiveProductDiscounts } from "@/api/productDiscountApi";
 import ProductDetailTabs from "@/components/product/ProductDetailTabs.vue";
 import ProductReviews from "@/components/product/ProductReviews.vue";
@@ -291,6 +292,8 @@ const showSnackbar = ref(false);
 const snackbarMessage = ref("");
 const snackbarColor = ref("success");
 const discountMap = ref(new Map());
+const QUICK_BUY_CONTEXT_KEY = "quickBuyContext";
+const SELECTED_CART_ITEM_IDS_KEY = "selectedCartItemIds";
 
 const sizeDialog = ref(false);
 const sizes = ref([]);
@@ -492,6 +495,26 @@ const openSizeDialog = async () => {
   sizeDialog.value = true;
 };
 
+const extractCartItemId = (payload) => {
+  const candidateIds = [
+    payload?.id,
+    payload?.cartItemID,
+    payload?.cartItemId,
+    payload?.data?.id,
+    payload?.data?.cartItemID,
+    payload?.data?.cartItemId,
+  ];
+
+  for (const id of candidateIds) {
+    const parsed = Number.parseInt(id, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
 async function handleAddToCart() {
   if (!userStore.isLoggedIn) {
     snackbarMessage.value = "Vui lòng đăng nhập để thêm vào giỏ hàng";
@@ -577,25 +600,60 @@ async function handleBuyNow() {
 
   isLoading.value = true;
   try {
-    const addedItem = await userStore.addToCartAPI(
+    const selectedProductColorId = Number.parseInt(
       selectedVariant.value.productColorID,
-      quantity.value,
-    );
-
-    const addedCartItemId = Number.parseInt(
-      addedItem?.id ?? addedItem?.cartItemID,
       10,
     );
 
-    if (Number.isFinite(addedCartItemId) && addedCartItemId > 0) {
+    if (!Number.isFinite(selectedProductColorId) || selectedProductColorId <= 0) {
+      throw new Error("Biến thể sản phẩm không hợp lệ");
+    }
+
+    const addedItem = await userStore.addToCartAPI(
+      selectedProductColorId,
+      quantity.value,
+    );
+
+    sessionStorage.setItem(
+      QUICK_BUY_CONTEXT_KEY,
+      JSON.stringify({
+        productColorID: selectedProductColorId,
+        quantity: quantity.value,
+        createdAt: Date.now(),
+      }),
+    );
+
+    let addedCartItemId = extractCartItemId(addedItem);
+
+    if (!addedCartItemId) {
+      const currentCartId = await userStore.getOrCreateCart();
+      const itemRes = await cartApi.getByCart(currentCartId);
+      const matchedItems = (itemRes.data || []).filter((item) => {
+        const colorId = Number.parseInt(item.productColorID ?? item.productID, 10);
+        return colorId === selectedProductColorId;
+      });
+
+      if (matchedItems.length > 0) {
+        const latestMatchedItem = [...matchedItems].sort((a, b) => {
+          const bId = Number.parseInt(b.cartItemID ?? b.id, 10) || 0;
+          const aId = Number.parseInt(a.cartItemID ?? a.id, 10) || 0;
+          return bId - aId;
+        })[0];
+        addedCartItemId = extractCartItemId(latestMatchedItem);
+      }
+    }
+
+    if (addedCartItemId) {
       sessionStorage.setItem(
-        "selectedCartItemIds",
+        SELECTED_CART_ITEM_IDS_KEY,
         JSON.stringify([addedCartItemId]),
       );
       window.dispatchEvent(new Event("cart-changed"));
       router.push({ name: "Checkout" });
       return;
     }
+
+    sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY);
 
     snackbarMessage.value =
       "Đã thêm vào giỏ. Vui lòng chọn sản phẩm trong giỏ để thanh toán";
