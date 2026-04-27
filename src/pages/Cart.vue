@@ -360,6 +360,7 @@ const goCheckout = () => {
     return
   }
 
+  sessionStorage.removeItem('quickBuyContext')
   sessionStorage.setItem('selectedCartItemIds', JSON.stringify(selectedItemIds.value))
   router.push({ name: 'Checkout' })
 }
