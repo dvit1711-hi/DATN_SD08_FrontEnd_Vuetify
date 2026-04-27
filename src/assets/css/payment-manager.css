@@ -1,0 +1,262 @@
+.payment-manage-card {
+  padding: 20px;
+}
+
+.payment-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.custom-payment-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-top: 8px;
+}
+
+.custom-payment-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  color: #555;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.custom-payment-tab.active {
+  color: #111;
+  font-weight: 600;
+  border-bottom-color: #111;
+}
+/* =========================
+   ORDER TRACK
+========================= */
+
+.order-track-scroll {
+  overflow-x: auto;
+  padding: 8px 4px 24px;
+}
+
+.order-track {
+  display: flex;
+  gap: 0;
+  padding-top: 14px;
+  align-items: flex-start;
+}
+
+.track-step {
+  position: relative;
+  flex: 0 0 190px;
+  min-width: 190px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.track-step--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.track-icon {
+  --track-color: #00b80f;
+  position: relative;
+  z-index: 5;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  margin: 0 auto 86px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--track-color);
+  border: 4px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
+}
+
+.track-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 60px;
+  width: 4px;
+  height: 58px;
+  transform: translateX(-50%);
+  background: var(--track-color);
+  z-index: -1;
+}
+
+.track-step::after {
+  content: "";
+  position: absolute;
+  top: 126px;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: #fff;
+  transform: translateX(-50%);
+  z-index: 6;
+}
+
+.track-connector {
+  position: absolute;
+  top: 118px;
+  left: 0;
+  width: 100%;
+  height: 28px;
+  opacity: 0;
+  transform: scaleX(0.5);
+  transform-origin: left center;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  z-index: 1;
+  background: #00b80f;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 14px) 0,
+    100% 50%,
+    calc(100% - 14px) 100%,
+    0 100%,
+    14px 50%
+  );
+}
+
+.track-step:first-child .track-connector {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 14px) 0,
+    100% 50%,
+    calc(100% - 14px) 100%,
+    0 100%
+  );
+}
+
+.track-step--visible .track-connector {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.track-label {
+  position: relative;
+  z-index: 7;
+  margin-top: 0;
+  min-height: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.track-time {
+  position: relative;
+  z-index: 7;
+  margin-top: 6px;
+  color: #6b7280;
+}
+
+/* =========================
+   ICON COLOR
+========================= */
+
+.track-icon--done {
+  --track-color: #00b80f;
+}
+
+.track-icon--current {
+  --track-color: #ffc400;
+}
+
+.track-icon--pending {
+  --track-color: #cfd8dc;
+  color: #607d8b;
+}
+
+.track-icon--cancelled,
+.track-icon--code-cancelled {
+  --track-color: #ff3b30;
+}
+
+.track-icon--code-created,
+.track-icon--code-wait-confirm,
+.track-icon--code-confirm-order,
+.track-icon--code-delivered,
+.track-icon--code-completed {
+  --track-color: #00b80f;
+}
+
+.track-icon--code-wait-ship,
+.track-icon--code-transfer-confirm {
+  --track-color: #ffc400;
+}
+
+.track-icon--code-shipping,
+.track-icon--code-in-transit {
+  --track-color: #ff8a00;
+}
+
+/* =========================
+   CONNECTOR COLOR
+========================= */
+
+.track-connector--done {
+  background: #00b80f;
+}
+
+.track-connector--current {
+  background: #ffc400;
+}
+
+.track-connector--pending {
+  background: #d9dee3;
+}
+
+.track-connector--cancelled,
+.track-connector--code-cancelled {
+  background: #ff3b30;
+}
+
+.track-connector--code-created,
+.track-connector--code-wait-confirm,
+.track-connector--code-confirm-order,
+.track-connector--code-delivered,
+.track-connector--code-completed {
+  background: #00b80f;
+}
+
+.track-connector--code-wait-ship,
+.track-connector--code-transfer-confirm {
+  background: #ffc400;
+}
+
+.track-connector--code-shipping,
+.track-connector--code-in-transit {
+  background: #ff8a00;
+}
+/* =========================
+   DETAIL
+========================= */
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.detail-row:last-child {
+  border-bottom: 0;
+}
+
+.order-edit-timeline {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 6px;
+}

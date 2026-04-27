@@ -30,6 +30,7 @@ import PosSale from '@/pages/admin/PosSale.vue'
 import Promotion from '@/pages/Promotion.vue'
 import AdminStaffReport from '@/pages/admin/AdminStaffReport.vue'
 import StaffReport from '@/pages/admin/StaffReport.vue'
+import PaymentDetailManager from '@/pages/admin/PaymentDetailManager.vue'
 
 function getRoles(): string[] {
   const roles = localStorage.getItem('roles')
@@ -98,7 +99,8 @@ const router = createRouter({
         { path: 'payments', component: PaymentManager, name: 'AdminPayments', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'discounts', component: DiscountManager, name: 'DiscountManager' },
         { path: 'statistics', component: Statistics, name: 'Statistics' },
-        { path: 'payments', component: PaymentManager, name: 'AdminPayments' },
+        { path: 'payments', component: PaymentManager, name: 'AdminPayments', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] },},
+        { path: 'payments/detail/:id', component: PaymentDetailManager, name: 'AdminPaymentDetail', props: true, meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] },},
         { path: 'brand-material', component: AdminBrandMetarial, name: 'AdminBrandMaterial' },
         { path: 'color-size', component: AdminColorSize, name: 'AdminColorSize' },
         {path: 'pos', component: PosSale, name: 'AdminPosSale', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
