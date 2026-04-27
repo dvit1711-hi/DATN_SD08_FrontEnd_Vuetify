@@ -20,12 +20,16 @@
           <div class="search-bar-wrapper">
             <v-text-field
               v-model="searchQuery"
-              placeholder="Tìm kiếm"
+              placeholder="Tìm kiếm theo tên sản phẩm, màu sắc, size, giá, hoặc mã đơn hàng..."
               variant="outlined"
               density="comfortable"
               clearable
               rounded="lg"
               class="search-field"
+              :maxlength="MAX_SEARCH_LENGTH"
+              :error="!!searchError"
+              :error-messages="searchError ? [searchError] : []"
+              @focus="searchError = ''"
             >
               <template #append-inner>
                 <v-icon icon="mdi-keyboard" size="small" class="keyboard-icon"></v-icon>
@@ -37,9 +41,28 @@
                   color="primary"
                   size="large"
                   class="search-btn"
+                  :disabled="!!searchError"
                 />
               </template>
             </v-text-field>
+
+            <div v-if="searchQuery && filteredPaidOrders.length === 0" class="search-hint mt-3">
+              <v-alert type="info" variant="tonal" density="compact">
+                <div class="text-body-2">
+                  <v-icon size="small" class="mr-2">mdi-information</v-icon>
+                  Không tìm thấy đơn hàng hoặc sản phẩm nào phù hợp với từ khóa "<strong>{{ searchQuery }}</strong>"
+                </div>
+              </v-alert>
+            </div>
+
+            <div v-if="!searchQuery" class="search-hint mt-3">
+              <v-alert type="info" variant="tonal" density="compact" class="mb-0">
+                <div class="text-caption">
+                  <v-icon size="x-small" class="mr-2">mdi-lightbulb</v-icon>
+                  <strong>Mẹo tìm kiếm:</strong> Bạn có thể tìm kiếm theo tên sản phẩm, màu sắc, size, giá tiền, số lượng, ngày đặt hàng, hoặc mã đơn hàng
+                </div>
+              </v-alert>
+            </div>
           </div>
         </v-col>
       </v-row>
@@ -58,9 +81,16 @@
       <template v-else>
         <v-row class="mb-8" v-if="!selectedOrderId">
           <v-col cols="12">
-            <div class="mb-4">
-              <h2 class="text-h6 font-weight-bold">Chọn đơn hàng để đánh giá</h2>
-              <p class="text-body-2 text-grey">Các đơn hàng đã được thanh toán</p>
+            <div class="mb-4 d-flex align-center justify-space-between">
+              <div>
+                <h2 class="text-h6 font-weight-bold">
+                  {{ searchQuery ? 'Kết quả tìm kiếm' : 'Chọn đơn hàng để đánh giá' }}
+                </h2>
+                <p class="text-body-2 text-grey">
+                  {{ filteredPaidOrders.length }} 
+                  {{ searchQuery ? 'kết quả phù hợp' : 'đơn hàng đã được thanh toán' }}
+                </p>
+              </div>
             </div>
           </v-col>
 
@@ -441,7 +471,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
 import reviewApi from "@/api/ReviewApi"
 
 const selectedOrderId = ref(null)
@@ -459,7 +489,11 @@ const deleteReviewId = ref(null)
 const editingReviewId = ref(null)
 const currentUserId = ref(null)
 const searchQuery = ref("")
+const searchError = ref("")
+const searchDebounceTimer = ref(null)
 const fallbackImage = "https://via.placeholder.com/200x200?text=No+Image"
+const MAX_SEARCH_LENGTH = 100
+const MIN_SEARCH_LENGTH = 0
 
 const newReview = ref({
   rating: 0,
@@ -492,6 +526,56 @@ const showSnackbar = (text, color = "success") => {
   }
 }
 
+// Validate search input
+const validateSearchInput = (value) => {
+  searchError.value = ""
+  
+  if (!value) {
+    return true
+  }
+
+  // Check length
+  if (value.length > MAX_SEARCH_LENGTH) {
+    searchError.value = `Tìm kiếm không được vượt quá ${MAX_SEARCH_LENGTH} ký tự`
+    return false
+  }
+
+  // Allow only alphanumeric, spaces, Vietnamese characters, and common symbols
+  const validPattern = /^[a-zA-Z0-9\u0100-\u01B0\u1E00-\u1EFF\s\-.,#_%()]*$/
+  if (!validPattern.test(value)) {
+    searchError.value = "Từ khóa tìm kiếm chứa ký tự không hợp lệ"
+    return false
+  }
+
+  return true
+}
+
+// Watch for search query changes with debouncing
+watch(searchQuery, (newValue) => {
+  if (newValue && !validateSearchInput(newValue)) {
+    return
+  }
+
+  // Clear existing timer
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
+
+  // Set new timer for debounced validation
+  searchDebounceTimer.value = setTimeout(() => {
+    validateSearchInput(newValue)
+  }, 300)
+})
+
+// Clean up on component unmount
+onMounted(() => {
+  return () => {
+    if (searchDebounceTimer.value) {
+      clearTimeout(searchDebounceTimer.value)
+    }
+  }
+})
+
 onMounted(async () => {
   const accountIdStr = localStorage.getItem("accountId")
   if (accountIdStr) {
@@ -511,22 +595,93 @@ onMounted(async () => {
 })
 
 const filteredPaidOrders = computed(() => {
-  if (!searchQuery.value.trim()) {
+  const trimmedQuery = searchQuery.value.trim()
+  if (!trimmedQuery) {
     return paidOrders.value
   }
 
-  const query = searchQuery.value.toLowerCase()
+  const query = trimmedQuery.toLowerCase()
 
   return paidOrders.value.filter((order) => {
-    if (order.orderId.toString().includes(query)) {
+    // Search by Order ID
+    if (order.orderId && order.orderId.toString().includes(query)) {
       return true
     }
 
-    if (
-      order.items &&
-      order.items.some((item) => item.productName?.toLowerCase().includes(query))
-    ) {
-      return true
+    // Search by Order Date
+    if (order.orderDate) {
+      const orderDate = new Date(order.orderDate).toLocaleDateString('vi-VN').toLowerCase()
+      if (orderDate.includes(query)) {
+        return true
+      }
+    }
+
+    // Search by Total Amount (price format)
+    if (order.totalAmount) {
+      const formattedPrice = new Intl.NumberFormat('vi-VN').format(order.totalAmount).toLowerCase()
+      if (formattedPrice.includes(query)) {
+        return true
+      }
+      // Also search for plain number
+      if (order.totalAmount.toString().includes(query)) {
+        return true
+      }
+    }
+
+    // Search in Items/Products details
+    if (order.items && Array.isArray(order.items)) {
+      return order.items.some((item) => {
+        // Validate item has required properties
+        if (!item) return false
+
+        // Search by Product Name
+        if (item.productName && item.productName.toLowerCase().includes(query)) {
+          return true
+        }
+
+        // Search by Color Name
+        if (item.colorName && item.colorName.toLowerCase().includes(query)) {
+          return true
+        }
+
+        // Search by Size
+        if (item.sizeName && item.sizeName.toLowerCase().includes(query)) {
+          return true
+        }
+
+        // Search by Material
+        if (item.materialName && item.materialName.toLowerCase().includes(query)) {
+          return true
+        }
+
+        // Search by Price
+        if (item.price) {
+          const formattedItemPrice = new Intl.NumberFormat('vi-VN').format(item.price).toLowerCase()
+          if (formattedItemPrice.includes(query)) {
+            return true
+          }
+          if (item.price.toString().includes(query)) {
+            return true
+          }
+        }
+
+        // Search by Quantity
+        if (item.quantity && item.quantity.toString().includes(query)) {
+          return true
+        }
+
+        // Search by Product ID
+        if (item.productId && item.productId.toString().includes(query)) {
+          return true
+        }
+
+        // Search by Color ID
+        if (item.productColorId && item.productColorId.toString().includes(query)) {
+          return true
+        }
+
+        return false
+      })
     }
 
     return false
@@ -550,9 +705,37 @@ const loadPaidOrders = async () => {
   try {
     isLoading.value = true
     const response = await reviewApi.getPaidOrdersWithDetailsForAccount(currentUserId.value)
-    paidOrders.value = response.data.map((order) => ({
-      ...order,
-    }))
+    
+    // Validate and normalize order data
+    paidOrders.value = (response.data || []).map((order) => {
+      // Validate order has required properties
+      if (!order) return null
+      
+      return {
+        ...order,
+        // Ensure items array exists and is valid
+        items: Array.isArray(order.items) 
+          ? order.items.map(item => ({
+              ...item,
+              // Normalize missing properties
+              productName: item.productName || 'Sản phẩm không xác định',
+              colorName: item.colorName || 'Không xác định',
+              sizeName: item.sizeName || '',
+              materialName: item.materialName || '',
+              price: item.price || 0,
+              quantity: item.quantity || 1,
+              imageUrl: item.imageUrl || fallbackImage,
+              productId: item.productId || null,
+              productColorId: item.productColorId || null,
+              orderDetailId: item.orderDetailId || null,
+            }))
+          : [],
+        // Ensure order has essential fields
+        orderId: order.orderId || null,
+        orderDate: order.orderDate || new Date().toISOString(),
+        totalAmount: order.totalAmount || 0,
+      }
+    }).filter(Boolean) // Remove null entries
   } catch (error) {
     console.error("Failed to load paid orders:", error)
     paidOrders.value = []
@@ -583,19 +766,33 @@ const onOrderSelected = (orderId) => {
   reviews.value = []
   selectedStarFilter.value = null
 
-  const order = paidOrders.value.find((o) => o.orderId === orderId)
-  if (order && order.items) {
-    selectedOrderProducts.value = order.items.map((item) => ({
-      productId: item.productId,
-      productName: item.productName,
-      colorName: item.colorName,
-      imageUrl: item.imageUrl,
-      price: item.price,
-      quantity: item.quantity,
-      orderDetailId: item.orderDetailId,
-    }))
+  // Validate order exists and has items
+  const order = paidOrders.value.find((o) => o && o.orderId === orderId)
+  if (!order) {
+    selectedOrderProducts.value = []
+    showSnackbar("Không tìm thấy đơn hàng.", "warning")
+    return
+  }
+
+  if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+    selectedOrderProducts.value = order.items.map((item) => {
+      // Validate each item
+      if (!item) return null
+      return {
+        productId: item.productId || null,
+        productName: item.productName || 'Sản phẩm không xác định',
+        colorName: item.colorName || 'Không xác định',
+        sizeName: item.sizeName || '',
+        materialName: item.materialName || '',
+        imageUrl: item.imageUrl || fallbackImage,
+        price: item.price || 0,
+        quantity: item.quantity || 1,
+        orderDetailId: item.orderDetailId || null,
+      }
+    }).filter(Boolean) // Remove null items
   } else {
     selectedOrderProducts.value = []
+    showSnackbar("Đơn hàng không có sản phẩm.", "info")
   }
 }
 
@@ -849,6 +1046,25 @@ const formatPrice = (value) => {
   font-size: 14px !important;
   color: #333 !important;
   padding: 0 !important;
+}
+
+.search-field :deep(.v-field--error:not(.v-field--disabled)) {
+  border-color: #d32f2f !important;
+}
+
+.search-hint {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .keyboard-icon {

@@ -12,6 +12,41 @@
       <v-divider />
 
       <v-card-text class="pa-5">
+        <!-- Variant Preview Section -->
+        <div v-if="form.colorID || form.sizeID" class="variant-preview-section mb-5">
+          <div class="variant-preview-header">
+            <v-icon size="20" color="primary">mdi-palette</v-icon>
+            <span class="font-weight-bold">Thông tin biến thể</span>
+          </div>
+          
+          <div class="variant-preview-content">
+            <div class="preview-item" v-if="selectedColor">
+              <span class="preview-label">Màu:</span>
+              <div class="preview-value">
+                <span
+                  class="color-preview-dot"
+                  :style="{ backgroundColor: selectedColor.colorCode || '#ddd' }"
+                />
+                <span class="font-weight-medium">{{ selectedColor.colorName }}</span>
+              </div>
+            </div>
+
+            <div class="preview-item" v-if="selectedSize">
+              <span class="preview-label">Size:</span>
+              <v-chip size="small" variant="outlined" class="preview-value">
+                {{ selectedSize.sizeName }}
+              </v-chip>
+            </div>
+
+            <div class="preview-item" v-if="form.price !== null && form.price !== undefined">
+              <span class="preview-label">Giá:</span>
+              <span class="preview-value font-weight-bold text-success">
+                {{ formatPrice(form.price) }}đ
+              </span>
+            </div>
+          </div>
+        </div>
+
         <v-row>
           <v-col cols="12" md="6">
             <v-select
@@ -316,6 +351,16 @@ const selectedColor = computed(() => {
     (color) => Number(color.colorID) === Number(form.value.colorID),
   );
 });
+
+const selectedSize = computed(() => {
+  return props.sizes.find(
+    (size) => Number(size.sizeID) === Number(form.value.sizeID),
+  );
+});
+
+const formatPrice = (price) => {
+  return new Intl.NumberFormat("vi-VN").format(Number(price) || 0);
+};
 </script>
 
 <style scoped>
@@ -405,5 +450,57 @@ const selectedColor = computed(() => {
 
 .color-item-content .ml-2 {
   margin-left: 12px;
+}
+
+/* Variant Preview Section */
+.variant-preview-section {
+  padding: 16px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  border-radius: 12px;
+  border-left: 4px solid #1976d2;
+}
+
+.variant-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #1976d2;
+}
+
+.variant-preview-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.preview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preview-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.preview-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.color-preview-dot {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #999;
+  flex-shrink: 0;
 }
 </style>

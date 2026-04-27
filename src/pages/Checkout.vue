@@ -11,31 +11,59 @@
     <v-row v-if="checkoutItems.length > 0" class="ga-4">
       <v-col cols="12" lg="8">
         <v-card v-for="item in checkoutItems" :key="item.cartItemID" class="mb-4" variant="outlined">
-          <v-card-text class="pa-4 d-flex align-center flex-wrap ga-4">
-            <v-img
-              :src="item.mainImage || fallbackImage"
-              width="96"
-              height="96"
-              class="rounded"
-              cover
-            />
+          <v-card-text class="pa-4">
+            <div class="d-flex align-center flex-wrap ga-4">
+              <v-img
+                :src="item.mainImage || fallbackImage"
+                width="96"
+                height="96"
+                class="rounded"
+                cover
+              />
 
-            <div class="flex-grow-1 min-w-220">
-              <div class="text-subtitle-1 font-weight-bold">{{ item.productName || `Màu #${item.productColorID}` }}</div>
-              <div class="text-caption text-grey">Mã màu: #{{ item.productColorID }}</div>
-              <div class="text-caption text-grey">Size: {{ item.sizeName || '-' }}</div>
-              <div class="text-caption text-grey mt-1">Số lượng: {{ item.quantity }}</div>
-            </div>
+              <div class="flex-grow-1 min-w-220">
+                <div class="text-subtitle-1 font-weight-bold">{{ item.productName || `Màu #${item.productColorID}` }}</div>
+                <div class="text-caption text-grey">Mã sản phẩm: #{{ item.productColorID }}</div>
+                
+                <!-- Variant Information Display -->
+                <div class="variant-info-section mt-3">
+                  <!-- Color Information -->
+                  <div class="d-flex align-center ga-2 mb-2">
+                    <span class="text-caption text-grey" style="min-width: 70px;">Màu:</span>
+                    <span 
+                      v-if="item.colorCode"
+                      class="color-dot" 
+                      :style="{ backgroundColor: item.colorCode, width: '20px', height: '20px', borderRadius: '50%', display: 'inline-block', border: '1px solid #ddd' }" 
+                    />
+                    <span class="text-caption font-weight-medium">{{ item.colorName || 'Không xác định' }}</span>
+                  </div>
 
-            <div class="d-flex flex-column align-end ga-2">
-              <div class="text-body-2 text-grey">Đơn giá</div>
-              <div class="text-subtitle-1 font-weight-bold">{{ formatPrice(item.price) }}đ</div>
-            </div>
+                  <!-- Size Information -->
+                  <div class="d-flex align-center ga-2 mb-2">
+                    <span class="text-caption text-grey" style="min-width: 70px;">Kích thước:</span>
+                    <v-chip size="small" variant="outlined">{{ item.sizeName || '-' }}</v-chip>
+                  </div>
 
-            <div class="d-flex flex-column align-end ga-2">
-              <div class="text-body-2 text-grey">Thành tiền</div>
-              <div class="text-subtitle-1 font-weight-bold text-black">
-                {{ formatPrice(item.price * item.quantity) }}đ
+                  <!-- Quantity Information -->
+                  <div class="d-flex align-center ga-2">
+                    <span class="text-caption text-grey" style="min-width: 70px;">Số lượng:</span>
+                    <v-chip size="small" color="primary" variant="tonal">{{ item.quantity }}</v-chip>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex flex-column align-end ga-4" style="min-width: 180px;">
+                <div class="text-center">
+                  <div class="text-caption text-grey mb-1">Đơn giá</div>
+                  <div class="text-subtitle-1 font-weight-bold">{{ formatPrice(item.price) }}đ</div>
+                </div>
+
+                <div class="text-center">
+                  <div class="text-caption text-grey mb-1">Thành tiền</div>
+                  <div class="text-h6 font-weight-bold text-primary">
+                    {{ formatPrice(item.price * item.quantity) }}đ
+                  </div>
+                </div>
               </div>
             </div>
           </v-card-text>
@@ -221,106 +249,147 @@
               {{ selectedPaymentMethodDescription }}
             </p>
 
-            <!-- Show user's claimed coupons with auto-select highest discount -->
-            <v-card v-if="userClaimedCoupons.length > 0" class="mb-4" variant="outlined">
-              <v-card-title class="text-subtitle-2 font-weight-bold">
-                <v-icon>mdi-gift</v-icon> Mã Giảm Giá Của Bạn
-              </v-card-title>
-              <v-divider />
-              <v-card-text class="pa-4">
-                <div v-for="coupon in userClaimedCoupons" :key="coupon.id" class="coupon-select-item mb-3 pa-3 rounded-lg" :class="{ selected: selectedCoupon?.id === coupon.id }" @click="selectCouponForCheckout(coupon)">
-                  <div class="d-flex align-center justify-space-between">
-                    <div class="d-flex align-center ga-3 flex-grow-1">
-                      <v-icon :color="selectedCoupon?.id === coupon.id ? 'primary' : 'grey'">
-                        {{ selectedCoupon?.id === coupon.id ? 'mdi-check-circle' : 'mdi-circle-outline' }}
-                      </v-icon>
-                      <div class="flex-grow-1">
-                        <div class="font-weight-bold text-body-2">{{ coupon.discountCoupon.couponCode }}</div>
-                        <div class="text-caption text-grey">
-                          Giảm {{ coupon.discountCoupon.discountType === 'percent' ? coupon.discountCoupon.discountValue + '%' : formatPrice(coupon.discountCoupon.discountValue) + 'đ' }}
-                          <span v-if="coupon.discountCoupon.minOrderValue > 0">
-                            (Đơn tối thiểu: {{ formatPrice(coupon.discountCoupon.minOrderValue) }}đ)
-                          </span>
-                        </div>
+            <!-- Discount Section - Unified and Beautiful Design -->
+            <div class="discount-section mb-6">
+              <!-- Discount Header -->
+              <div class="discount-header mb-4">
+                <div class="d-flex align-center ga-2">
+                  <v-icon size="28" color="primary">mdi-tag-heart</v-icon>
+                  <h3 class="text-h6 font-weight-bold">Mã Giảm Giá & Khuyến Mãi</h3>
+                </div>
+              </div>
+
+              <!-- Current Discount Status - Always visible -->
+              <v-card v-if="discountAmount > 0" class="discount-applied-card mb-4" variant="flat">
+                <v-card-text class="pa-4">
+                  <div class="d-flex align-center justify-space-between flex-wrap">
+                    <div class="d-flex align-center ga-3">
+                      <v-icon size="32" color="success">mdi-check-circle</v-icon>
+                      <div>
+                        <div class="text-caption text-grey">Mã giảm giá đã áp dụng</div>
+                        <div class="text-subtitle-1 font-weight-bold">{{ couponCode }}</div>
                       </div>
                     </div>
-                    <div class="text-h6 font-weight-bold text-success">
-                      {{ coupon.discountCoupon.discountType === 'percent' ? coupon.discountCoupon.discountValue + '%' : formatPrice(coupon.discountCoupon.discountValue) + 'đ' }}
+                    <div class="text-center">
+                      <div class="text-caption text-grey">Tiết kiệm</div>
+                      <div class="text-h5 font-weight-bold text-success">-{{ formatPrice(discountAmount) }}đ</div>
+                    </div>
+                    <v-btn
+                      variant="text"
+                      color="error"
+                      size="small"
+                      @click="() => { selectedCoupon = null; couponCode = ''; discountAmount = 0 }"
+                    >
+                      Hủy
+                    </v-btn>
+                  </div>
+                </v-card-text>
+              </v-card>
+
+              <!-- User's Claimed Coupons -->
+              <div v-if="qualifiedUserClaimedCoupons.length > 0" class="mb-4">
+                <div class="section-label mb-3">
+                  <v-icon size="20" color="amber">mdi-gift</v-icon>
+                  <span class="font-weight-bold">Mã Của Bạn</span>
+                  <v-chip size="small" variant="tonal" label>{{ qualifiedUserClaimedCoupons.length }}</v-chip>
+                </div>
+                <div class="coupons-grid">
+                  <div
+                    v-for="coupon in qualifiedUserClaimedCoupons"
+                    :key="coupon.id"
+                    class="coupon-card-modern"
+                    :class="{ 'card-selected': selectedCoupon?.id === coupon.id }"
+                    @click="selectCouponForCheckout(coupon)"
+                  >
+                    <div class="coupon-card-inner">
+                      <div class="coupon-badge">
+                        <div v-if="coupon.discountCoupon.discountType === 'percent'" class="badge-value">
+                          {{ coupon.discountCoupon.discountValue }}%
+                        </div>
+                        <div v-else class="badge-value">
+                          {{ formatPrice(coupon.discountCoupon.discountValue) }}đ
+                        </div>
+                      </div>
+                      <div class="coupon-info flex-grow-1">
+                        <div class="coupon-code">{{ coupon.discountCoupon.couponCode }}</div>
+                        <div class="coupon-desc text-caption">
+                          Giảm {{ coupon.discountCoupon.discountType === 'percent' ? coupon.discountCoupon.discountValue + '%' : formatPrice(coupon.discountCoupon.discountValue) + 'đ' }}
+                        </div>
+                        <div v-if="coupon.discountCoupon.minOrderValue > 0" class="coupon-min text-caption">
+                          Tối thiểu: {{ formatPrice(coupon.discountCoupon.minOrderValue) }}đ
+                        </div>
+                      </div>
+                      <v-icon
+                        class="coupon-check"
+                        :color="selectedCoupon?.id === coupon.id ? 'primary' : 'grey'"
+                      >
+                        {{ selectedCoupon?.id === coupon.id ? 'mdi-check-circle-outline' : 'mdi-circle-outline' }}
+                      </v-icon>
                     </div>
                   </div>
                 </div>
 
-                <v-divider class="my-3" />
-
-                <div class="d-flex gap-2">
+                <div v-if="selectedCoupon" class="d-flex ga-2 mt-3">
                   <v-btn
-                    v-if="selectedCoupon"
-                    flex-grow-1
                     color="primary"
                     size="small"
                     :loading="isApplyingCoupon"
                     @click="applySelectedCoupon"
                   >
-                    Áp dụng: {{ selectedCoupon.discountCoupon.couponCode }}
+                    <v-icon start>mdi-check</v-icon>
+                    Áp dụng
                   </v-btn>
                   <v-btn
-                    flex-grow-1
                     variant="outlined"
                     size="small"
-                    @click="() => { selectedCoupon = null; couponCode = ''; discountAmount = 0 }"
+                    @click="() => { selectedCoupon = null }"
                   >
-                    Không dùng mã
+                    <v-icon start>mdi-close</v-icon>
+                    Bỏ chọn
                   </v-btn>
                 </div>
-              </v-card-text>
-            </v-card>
+              </div>
 
-            <!-- Manual coupon input -->
-            <v-card class="mb-4" variant="outlined">
-              <v-card-title class="text-subtitle-2 font-weight-bold">Mã Giảm Giá Khác</v-card-title>
-              <v-divider />
-              <v-card-text>
-                <div class="d-flex gap-2">
+              <!-- Manual Coupon Input -->
+              <div class="mb-4">
+                <div class="section-label mb-3">
+                  <v-icon size="20" color="blue">mdi-keyboard</v-icon>
+                  <span class="font-weight-bold">Nhập Mã Khác</span>
+                </div>
+                <div class="d-flex ga-2">
                   <v-text-field
                     v-model="manualCouponCode"
-                    label="Nhập mã giảm giá (tùy chọn)"
+                    placeholder="Nhập mã giảm giá tại đây..."
                     variant="outlined"
                     density="comfortable"
                     clearable
-                    hint="Để trống nếu không có mã"
+                    class="flex-grow-1"
+                    hide-details
                   />
                   <v-btn
                     color="primary"
                     :disabled="!manualCouponCode || isApplyingCoupon"
                     :loading="isApplyingCoupon"
-                    class="mt-1"
                     @click="applyManualCoupon"
                   >
-                    Áp dụng
+                    <v-icon>mdi-send</v-icon>
                   </v-btn>
                 </div>
-              </v-card-text>
-            </v-card>
+              </div>
 
-            <!-- All available discount coupons as combobox -->
-            <v-card class="mb-4" variant="outlined">
-              <v-card-title class="text-subtitle-2 font-weight-bold d-flex align-center ga-2">
-                <v-icon>mdi-tag-multiple</v-icon>
-                Tất cả mã giảm giá có sẵn ({{ availableCoupons.length }})
-              </v-card-title>
-              <v-divider />
-              <v-card-text>
-                <div v-if="availableCoupons.length === 0" class="text-center py-4">
-                  <p class="text-body-2 text-grey">{{ isLoadingAvailableCoupons ? 'Đang tải...' : 'Hiện không có mã giảm giá nào khả dụng' }}</p>
+              <!-- All Available Coupons - Dropdown -->
+              <div v-if="couponsDisplay.length > 0" class="mb-4">
+                <div class="section-label mb-3">
+                  <v-icon size="20" color="success">mdi-tag-multiple</v-icon>
+                  <span class="font-weight-bold">Khám Phá Mã Khác</span>
+                  <v-chip size="small" variant="tonal" color="success" label>{{ couponsDisplay.length }}</v-chip>
                 </div>
-
                 <v-select
-                  v-else
                   v-model="selectedAvailableCoupon"
                   :items="couponsDisplay"
                   item-title="displayText"
                   return-object
-                  label="Chọn mã giảm giá"
+                  placeholder="Chọn mã giảm giá từ danh sách..."
                   variant="outlined"
                   density="comfortable"
                   clearable
@@ -331,23 +400,28 @@
                     }
                   }"
                 />
-              </v-card-text>
-            </v-card>
+              </div>
 
-            <!-- Current discount status -->
-            <v-card v-if="discountAmount > 0" class="mb-4" variant="outlined" color="success">
-              <v-card-text class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-subtitle-2 font-weight-bold">Mã giảm giá đã áp dụng</div>
-                  <div class="text-body-2 text-grey">{{ couponCode }}</div>
+              <!-- No Discount Alert -->
+              <v-alert
+                v-if="discountAmount === 0"
+                type="info"
+                variant="tonal"
+                class="discount-alert"
+              >
+                <template #prepend>
+                  <v-icon>mdi-lightbulb-outline</v-icon>
+                </template>
+                <div class="alert-content">
+                  <div class="font-weight-bold">Tiết kiệm thêm tiền!</div>
+                  <div class="text-caption mt-1">
+                    {{ qualifiedUserClaimedCoupons.length > 0 || couponsDisplay.length > 0 
+                      ? 'Chọn một mã giảm giá từ trên để giảm tổng tiền thanh toán của bạn.'
+                      : 'Hiện không có mã giảm giá nào khả dụng cho đơn hàng này.' }}
+                  </div>
                 </div>
-                <div class="text-h6 font-weight-bold text-success">-{{ formatPrice(discountAmount) }}đ</div>
-              </v-card-text>
-            </v-card>
-
-            <v-alert v-if="discountAmount === 0" class="mb-4" color="info" title="Thông báo">
-              Bạn đang đặt hàng không sử dụng mã giảm giá. Có thể áp dụng mã khác ở trên nếu có.
-            </v-alert>
+              </v-alert>
+            </div>
 
             <v-btn
               block
@@ -543,16 +617,28 @@ const selectedSavedAddressLabel = computed(() => formatAddress(selectedSavedAddr
 const totalQuantity = computed(() => checkoutItems.value.reduce((sum, item) => sum + item.quantity, 0))
 const totalPrice = computed(() => checkoutItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
 const finalTotal = computed(() => Math.max(0, totalPrice.value - discountAmount.value) + Math.max(0, Number(shippingFee.value) || 0))
-const couponsDisplay = computed(() => {
-  return availableCoupons.value.map(coupon => {
-    let displayText = coupon.couponCode
-    if (coupon.discountType === 'percent') {
-      displayText += ` - Giảm ${coupon.discountValue}%`
-    } else {
-      displayText += ` - Giảm ${formatPrice(coupon.discountValue)} đ`
-    }
-    return { ...coupon, displayText }
+const qualifiedUserClaimedCoupons = computed(() => {
+  return userClaimedCoupons.value.filter(coupon => {
+    const minOrderValue = Number(coupon.discountCoupon?.minOrderValue) || 0
+    return totalPrice.value >= minOrderValue
   })
+})
+
+const couponsDisplay = computed(() => {
+  return availableCoupons.value
+    .filter(coupon => {
+      const minOrderValue = Number(coupon.minOrderValue) || 0
+      return totalPrice.value >= minOrderValue
+    })
+    .map(coupon => {
+      let displayText = coupon.couponCode
+      if (coupon.discountType === 'percent') {
+        displayText += ` - Giảm ${coupon.discountValue}%`
+      } else {
+        displayText += ` - Giảm ${formatPrice(coupon.discountValue)} đ`
+      }
+      return { ...coupon, displayText }
+    })
 })
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
@@ -1167,11 +1253,39 @@ const placeOrder = async () => {
     return
   }
 
+  // Validate coupon if provided
+  const finalCouponCode = String(couponCode.value || '').trim()
+  if (finalCouponCode) {
+    // Check if coupon is still valid and meets minimum order value
+    const res = await getAllDiscountCoupons().catch(() => ({ data: [] }))
+    const coupons = res.data || []
+    const coupon = coupons.find((x) => String(x.couponCode || '').toLowerCase() === finalCouponCode.toLowerCase())
+    
+    if (!coupon) {
+      snackbarMessage.value = 'Mã giảm giá không còn tồn tại'
+      snackbarColor.value = 'warning'
+      showSnackbar.value = true
+      return
+    }
+    
+    if (!isCouponValid(coupon)) {
+      snackbarMessage.value = 'Mã giảm giá không hợp lệ hoặc đã hết hạn'
+      snackbarColor.value = 'warning'
+      showSnackbar.value = true
+      return
+    }
+    
+    if (!meetsMinOrderValue(coupon)) {
+      snackbarMessage.value = `Mã giảm giá yêu cầu đơn tối thiểu ${formatPrice(coupon.minOrderValue)}đ. Đơn của bạn chỉ có ${formatPrice(totalPrice.value)}đ`
+      snackbarColor.value = 'warning'
+      showSnackbar.value = true
+      return
+    }
+  }
+
   const cartItemIds = checkoutItems.value.map((x) => x.cartItemID)
   const paymentMethodForCheckout = selectedPaymentMethod.value
   const shouldShowBankQr = selectedPaymentMethod.value === 'BANK_TRANSFER'
-  // Allow empty coupon code - system will handle it as no discount
-  const finalCouponCode = String(couponCode.value || '').trim()
 
   isCheckingOut.value = true
   try {
@@ -1383,6 +1497,181 @@ onMounted(async () => {
   min-width: 220px;
 }
 
+/* ===== DISCOUNT SECTION STYLES ===== */
+.discount-section {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 16px;
+  padding: 24px;
+  border: 2px solid rgba(25, 118, 210, 0.1);
+}
+
+.discount-header {
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(25, 118, 210, 0.15);
+}
+
+.discount-header h3 {
+  margin: 0;
+  color: #1976d2;
+}
+
+/* Applied Discount Card */
+.discount-applied-card {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+  border: 2px solid #28a745;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+}
+
+.discount-applied-card .pa-4 {
+  padding: 16px !important;
+}
+
+/* Section Labels */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  color: #1976d2;
+  font-size: 14px;
+}
+
+.section-label .v-chip {
+  margin-left: auto;
+}
+
+/* Modern Coupon Cards Grid */
+.coupons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.coupon-card-modern {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.coupon-card-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.coupon-card-modern:hover {
+  border-color: #1976d2;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
+  box-shadow: 0 6px 20px rgba(25, 118, 210, 0.2);
+  transform: translateY(-4px);
+}
+
+.coupon-card-modern:hover::before {
+  opacity: 1;
+}
+
+.coupon-card-modern.card-selected {
+  border-color: #1976d2;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  box-shadow: 0 8px 24px rgba(25, 118, 210, 0.3);
+  color: white;
+}
+
+.coupon-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.coupon-badge {
+  flex-shrink: 0;
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.coupon-card-modern.card-selected .coupon-badge {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+  color: #1976d2;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.badge-value {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.coupon-info {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.coupon-code {
+  font-weight: 700;
+  font-size: 16px;
+  color: inherit;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.coupon-card-modern.card-selected .coupon-code {
+  color: white;
+}
+
+.coupon-desc {
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 4px;
+}
+
+.coupon-card-modern.card-selected .coupon-desc {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.coupon-min {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.coupon-card-modern.card-selected .coupon-min {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.coupon-check {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.coupon-card-modern:hover .coupon-check {
+  color: #1976d2 !important;
+}
+
+/* Old coupon select item styles (deprecated but kept for compatibility) */
 .coupon-select-item {
   border: 2px solid #e0e0e0;
   cursor: pointer;
@@ -1404,6 +1693,18 @@ onMounted(async () => {
 
 .rounded-lg {
   border-radius: 8px;
+}
+
+/* Discount Alert */
+.discount-alert {
+  border-radius: 12px !important;
+  border: 1px solid rgba(25, 118, 210, 0.2) !important;
+  background: rgba(25, 118, 210, 0.05) !important;
+}
+
+.alert-content {
+  margin-left: 8px;
+  color: #1976d2;
 }
 
 .payment-popup-layout {
@@ -1459,5 +1760,27 @@ onMounted(async () => {
 
 .ga-2 {
   gap: 8px;
+}
+
+/* Variant Information Section Styles */
+.variant-info-section {
+  padding: 12px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  border-radius: 8px;
+  border-left: 4px solid #1976d2;
+}
+
+.variant-info-section .color-dot {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #999;
+  vertical-align: middle;
+}
+
+.variant-info-section .v-chip {
+  height: 24px;
+  font-size: 12px;
 }
 </style>

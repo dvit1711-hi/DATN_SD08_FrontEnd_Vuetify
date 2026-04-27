@@ -306,6 +306,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
 import sizeApi from "@/api/sizeApi";
+import { getById as getProductColorById } from "@/api/productColorApi";
 import { getActiveProductDiscounts } from "@/api/productDiscountApi";
 import ProductDetailTabs from "@/components/product/ProductDetailTabs.vue";
 import ProductReviews from "@/components/product/ProductReviews.vue";
@@ -369,10 +370,39 @@ const availableSizes = computed(() => {
 
 function applySelectedVariant(variant) {
   selectedVariant.value = variant;
-  images.value = Array.isArray(variant?.images) ? variant.images : [];
+  
+  // Check if variant has images, if not, try to load from API
+  if (Array.isArray(variant?.images) && variant.images.length > 0) {
+    images.value = variant.images;
+  } else if (variant?.productColorID) {
+    // Load images from API for this color variant
+    getProductColorById(variant.productColorID)
+      .then((res) => {
+        const colorData = res.data;
+        images.value = Array.isArray(colorData?.images) ? colorData.images : [];
+        
+        const main = images.value.find((img) => img?.isMain);
+        mainImage.value = main?.imageUrl || images.value[0]?.imageUrl || "";
+      })
+      .catch((error) => {
+        console.error("Failed to load color variant images:", error);
+        images.value = [];
+        mainImage.value = "";
+      });
+    
+    // Set main image to empty initially until images are loaded
+    mainImage.value = "";
+  } else {
+    images.value = [];
+    mainImage.value = "";
+  }
 
   const main = images.value.find((img) => img?.isMain);
-  mainImage.value = main?.imageUrl || images.value[0]?.imageUrl || "";
+  if (main?.imageUrl) {
+    mainImage.value = main.imageUrl;
+  } else if (images.value.length > 0) {
+    mainImage.value = images.value[0]?.imageUrl || "";
+  }
 
   if (quantity.value < 1) quantity.value = 1;
 

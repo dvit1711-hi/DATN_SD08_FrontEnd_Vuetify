@@ -30,6 +30,7 @@
         <thead>
           <tr>
             <th>Đại diện</th>
+            <th>Màu</th>
             <th>Size</th>
             <th>Giá</th>
             <th>Tồn kho</th>
@@ -70,9 +71,32 @@
               </div>
             </td>
 
-            <td>{{ variant.sizeName || "—" }}</td>
-            <td>{{ formatPrice(variant.price) }}đ</td>
-            <td>{{ variant.stockQuantity ?? 0 }}</td>
+            <!-- Color with visual indicator -->
+            <td>
+              <div class="color-info-cell">
+                <span
+                  class="color-dot-small"
+                  :style="{ backgroundColor: group.colorCode || '#eee' }"
+                />
+                <span class="color-name-text">{{ group.colorName }}</span>
+              </div>
+            </td>
+
+            <td>
+              <v-chip size="small" variant="outlined">
+                {{ variant.sizeName || "—" }}
+              </v-chip>
+            </td>
+            <td class="price-cell">{{ formatPrice(variant.price) }}đ</td>
+            <td>
+              <v-chip
+                :color="variant.stockQuantity > 0 ? 'success' : 'error'"
+                variant="tonal"
+                size="small"
+              >
+                {{ variant.stockQuantity ?? 0 }}
+              </v-chip>
+            </td>
             <td>
               <v-chip
                 size="small"
@@ -229,5 +253,33 @@ const sortedItems = computed(() => {
   display: flex;
   align-items: center;
   min-height: 32px;
+}
+
+/* Color Info Cell */
+.color-info-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.color-dot-small {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  flex-shrink: 0;
+}
+
+.color-name-text {
+  font-weight: 500;
+  color: #333;
+}
+
+/* Price Cell */
+.price-cell {
+  font-weight: 600;
+  color: #2e7d32;
 }
 </style>

@@ -56,12 +56,26 @@
 
                 <div class="flex-grow-1 min-w-220">
                   <div class="text-subtitle-1 font-weight-bold">{{ item.productName || `Màu #${item.productColorID}` }}</div>
-                  <div class="text-caption text-grey">Mã màu: #{{ item.productColorID }}</div>
-                  <div class="text-caption text-grey">Size: {{ item.sizeName || '-' }}</div>
-                  <div class="d-flex align-center ga-2 mt-2">
-                    <span class="text-caption text-grey">Màu:</span>
-                    <span class="color-dot" :style="{ backgroundColor: item.colorCode || '#ddd' }" />
-                    <span class="text-caption">{{ item.colorName || 'Không xác định' }}</span>
+                  <div class="text-caption text-grey">Mã sản phẩm: #{{ item.productColorID }}</div>
+                  
+                  <!-- Variant Information Display -->
+                  <div class="variant-info-section mt-3">
+                    <!-- Color Information -->
+                    <div class="d-flex align-center ga-2 mb-2">
+                      <span class="text-caption text-grey" style="min-width: 70px;">Màu:</span>
+                      <span 
+                        v-if="item.colorCode"
+                        class="color-dot" 
+                        :style="{ backgroundColor: item.colorCode, width: '20px', height: '20px', borderRadius: '50%', display: 'inline-block', border: '1px solid #ddd' }" 
+                      />
+                      <span class="text-caption font-weight-medium">{{ item.colorName || 'Không xác định' }}</span>
+                    </div>
+
+                    <!-- Size Information -->
+                    <div class="d-flex align-center ga-2">
+                      <span class="text-caption text-grey" style="min-width: 70px;">Kích thước:</span>
+                      <v-chip size="small" variant="outlined">{{ item.sizeName || '-' }}</v-chip>
+                    </div>
                   </div>
                 </div>
 
@@ -393,5 +407,27 @@ onMounted(() => {
 
 .min-w-220 {
   min-width: 220px;
+}
+
+/* Variant Information Section Styles */
+.variant-info-section {
+  padding: 12px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  border-radius: 8px;
+  border-left: 4px solid #1976d2;
+}
+
+.variant-info-section .color-dot {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #999;
+  vertical-align: middle;
+}
+
+.variant-info-section .v-chip {
+  height: 24px;
+  font-size: 12px;
 }
 </style>
