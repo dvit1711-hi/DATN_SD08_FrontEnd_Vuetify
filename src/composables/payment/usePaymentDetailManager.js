@@ -54,6 +54,16 @@ export function usePaymentDetailManager() {
   const orderEditHistoryMap = ref({});
   const orderTimelineMap = ref({});
 
+  const returnItemDialog = ref(false);
+  const returnTargetItem = ref(null);
+  const returnQuantity = ref(1);
+  const returnNote = ref("");
+  const returnErrors = ref({
+    quantity: "",
+    note: "",
+  });
+  const returningOrderDetailId = ref(null);
+
   const goBack = () => {
     router.push({ name: "AdminPayments" });
   };
@@ -195,12 +205,17 @@ export function usePaymentDetailManager() {
     const orderStatus = String(order?.orderStatus || "").toUpperCase();
     const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
 
-    if (orderStatus === "CANCELLED" || paymentStatus === "CANCELLED")
+    if (orderStatus === "CANCELLED" || paymentStatus === "CANCELLED") {
       return "CANCELLED";
+    }
+
+    if (orderStatus === "RETURNED") return "RETURNED";
+    if (orderStatus === "PARTIAL_RETURNED") return "PARTIAL_RETURNED";
 
     if (isOfflineGuestOrder(order)) {
-      if (orderStatus === "PAID" || paymentStatus === "PAID")
+      if (orderStatus === "PAID" || paymentStatus === "PAID") {
         return "COMPLETED";
+      }
       return "WAIT_CONFIRM";
     }
 
@@ -229,10 +244,12 @@ export function usePaymentDetailManager() {
     }
 
     if (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") {
-      if (isCodPaymentMethod(order) && isUiOrderConfirmed(order))
+      if (isCodPaymentMethod(order) && isUiOrderConfirmed(order)) {
         return "WAIT_SHIP";
-      if (isOnlinePaymentMethod(order) && paymentStatus === "PAID")
+      }
+      if (isOnlinePaymentMethod(order) && paymentStatus === "PAID") {
         return "WAIT_SHIP";
+      }
       return "WAIT_CONFIRM";
     }
 
@@ -250,6 +267,8 @@ export function usePaymentDetailManager() {
     if (stage === "WAIT_COMPLETE") return "Đã xác nhận thanh toán";
     if (stage === "COMPLETED") return "Hoàn thành";
     if (stage === "CANCELLED") return "Đã hủy";
+    if (stage === "PARTIAL_RETURNED") return "Trả hàng một phần";
+    if (stage === "RETURNED") return "Trả hàng";
 
     return "Không xác định";
   };
@@ -265,6 +284,8 @@ export function usePaymentDetailManager() {
     if (stage === "DELIVERED") return "warning";
     if (stage === "COMPLETED") return "success";
     if (stage === "CANCELLED") return "error";
+    if (stage === "PARTIAL_RETURNED") return "orange";
+    if (stage === "RETURNED") return "deep-orange";
 
     return "grey";
   };
@@ -316,6 +337,15 @@ export function usePaymentDetailManager() {
       IN_TRANSIT: ["SHIPPING", "Đang giao hàng", "mdi-truck-delivery-outline"],
       DELIVERED: ["DELIVERED", "Đã giao hàng", "mdi-truck-check-outline"],
       COMPLETED: ["COMPLETED", "Hoàn thành", "mdi-check-decagram-outline"],
+
+      PARTIAL_RETURNED: [
+        "PARTIAL_RETURNED",
+        "Trả hàng một phần",
+        "mdi-keyboard-return",
+      ],
+
+      RETURNED: ["RETURNED", "Trả hàng", "mdi-keyboard-return"],
+
       CANCELLED: ["CANCELLED", "Đã hủy", "mdi-close-octagon-outline"],
     };
 
@@ -347,21 +377,56 @@ export function usePaymentDetailManager() {
   };
 
   const appendTimelineStep = (order, stage, customTime = null) => {
-    const orderId = normalizeOrderId(order?.orderId);
-    if (!orderId) return;
+  const orderId = normalizeOrderId(order?.orderId);
+  if (!orderId) return;
 
-    const [code, label, icon] = getBaseStepByStage(stage);
-    const historyMap = { ...orderTimelineMap.value };
-    const currentList = Array.isArray(historyMap[orderId])
-      ? [...historyMap[orderId]]
-      : [];
+  const [code, label, icon] = getBaseStepByStage(stage);
 
-    const newStep = createTimelineStep(code, label, icon, customTime);
-    historyMap[orderId] = [...currentList, newStep];
+  const historyMap = { ...orderTimelineMap.value };
+  const currentList = Array.isArray(historyMap[orderId])
+    ? [...historyMap[orderId]]
+    : [];
 
-    orderTimelineMap.value = historyMap;
-    persistTimelineMap();
-  };
+  const newStep = createTimelineStep(code, label, icon, customTime);
+
+  historyMap[orderId] = [...currentList, newStep];
+  orderTimelineMap.value = historyMap;
+  persistTimelineMap();
+};
+const syncReturnStepFromBackend = (order) => {
+  const orderId = normalizeOrderId(order?.orderId);
+  if (!orderId) return;
+
+  const stage = getOrderVisualStage(order);
+
+  if (!["PARTIAL_RETURNED", "RETURNED"].includes(stage)) return;
+
+  const historyMap = { ...orderTimelineMap.value };
+  const currentList = Array.isArray(historyMap[orderId])
+    ? [...historyMap[orderId]]
+    : [];
+
+  const existed = currentList.some((step) =>
+    ["PARTIAL_RETURNED", "RETURNED"].includes(
+      String(step?.code || "").toUpperCase()
+    )
+  );
+
+  if (existed) return;
+
+  const [code, label, icon] = getBaseStepByStage(stage);
+
+  const newStep = createTimelineStep(
+    code,
+    label,
+    icon,
+    formatDate(new Date())
+  );
+
+  historyMap[orderId] = [...currentList, newStep];
+  orderTimelineMap.value = historyMap;
+  persistTimelineMap();
+};
 
   const appendManyTimelineSteps = (order, stages = []) => {
     stages.forEach((stage) => appendTimelineStep(order, stage));
@@ -731,6 +796,7 @@ export function usePaymentDetailManager() {
 
       selectedOrder.value = { ...found };
       seedTimelineIfMissing(selectedOrder.value);
+      syncReturnStepFromBackend(selectedOrder.value);
       startTimelineReveal();
     } catch (error) {
       console.error("Lỗi tải chi tiết đơn hàng:", error);
@@ -1653,26 +1719,263 @@ export function usePaymentDetailManager() {
     if (!canPrintCompletedInvoice(order)) return;
     printInvoice(order, "completed");
   };
-  const IMAGE_BASE_URL = '';
 
-  const selectedOrderItems = computed(() => {
-    const items = selectedOrder.value?.items;
-    return Array.isArray(items) ? items : [];
-  });
+  const IMAGE_BASE_URL = "";
 
   const resolveOrderItemImageUrl = (imageUrl) => {
-  const value = String(imageUrl || '').trim()
+    const value = String(imageUrl || "").trim();
 
-  if (!value) return ''
-  if (value.startsWith('http://') || value.startsWith('https://')) return value
-  if (value.startsWith('data:') || value.startsWith('blob:')) return value
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://"))
+      return value;
+    if (value.startsWith("data:") || value.startsWith("blob:")) return value;
 
-  if (!IMAGE_BASE_URL) {
-    return value.startsWith('/') ? value : `/${value}`
-  }
+    if (!IMAGE_BASE_URL) {
+      return value.startsWith("/") ? value : `/${value}`;
+    }
 
-  return `${IMAGE_BASE_URL.replace(/\/$/, '')}/${value.replace(/^\//, '')}`
-}
+    return `${IMAGE_BASE_URL.replace(/\/$/, "")}/${value.replace(/^\//, "")}`;
+  };
+
+  const selectedReturnedItems = computed(() => {
+    const items = Array.isArray(selectedOrder.value?.items)
+      ? selectedOrder.value.items
+      : [];
+
+    return items
+      .filter((item) => Number(item.returnedQuantity || 0) > 0)
+      .map((item) => ({
+        ...item,
+        id: item.orderDetailId,
+        quantity: Number(item.returnedQuantity || 0),
+        note: selectedOrder.value?.note || "",
+        createdAt: selectedOrder.value?.orderDate,
+      }));
+  });
+
+  const extractReturnNote = (orderNote, item, type) => {
+  const noteText = String(orderNote || "").trim();
+  if (!noteText) return "";
+
+  const productName = String(item?.productName || "").trim();
+  const label = type === "SHIPPING_RETURN" ? "HOAN_HANG" : "TRA_HANG";
+
+  const lines = noteText
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const matchedLine = [...lines].reverse().find((line) => {
+    const sameType = line.includes(`[${label}`);
+    const sameProduct = productName ? line.includes(productName) : true;
+    return sameType && sameProduct;
+  });
+
+  if (!matchedLine) return "";
+
+  const match = matchedLine.match(/Ghi chú:\s*(.*)$/i);
+  return match?.[1]?.trim() || "";
+};
+
+  const shippingReturnedItems = computed(() => {
+    const items = Array.isArray(selectedOrder.value?.items)
+      ? selectedOrder.value.items
+      : [];
+
+    return items
+      .filter((item) => Number(item.shippingReturnedQuantity || 0) > 0)
+      .map((item) => ({
+        ...item,
+        id: `shipping-${item.orderDetailId}`,
+        quantity: Number(item.shippingReturnedQuantity || 0),
+note: extractReturnNote(selectedOrder.value?.note, item, "SHIPPING_RETURN"),        createdAt: selectedOrder.value?.orderDate,
+        returnType: "SHIPPING_RETURN",
+      }));
+  });
+
+  const completedReturnedItems = computed(() => {
+    const items = Array.isArray(selectedOrder.value?.items)
+      ? selectedOrder.value.items
+      : [];
+
+    return items
+      .filter((item) => Number(item.completedReturnedQuantity || 0) > 0)
+      .map((item) => ({
+        ...item,
+        id: `completed-${item.orderDetailId}`,
+        quantity: Number(item.completedReturnedQuantity || 0),
+note: extractReturnNote(selectedOrder.value?.note, item, "COMPLETED_RETURN"),        createdAt: selectedOrder.value?.orderDate,
+        returnType: "COMPLETED_RETURN",
+      }));
+  });
+
+  const shippingReturnedItemsTotal = computed(() => {
+    return shippingReturnedItems.value.reduce((sum, item) => {
+      return sum + getReturnItemTotal(item);
+    }, 0);
+  });
+
+  const completedReturnedItemsTotal = computed(() => {
+    return completedReturnedItems.value.reduce((sum, item) => {
+      return sum + getReturnItemTotal(item);
+    }, 0);
+  });
+
+  const returnedItemsTotal = computed(() => {
+    return selectedReturnedItems.value.reduce((sum, item) => {
+      return sum + getReturnItemTotal(item);
+    }, 0);
+  });
+
+  const selectedOrderItems = computed(() => {
+    const items = Array.isArray(selectedOrder.value?.items)
+      ? selectedOrder.value.items
+      : [];
+
+    return items
+      .map((item) => {
+        const originalQuantity = Number(item.quantity || 0);
+        const returnedQuantity = Number(item.returnedQuantity || 0);
+        const remainingQuantity = Number(
+          item.remainingQuantity ??
+            item.returnableQuantity ??
+            Math.max(0, originalQuantity - returnedQuantity),
+        );
+
+        return {
+          ...item,
+          originalQuantity,
+          returnedQuantity,
+          quantity: remainingQuantity,
+        };
+      })
+      .filter((item) => Number(item.quantity || 0) > 0);
+  });
+
+  const getReturnItemMaxQuantity = (item) => {
+    const quantity = Number(
+      item?.remainingQuantity ??
+        item?.returnableQuantity ??
+        item?.quantity ??
+        0,
+    );
+
+    return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+  };
+
+  const canReturnItem = (order, item) => {
+    if (!order || !item) return false;
+
+    const stage = getOrderVisualStage(order);
+    const maxQuantity = getReturnItemMaxQuantity(item);
+
+    return isOnlineOrder(order) && stage === "IN_TRANSIT" && maxQuantity > 0;
+  };
+
+  const getReturnItemTotal = (item) => {
+    return Number(item?.quantity || 0) * Number(item?.price || 0);
+  };
+
+  const resetReturnForm = () => {
+    returnTargetItem.value = null;
+    returnQuantity.value = 1;
+    returnNote.value = "";
+    returnErrors.value = {
+      quantity: "",
+      note: "",
+    };
+  };
+
+  const openReturnItemDialog = (item) => {
+    if (!canReturnItem(selectedOrder.value, item)) return;
+
+    returnTargetItem.value = item;
+    returnQuantity.value = 1;
+    returnNote.value = "";
+    returnErrors.value = {
+      quantity: "",
+      note: "",
+    };
+    returnItemDialog.value = true;
+  };
+
+  const closeReturnItemDialog = () => {
+    returnItemDialog.value = false;
+    resetReturnForm();
+  };
+
+  const validateReturnItem = () => {
+    const item = returnTargetItem.value;
+    const maxQuantity = getReturnItemMaxQuantity(item);
+    const quantity = Number(returnQuantity.value);
+    const note = String(returnNote.value || "").trim();
+
+    const errors = {
+      quantity: "",
+      note: "",
+    };
+
+    if (!Number.isInteger(quantity)) {
+      errors.quantity = "Số lượng phải là số nguyên";
+    } else if (quantity <= 0) {
+      errors.quantity = "Số lượng phải lớn hơn 0";
+    } else if (quantity > maxQuantity) {
+      errors.quantity = `Số lượng hoàn không được vượt quá ${maxQuantity}`;
+    }
+
+    if (!note) {
+      errors.note = "Vui lòng nhập ghi chú hoàn hàng";
+    } else if (note.length < 5) {
+      errors.note = "Ghi chú phải có ít nhất 5 ký tự";
+    }
+
+    returnErrors.value = errors;
+
+    return !errors.quantity && !errors.note;
+  };
+
+  const submitReturnItem = async () => {
+    const order = selectedOrder.value;
+    const item = returnTargetItem.value;
+
+    if (!order || !item) return;
+    if (!validateReturnItem()) return;
+
+    returningOrderDetailId.value = String(
+      item?.orderDetailId || item?.id || "",
+    );
+
+    try {
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("accessToken");
+
+      await paymentApi.returnShippingOrderItemByAdmin(
+        order.orderId,
+        {
+          orderDetailId: item.orderDetailId || item.id,
+          quantity: Number(returnQuantity.value),
+          note: String(returnNote.value || "").trim(),
+        },
+        token,
+      );
+
+      await loadOrderDetail();
+
+      snackbarMessage.value = "Hoàn hàng thành công, tồn kho đã được cập nhật";
+      snackbarColor.value = "success";
+      showSnackbar.value = true;
+
+      closeReturnItemDialog();
+    } catch (error) {
+      console.error("Lỗi hoàn hàng:", error);
+      snackbarMessage.value =
+        error?.response?.data?.message || "Hoàn hàng thất bại";
+      snackbarColor.value = "error";
+      showSnackbar.value = true;
+    } finally {
+      returningOrderDetailId.value = null;
+    }
+  };
 
   const getOrderItemTotal = (item) => {
     const quantity = Number(item?.quantity || 0);
@@ -1714,6 +2017,30 @@ export function usePaymentDetailManager() {
     revertReason,
     revertReasonError,
     revertTargetOrder,
+
+    timelineRevealCount,
+
+    shippingReturnedItems,
+    completedReturnedItems,
+    shippingReturnedItemsTotal,
+    completedReturnedItemsTotal,
+
+    returnedItemsTotal,
+
+    selectedReturnedItems,
+    canReturnItem,
+    openReturnItemDialog,
+    closeReturnItemDialog,
+    submitReturnItem,
+    getReturnItemMaxQuantity,
+    getReturnItemTotal,
+
+    returnItemDialog,
+    returnTargetItem,
+    returnQuantity,
+    returnNote,
+    returnErrors,
+    returningOrderDetailId,
 
     selectedOrderItems,
     resolveOrderItemImageUrl,

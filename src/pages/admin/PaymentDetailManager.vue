@@ -53,52 +53,12 @@
       </v-card-title>
 
       <v-card-text>
-        <v-card variant="tonal" color="grey-lighten-4" class="mb-4">
-          <v-card-title class="text-subtitle-1">Lịch sử đơn hàng</v-card-title>
-
-          <v-card-text>
-            <div class="order-track-scroll">
-              <div
-                class="order-track"
-                :style="trackWidthStyle(orderTimelineSteps)"
-              >
-                <div
-                  v-for="(step, index) in orderTimelineSteps"
-                  :key="step.id || `${step.code}-${index}`"
-                  class="track-step"
-                  :class="[
-                    { 'track-step--visible': isStepVisible(index) },
-                    getStepCodeClass(step),
-                  ]"
-                >
-                  <div
-                    class="track-icon"
-                    :class="[
-                      `track-icon--${step.state}`,
-                      getStepIconClass(step),
-                    ]"
-                  >
-                    <v-icon size="22">{{ step.icon }}</v-icon>
-                  </div>
-
-                  <div
-                    class="track-connector"
-                    :class="[connectorClass(step), getConnectorCodeClass(step)]"
-                    :style="connectorDelayStyle(index)"
-                  />
-
-                  <div class="track-label text-subtitle-2">
-                    {{ step.label }}
-                  </div>
-
-                  <div class="track-time text-caption text-medium-emphasis">
-                    {{ step.time }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
+        <OrderTimeline
+          title="Lịch sử đơn hàng"
+          :steps="orderTimelineSteps"
+          :animated="true"
+          :visible-count="timelineRevealCount"
+        />
 
         <v-row>
           <v-col cols="12" md="7">
@@ -375,12 +335,234 @@
                   </v-chip>
                 </div>
 
-                <div class="order-item-total">
-                  {{ formatPrice(getOrderItemTotal(item)) }} đ
+                <div class="order-item-actions">
+                  <div class="order-item-total">
+                    {{ formatPrice(getOrderItemTotal(item)) }} đ
+                  </div>
+
+                  <v-tooltip text="Hoàn hàng" location="top">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-if="canReturnItem(selectedOrder, item)"
+                        icon
+                        variant="text"
+                        size="small"
+                        density="comfortable"
+                        class="return-icon-btn"
+                        :loading="
+                          returningOrderDetailId ===
+                          String(item.orderDetailId || item.id)
+                        "
+                        @click="openReturnItemDialog(item)"
+                      >
+                        <v-icon size="22" class="return-icon"
+                          >mdi-keyboard-return</v-icon
+                        >
+                      </v-btn>
+                    </template>
+                  </v-tooltip>
                 </div>
               </div>
             </div>
           </v-card-text>
+        </v-card>
+        <v-card
+          v-if="shippingReturnedItems.length > 0"
+          variant="outlined"
+          class="mt-4 returned-table-card"
+        >
+          <v-card-title class="order-items-head">
+            <div class="text-subtitle-1 font-weight-bold">
+              Danh sách sản phẩm hoàn hàng
+            </div>
+
+            <v-chip color="warning" variant="tonal" size="small">
+              {{ shippingReturnedItems.length }} sản phẩm
+            </v-chip>
+          </v-card-title>
+
+          <v-divider />
+
+          <v-table class="returned-table">
+            <thead>
+              <tr>
+                <th>Sản phẩm</th>
+                <th class="text-center">Giá</th>
+                <th class="text-center">SL hoàn</th>
+                <th>Ghi chú</th>
+                <th>Thời gian</th>
+                <th class="text-right">Thành tiền</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr v-for="item in shippingReturnedItems" :key="item.id">
+                <td>
+                  <div class="returned-product-cell">
+                    <v-img
+                      v-if="item.imageUrl"
+                      :src="resolveOrderItemImageUrl(item.imageUrl)"
+                      width="64"
+                      height="64"
+                      cover
+                      class="returned-table-image"
+                    />
+
+                    <div
+                      v-else
+                      class="returned-table-image returned-table-image--empty"
+                    >
+                      <v-icon size="22">mdi-image-off-outline</v-icon>
+                    </div>
+
+                    <div>
+                      <div class="returned-table-name">
+                        {{ item.productName || "Sản phẩm" }}
+                      </div>
+                      <div class="returned-table-meta">
+                        Màu: {{ item.colorName || "-" }}
+                      </div>
+                      <div class="returned-table-meta">
+                        Size: {{ item.sizeName || "-" }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="text-center returned-table-price">
+                  {{ formatPrice(item.price) }} đ
+                </td>
+
+                <td class="text-center">
+                  <v-chip size="small" color="warning" variant="tonal">
+                    x{{ item.quantity || 0 }}
+                  </v-chip>
+                </td>
+
+                <td class="returned-table-note">
+                  {{ item.note || "-" }}
+                </td>
+
+                <td class="returned-table-meta">
+                  {{ formatDate(item.createdAt) }}
+                </td>
+
+                <td class="text-right returned-table-total">
+                  {{ formatPrice(getReturnItemTotal(item)) }} đ
+                </td>
+              </tr>
+            </tbody>
+
+            <tfoot>
+              <tr>
+                <td colspan="5" class="text-right returned-table-footer">
+                  Tổng tiền hoàn:
+                </td>
+                <td class="text-right returned-table-footer-total">
+                  {{ formatPrice(shippingReturnedItemsTotal) }} đ
+                </td>
+              </tr>
+            </tfoot>
+          </v-table>
+        </v-card>
+        <v-card
+          v-if="completedReturnedItems.length > 0"
+          variant="outlined"
+          class="mt-4 returned-table-card"
+        >
+          <v-card-title class="order-items-head">
+            <div class="text-subtitle-1 font-weight-bold">
+              Danh sách sản phẩm trả hàng
+            </div>
+
+            <v-chip color="deep-orange" variant="tonal" size="small">
+              {{ completedReturnedItems.length }} sản phẩm
+            </v-chip>
+          </v-card-title>
+
+          <v-divider />
+
+          <v-table class="returned-table">
+            <thead>
+              <tr>
+                <th>Sản phẩm</th>
+                <th class="text-center">Giá</th>
+                <th class="text-center">SL trả</th>
+                <th>Ghi chú</th>
+                <th>Thời gian</th>
+                <th class="text-right">Thành tiền</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr v-for="item in completedReturnedItems" :key="item.id">
+                <td>
+                  <div class="returned-product-cell">
+                    <v-img
+                      v-if="item.imageUrl"
+                      :src="resolveOrderItemImageUrl(item.imageUrl)"
+                      width="64"
+                      height="64"
+                      cover
+                      class="returned-table-image"
+                    />
+
+                    <div
+                      v-else
+                      class="returned-table-image returned-table-image--empty"
+                    >
+                      <v-icon size="22">mdi-image-off-outline</v-icon>
+                    </div>
+
+                    <div>
+                      <div class="returned-table-name">
+                        {{ item.productName || "Sản phẩm" }}
+                      </div>
+                      <div class="returned-table-meta">
+                        Màu: {{ item.colorName || "-" }}
+                      </div>
+                      <div class="returned-table-meta">
+                        Size: {{ item.sizeName || "-" }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="text-center returned-table-price">
+                  {{ formatPrice(item.price) }} đ
+                </td>
+
+                <td class="text-center">
+                  <v-chip size="small" color="deep-orange" variant="tonal">
+                    x{{ item.quantity || 0 }}
+                  </v-chip>
+                </td>
+
+                <td class="returned-table-note">
+                  {{ item.note || "-" }}
+                </td>
+
+                <td class="returned-table-meta">
+                  {{ formatDate(item.createdAt) }}
+                </td>
+
+                <td class="text-right returned-table-total">
+                  {{ formatPrice(getReturnItemTotal(item)) }} đ
+                </td>
+              </tr>
+            </tbody>
+
+            <tfoot>
+              <tr>
+                <td colspan="5" class="text-right returned-table-footer">
+                  Tổng tiền trả:
+                </td>
+                <td class="text-right returned-table-footer-total">
+                  {{ formatPrice(completedReturnedItemsTotal) }} đ
+                </td>
+              </tr>
+            </tfoot>
+          </v-table>
         </v-card>
       </v-card-text>
     </v-card>
@@ -494,12 +676,116 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <v-dialog v-model="returnItemDialog" max-width="680">
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center justify-space-between">
+          <div class="text-h6 font-weight-bold">Xác nhận hoàn hàng</div>
+
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            color="error"
+            @click="closeReturnItemDialog"
+          />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text>
+          <div v-if="returnTargetItem" class="return-product-box">
+            <v-img
+              v-if="returnTargetItem.imageUrl"
+              :src="resolveOrderItemImageUrl(returnTargetItem.imageUrl)"
+              width="96"
+              height="96"
+              cover
+              class="return-product-image"
+            />
+
+            <div
+              v-else
+              class="return-product-image return-product-image--empty"
+            >
+              <v-icon size="30">mdi-image-off-outline</v-icon>
+            </div>
+
+            <div class="return-product-info">
+              <div class="return-product-name">
+                {{ returnTargetItem.productName || "Sản phẩm" }}
+              </div>
+
+              <div class="return-product-price">
+                {{ formatPrice(returnTargetItem.price) }} VND
+              </div>
+
+              <div class="return-product-meta">
+                Size: {{ returnTargetItem.sizeName || "-" }}
+              </div>
+
+              <div class="return-product-meta">
+                Đã mua: x{{ returnTargetItem.quantity || 0 }}
+              </div>
+              <div class="return-product-meta">
+                Còn có thể hoàn:
+                {{ getReturnItemMaxQuantity(returnTargetItem) }}
+              </div>
+            </div>
+          </div>
+
+          <v-row class="mt-4">
+            <v-col cols="12" md="5">
+              <v-text-field
+                v-model.number="returnQuantity"
+                label="Số lượng"
+                type="number"
+                min="1"
+                :max="getReturnItemMaxQuantity(returnTargetItem)"
+                variant="outlined"
+                density="comfortable"
+                :error-messages="returnErrors.quantity"
+              />
+            </v-col>
+
+            <v-col cols="12" md="7">
+              <v-textarea
+                v-model="returnNote"
+                label="Ghi chú"
+                placeholder="Ví dụ: khách từ chối nhận hàng / sản phẩm lỗi / giao sai mẫu"
+                variant="outlined"
+                rows="3"
+                auto-grow
+                :error-messages="returnErrors.note"
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+
+        <v-card-actions class="px-6 pb-5">
+          <v-spacer />
+
+          <v-btn variant="text" @click="closeReturnItemDialog"> Hủy </v-btn>
+
+          <v-btn
+            color="warning"
+            variant="flat"
+            :loading="
+              returningOrderDetailId ===
+              (returnTargetItem?.orderDetailId || returnTargetItem?.id)
+            "
+            @click="submitReturnItem"
+          >
+            Xác nhận hoàn hàng
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
 import { onMounted } from "vue";
 import { usePaymentDetailManager } from "@/composables/payment/usePaymentDetailManager";
+import OrderTimeline from "@/components/common/OrderTimeline.vue";
 
 const {
   selectedOrder,
@@ -517,6 +803,31 @@ const {
   revertReason,
   revertReasonError,
   revertTargetOrder,
+
+  timelineRevealCount,
+
+  shippingReturnedItems,
+  completedReturnedItems,
+  shippingReturnedItemsTotal,
+  completedReturnedItemsTotal,
+
+  returnedItemsTotal,
+
+  selectedReturnedItems,
+  getReturnItemTotal,
+
+  returnItemDialog,
+  returnTargetItem,
+  returnQuantity,
+  returnNote,
+  returnErrors,
+  returningOrderDetailId,
+
+  canReturnItem,
+  openReturnItemDialog,
+  closeReturnItemDialog,
+  submitReturnItem,
+  getReturnItemMaxQuantity,
 
   selectedOrderItems,
   resolveOrderItemImageUrl,
