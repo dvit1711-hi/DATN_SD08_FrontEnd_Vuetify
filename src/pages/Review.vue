@@ -15,7 +15,7 @@
         </v-col>
       </v-row>
 
-      <v-row class="mb-6" v-if="paidOrders.length > 0">
+      <v-row class="mb-6" v-if="paidOrders.length > 0 && !selectedOrderId">
         <v-col cols="12">
           <div class="search-bar-wrapper">
             <v-text-field
@@ -603,6 +603,8 @@ const filteredPaidOrders = computed(() => {
   const query = trimmedQuery.toLowerCase()
 
   return paidOrders.value.filter((order) => {
+    if (!order) return false
+    
     // Search by Order ID
     if (order.orderId && order.orderId.toString().includes(query)) {
       return true
@@ -629,7 +631,7 @@ const filteredPaidOrders = computed(() => {
     }
 
     // Search in Items/Products details
-    if (order.items && Array.isArray(order.items)) {
+    if (order.items && Array.isArray(order.items) && order.items.length > 0) {
       return order.items.some((item) => {
         // Validate item has required properties
         if (!item) return false
@@ -684,6 +686,7 @@ const filteredPaidOrders = computed(() => {
       })
     }
 
+    // If no items array but search found match in order level, return true
     return false
   })
 })
@@ -711,29 +714,34 @@ const loadPaidOrders = async () => {
       // Validate order has required properties
       if (!order) return null
       
+      // Get items from either 'items' or 'orderDetails' or 'details'
+      const itemsArray = order.items || order.orderDetails || order.details || []
+      
+      console.log('Order data:', order) // Debug log
+      
       return {
         ...order,
         // Ensure items array exists and is valid
-        items: Array.isArray(order.items) 
-          ? order.items.map(item => ({
+        items: Array.isArray(itemsArray) 
+          ? itemsArray.map(item => ({
               ...item,
               // Normalize missing properties
-              productName: item.productName || 'Sản phẩm không xác định',
-              colorName: item.colorName || 'Không xác định',
-              sizeName: item.sizeName || '',
-              materialName: item.materialName || '',
-              price: item.price || 0,
-              quantity: item.quantity || 1,
-              imageUrl: item.imageUrl || fallbackImage,
-              productId: item.productId || null,
-              productColorId: item.productColorId || null,
-              orderDetailId: item.orderDetailId || null,
+              productName: item.productName || item.product_name || 'Sản phẩm không xác định',
+              colorName: item.colorName || item.color_name || 'Không xác định',
+              sizeName: item.sizeName || item.size_name || '',
+              materialName: item.materialName || item.material_name || '',
+              price: item.price || item.unitPrice || 0,
+              quantity: item.quantity || item.qty || 1,
+              imageUrl: item.imageUrl || item.image_url || fallbackImage,
+              productId: item.productId || item.product_id || null,
+              productColorId: item.productColorId || item.product_color_id || null,
+              orderDetailId: item.orderDetailId || item.order_detail_id || null,
             }))
           : [],
         // Ensure order has essential fields
-        orderId: order.orderId || null,
-        orderDate: order.orderDate || new Date().toISOString(),
-        totalAmount: order.totalAmount || 0,
+        orderId: order.orderId || order.order_id || null,
+        orderDate: order.orderDate || order.order_date || new Date().toISOString(),
+        totalAmount: order.totalAmount || order.total_amount || 0,
       }
     }).filter(Boolean) // Remove null entries
   } catch (error) {
@@ -774,20 +782,23 @@ const onOrderSelected = (orderId) => {
     return
   }
 
-  if (order.items && Array.isArray(order.items) && order.items.length > 0) {
-    selectedOrderProducts.value = order.items.map((item) => {
+  // Get items from order (handle multiple field names)
+  const itemsData = order.items || []
+  
+  if (itemsData && Array.isArray(itemsData) && itemsData.length > 0) {
+    selectedOrderProducts.value = itemsData.map((item) => {
       // Validate each item
       if (!item) return null
       return {
-        productId: item.productId || null,
-        productName: item.productName || 'Sản phẩm không xác định',
-        colorName: item.colorName || 'Không xác định',
-        sizeName: item.sizeName || '',
-        materialName: item.materialName || '',
-        imageUrl: item.imageUrl || fallbackImage,
-        price: item.price || 0,
-        quantity: item.quantity || 1,
-        orderDetailId: item.orderDetailId || null,
+        productId: item.productId || item.product_id || null,
+        productName: item.productName || item.product_name || 'Sản phẩm không xác định',
+        colorName: item.colorName || item.color_name || 'Không xác định',
+        sizeName: item.sizeName || item.size_name || '',
+        materialName: item.materialName || item.material_name || '',
+        imageUrl: item.imageUrl || item.image_url || fallbackImage,
+        price: item.price || item.unitPrice || 0,
+        quantity: item.quantity || item.qty || 1,
+        orderDetailId: item.orderDetailId || item.order_detail_id || null,
       }
     }).filter(Boolean) // Remove null items
   } else {

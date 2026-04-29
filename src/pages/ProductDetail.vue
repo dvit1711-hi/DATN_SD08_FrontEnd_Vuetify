@@ -272,11 +272,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import productApi from "@/api/productApi";
 import sizeApi from "@/api/sizeApi";
-<<<<<<< HEAD
 import { getById as getProductColorById } from "@/api/productColorApi";
-=======
 import cartApi from "@/api/cartApi";
->>>>>>> d805aa4751ab9840d51f31288239dedacfb91e9a
 import { getActiveProductDiscounts } from "@/api/productDiscountApi";
 import ProductDetailTabs from "@/components/product/ProductDetailTabs.vue";
 import ProductReviews from "@/components/product/ProductReviews.vue";
