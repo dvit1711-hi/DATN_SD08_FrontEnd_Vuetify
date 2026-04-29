@@ -620,7 +620,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import addressApi from '@/api/addressApi'
@@ -673,6 +673,13 @@ const isLoadingWards = ref(false)
 const ghnProvinces = ref([])
 const ghnDistricts = ref([])
 const ghnWards = ref([])
+const isQuickBuyMode = ref(false)
+const quickBuyCartItemId = ref(null)
+const isQuickBuyOrderPlaced = ref(false)
+const isCleaningUpQuickBuy = ref(false)
+const quickBuyOriginalQuantity = ref(0)
+const quickBuyProductColorId = ref(null)
+const quickBuyCartId = ref(null)
 const shippingInput = ref({
   provinceId: null,
   toDistrictId: '',
@@ -1050,6 +1057,80 @@ const normalizeCheckoutItem = (item) => {
   }
 }
 
+const cleanupUnpaidQuickBuyItem = async () => {
+  if (isCleaningUpQuickBuy.value || !isQuickBuyMode.value || isQuickBuyOrderPlaced.value) {
+    return
+  }
+
+  const cartItemId = Number.parseInt(quickBuyCartItemId.value, 10)
+  const originalQty = Number.parseInt(quickBuyOriginalQuantity.value, 10) || 0
+  const productColorId = Number.parseInt(quickBuyProductColorId.value, 10)
+  const cartId = Number.parseInt(quickBuyCartId.value, 10)
+
+  sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
+  sessionStorage.removeItem(SELECTED_CART_ITEM_IDS_KEY)
+  isQuickBuyMode.value = false
+  quickBuyCartItemId.value = null
+  quickBuyOriginalQuantity.value = 0
+  quickBuyProductColorId.value = null
+  quickBuyCartId.value = null
+
+  if (!Number.isFinite(cartItemId) || cartItemId <= 0) {
+    return
+  }
+
+  isCleaningUpQuickBuy.value = true
+  try {
+    if (originalQty > 0 && Number.isFinite(productColorId) && productColorId > 0) {
+      await cartApi.update(
+        cartItemId,
+        {
+          cartID: Number.isFinite(cartId) && cartId > 0 ? cartId : Number.parseInt(userStore.cartId, 10),
+          productColorID: productColorId,
+          quantity: originalQty,
+        },
+        userStore.token,
+      )
+    } else {
+      await cartApi.remove(cartItemId, userStore.token)
+    }
+    window.dispatchEvent(new Event('cart-changed'))
+  } catch (error) {
+    console.error('Lỗi dọn sản phẩm mua ngay chưa thanh toán:', error)
+  } finally {
+    isCleaningUpQuickBuy.value = false
+  }
+}
+
+const restoreOriginalCartAfterQuickBuyOrder = async () => {
+  const originalQty = Number.parseInt(quickBuyOriginalQuantity.value, 10) || 0
+  const productColorId = Number.parseInt(quickBuyProductColorId.value, 10)
+
+  if (originalQty <= 0 || !Number.isFinite(productColorId) || productColorId <= 0) {
+    return
+  }
+
+  try {
+    let currentCartId = Number.parseInt(userStore.cartId, 10)
+    if (!Number.isFinite(currentCartId) || currentCartId <= 0) {
+      currentCartId = await userStore.getOrCreateCart()
+    }
+
+    const itemRes = await cartApi.getByCart(currentCartId)
+    const exists = (itemRes.data || []).some((item) => {
+      const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
+      return colorId === productColorId
+    })
+
+    if (!exists) {
+      await userStore.addToCartAPI(productColorId, originalQty)
+      window.dispatchEvent(new Event('cart-changed'))
+    }
+  } catch (error) {
+    console.error('Lỗi khôi phục sản phẩm cũ trong giỏ sau mua ngay:', error)
+  }
+}
+
 const loadCheckoutItems = async () => {
   const rawSelectedIds = sessionStorage.getItem(SELECTED_CART_ITEM_IDS_KEY)
   const rawQuickBuyContext = sessionStorage.getItem(QUICK_BUY_CONTEXT_KEY)
@@ -1070,6 +1151,9 @@ const loadCheckoutItems = async () => {
   if (rawQuickBuyContext) {
     try {
       quickBuyContext = JSON.parse(rawQuickBuyContext)
+      if (quickBuyContext?.source !== 'buy-now') {
+        quickBuyContext = null
+      }
     } catch {
       quickBuyContext = null
     }
@@ -1092,11 +1176,25 @@ const loadCheckoutItems = async () => {
     const cartItems = itemRes.data || []
 
     if (quickBuyContext) {
+      const targetCartItemId = Number.parseInt(quickBuyContext.cartItemID, 10)
       const targetProductColorId = Number.parseInt(quickBuyContext.productColorID, 10)
-      const matchedByColor = cartItems.filter((item) => {
-        const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
-        return Number.isFinite(targetProductColorId) && colorId === targetProductColorId
-      })
+      const buyNowQuantity = Number.parseInt(quickBuyContext.buyNowQuantity ?? quickBuyContext.quantity, 10) || 1
+      const originalQty = Number.parseInt(quickBuyContext.originalQuantity, 10) || 0
+      let matchedByColor = []
+
+      if (Number.isFinite(targetCartItemId) && targetCartItemId > 0) {
+        const matchedById = cartItems.find((item) => Number.parseInt(item.cartItemID, 10) === targetCartItemId)
+        if (matchedById) {
+          matchedByColor = [matchedById]
+        }
+      }
+
+      if (matchedByColor.length === 0) {
+        matchedByColor = cartItems.filter((item) => {
+          const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
+          return Number.isFinite(targetProductColorId) && colorId === targetProductColorId
+        })
+      }
 
       if (matchedByColor.length > 0) {
         const latestMatchedItem = [...matchedByColor].sort((a, b) => {
@@ -1106,14 +1204,52 @@ const loadCheckoutItems = async () => {
         })[0]
 
         const normalized = normalizeCheckoutItem(latestMatchedItem)
+
+        // If quick-buy merged into existing cart line, temporarily force order quantity to buy-now quantity.
+        if (originalQty > 0 && normalized.quantity !== buyNowQuantity) {
+          await cartApi.update(
+            normalized.cartItemID,
+            {
+              cartID: normalized.cartID,
+              productColorID: normalized.productColorID,
+              quantity: buyNowQuantity,
+            },
+            userStore.token,
+          )
+          normalized.quantity = buyNowQuantity
+        }
+
         checkoutItems.value = [normalized]
+        isQuickBuyMode.value = true
+        quickBuyCartItemId.value = normalized.cartItemID
+        quickBuyOriginalQuantity.value = originalQty
+        quickBuyProductColorId.value = normalized.productColorID
+        quickBuyCartId.value = normalized.cartID
         sessionStorage.setItem(SELECTED_CART_ITEM_IDS_KEY, JSON.stringify([normalized.cartItemID]))
+        sessionStorage.setItem(QUICK_BUY_CONTEXT_KEY, JSON.stringify({
+          ...quickBuyContext,
+          source: 'buy-now',
+          cartItemID: normalized.cartItemID,
+          buyNowQuantity,
+          originalQuantity: originalQty,
+          productColorID: normalized.productColorID,
+        }))
         return
       }
 
+      isQuickBuyMode.value = false
+      quickBuyCartItemId.value = null
+      quickBuyOriginalQuantity.value = 0
+      quickBuyProductColorId.value = null
+      quickBuyCartId.value = null
       sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
     }
 
+    isQuickBuyMode.value = false
+    quickBuyCartItemId.value = null
+    quickBuyOriginalQuantity.value = 0
+    quickBuyProductColorId.value = null
+    quickBuyCartId.value = null
     const selectedSet = new Set(selectedIds)
     checkoutItems.value = cartItems
       .filter((item) => selectedSet.has(item.cartItemID))
@@ -1436,6 +1572,11 @@ const placeOrder = async () => {
       res.data?.data?.id ||
       res.data?.data?.orderId
 
+    if (isQuickBuyMode.value) {
+      isQuickBuyOrderPlaced.value = true
+      await restoreOriginalCartAfterQuickBuyOrder()
+    }
+
     sessionStorage.removeItem(SELECTED_CART_ITEM_IDS_KEY)
     sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
     window.dispatchEvent(new Event('cart-changed'))
@@ -1480,8 +1621,8 @@ const placeOrder = async () => {
   }
 }
 
-const goBackCart = () => {
-  sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
+const goBackCart = async () => {
+  await cleanupUnpaidQuickBuyItem()
   router.push({ name: 'Cart' })
 }
 
@@ -1618,6 +1759,10 @@ const markCancelledOnlineOrderHidden = (orderId) => {
 onMounted(async () => {
   await Promise.all([loadCheckoutItems(), loadUserClaimedCoupons(), loadAvailableCoupons(), loadGhnProvinces(), loadSavedAddresses()])
   await onSavedAddressChange()
+})
+
+onBeforeUnmount(() => {
+  cleanupUnpaidQuickBuyItem()
 })
 </script>
 

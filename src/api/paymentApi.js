@@ -200,4 +200,44 @@ export default {
 
     return axios.put(`${API}/orders/${orderId}/complete-delivery`, null, config)
   },
+
+  searchReturnableOrder(code, token) {
+  const config = {
+    params: { code },
+  }
+
+  if (token) {
+    config.headers = {
+      Authorization: `Bearer ${token}`,
+    }
+  }
+
+  return axios.get(`${API}/orders/return-search`, config)
+},
+
+returnShippingOrderItemByAdmin(orderId, data, token) {
+  const config = token
+    ? {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    : undefined
+
+  return axios.post(`${API}/orders/${orderId}/shipping-returns`, data, config)
+},
+
+returnCompletedOrderByAdmin(orderId, data, token) {
+  const config = token
+    ? {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    : undefined
+
+  return axios.post(`${API}/orders/${orderId}/completed-returns`, data, config)
+},
 }
+
+

@@ -525,6 +525,66 @@ const openSizeDialog = async () => {
   sizeDialog.value = true;
 };
 
+const removeLatestQuickBuyItemByColor = async (productColorId) => {
+  const parsedProductColorId = Number.parseInt(productColorId, 10);
+  if (!Number.isFinite(parsedProductColorId) || parsedProductColorId <= 0) {
+    return false;
+  }
+
+  try {
+    const currentCartId = await userStore.getOrCreateCart();
+    const itemRes = await cartApi.getByCart(currentCartId);
+    const matchedItems = (itemRes.data || []).filter((item) => {
+      const colorId = Number.parseInt(item.productColorID ?? item.productID, 10);
+      return colorId === parsedProductColorId;
+    });
+
+    if (matchedItems.length === 0) {
+      return false;
+    }
+
+    const latestMatchedItem = [...matchedItems].sort((a, b) => {
+      const bId = Number.parseInt(b.cartItemID ?? b.id, 10) || 0;
+      const aId = Number.parseInt(a.cartItemID ?? a.id, 10) || 0;
+      return bId - aId;
+    })[0];
+
+    const latestId = extractCartItemId(latestMatchedItem);
+    if (!latestId) {
+      return false;
+    }
+
+    await cartApi.remove(latestId, userStore.token);
+    window.dispatchEvent(new Event("cart-changed"));
+    return true;
+  } catch (error) {
+    console.error("Lỗi dọn sản phẩm mua ngay tạm:", error);
+    return false;
+  }
+};
+
+const getLatestCartItemByColor = (items, productColorId) => {
+  const parsedProductColorId = Number.parseInt(productColorId, 10);
+  if (!Number.isFinite(parsedProductColorId) || parsedProductColorId <= 0) {
+    return null;
+  }
+
+  const matchedItems = (items || []).filter((item) => {
+    const colorId = Number.parseInt(item.productColorID ?? item.productID, 10);
+    return colorId === parsedProductColorId;
+  });
+
+  if (matchedItems.length === 0) {
+    return null;
+  }
+
+  return [...matchedItems].sort((a, b) => {
+    const bId = Number.parseInt(b.cartItemID ?? b.id, 10) || 0;
+    const aId = Number.parseInt(a.cartItemID ?? a.id, 10) || 0;
+    return bId - aId;
+  })[0];
+};
+
 const extractCartItemId = (payload) => {
   const candidateIds = [
     payload?.id,
@@ -639,41 +699,53 @@ async function handleBuyNow() {
       throw new Error("Biến thể sản phẩm không hợp lệ");
     }
 
+    const currentCartId = await userStore.getOrCreateCart();
+    const beforeRes = await cartApi.getByCart(currentCartId);
+    const existingItem = getLatestCartItemByColor(beforeRes.data || [], selectedProductColorId);
+    const originalQuantity = Number.parseInt(existingItem?.quantity, 10) || 0;
+
     const addedItem = await userStore.addToCartAPI(
       selectedProductColorId,
       quantity.value,
     );
 
-    sessionStorage.setItem(
-      QUICK_BUY_CONTEXT_KEY,
-      JSON.stringify({
-        productColorID: selectedProductColorId,
-        quantity: quantity.value,
-        createdAt: Date.now(),
-      }),
-    );
-
     let addedCartItemId = extractCartItemId(addedItem);
 
     if (!addedCartItemId) {
-      const currentCartId = await userStore.getOrCreateCart();
       const itemRes = await cartApi.getByCart(currentCartId);
-      const matchedItems = (itemRes.data || []).filter((item) => {
-        const colorId = Number.parseInt(item.productColorID ?? item.productID, 10);
-        return colorId === selectedProductColorId;
-      });
+      const latestMatchedItem = getLatestCartItemByColor(itemRes.data || [], selectedProductColorId);
 
-      if (matchedItems.length > 0) {
-        const latestMatchedItem = [...matchedItems].sort((a, b) => {
-          const bId = Number.parseInt(b.cartItemID ?? b.id, 10) || 0;
-          const aId = Number.parseInt(a.cartItemID ?? a.id, 10) || 0;
-          return bId - aId;
-        })[0];
+      if (latestMatchedItem) {
         addedCartItemId = extractCartItemId(latestMatchedItem);
       }
     }
 
+    const finalCartSnapshotRes = await cartApi.getByCart(currentCartId);
+    const latestMatchedItem = getLatestCartItemByColor(
+      finalCartSnapshotRes.data || [],
+      selectedProductColorId,
+    );
+
+    if (!addedCartItemId && latestMatchedItem) {
+      addedCartItemId = extractCartItemId(latestMatchedItem);
+    }
+
     if (addedCartItemId) {
+      const mergedQuantity = Number.parseInt(latestMatchedItem?.quantity, 10) || quantity.value;
+      sessionStorage.setItem(
+        QUICK_BUY_CONTEXT_KEY,
+        JSON.stringify({
+          source: "buy-now",
+          productColorID: selectedProductColorId,
+          quantity: quantity.value,
+          buyNowQuantity: quantity.value,
+          originalQuantity,
+          mergedQuantity,
+          cartID: Number.parseInt(latestMatchedItem?.cartID, 10) || currentCartId,
+          cartItemID: addedCartItemId,
+          createdAt: Date.now(),
+        }),
+      );
       sessionStorage.setItem(
         SELECTED_CART_ITEM_IDS_KEY,
         JSON.stringify([addedCartItemId]),
@@ -683,17 +755,13 @@ async function handleBuyNow() {
       return;
     }
 
+    await removeLatestQuickBuyItemByColor(selectedProductColorId);
     sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY);
+    sessionStorage.removeItem(SELECTED_CART_ITEM_IDS_KEY);
 
-    snackbarMessage.value =
-      "Đã thêm vào giỏ. Vui lòng chọn sản phẩm trong giỏ để thanh toán";
-    snackbarColor.value = "warning";
+    snackbarMessage.value = "Không thể khởi tạo mua ngay. Sản phẩm không được lưu vào giỏ";
+    snackbarColor.value = "error";
     showSnackbar.value = true;
-    window.dispatchEvent(new Event("cart-changed"));
-
-    setTimeout(() => {
-      router.push({ name: "Cart" });
-    }, 800);
   } catch (error) {
     console.error("Lỗi mua ngay:", error);
     snackbarMessage.value = "Không thể xử lý mua ngay. Vui lòng thử lại";
