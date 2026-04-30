@@ -76,6 +76,9 @@
                         <v-list-item :to="{ name: 'AdminPayments' }" :title="t('common.paymentConfirm')"
                             prepend-icon="mdi-cash-check" active-color="primary" />
 
+                        <v-list-item :to="{ name: 'AdminReturnOrder' }" title="Trả hàng"
+                            prepend-icon="mdi-keyboard-return" active-color="primary" />
+
                         <v-list-item :to="{ name: 'AdminBrandMaterial' }" :title="t('common.brandMaterial')"
                             prepend-icon="mdi-tag" active-color="primary" />
 

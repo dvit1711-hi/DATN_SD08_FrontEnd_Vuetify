@@ -1,5 +1,5 @@
 <template>
-  <div class="productList-container">
+  <div >
     <v-container class="py-8" fluid>
       <div class="mb-8">
         <h1 class="text-h4 font-weight-bold mb-2">Danh sách sản phẩm</h1>
