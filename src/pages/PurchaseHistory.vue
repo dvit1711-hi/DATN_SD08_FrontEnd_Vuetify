@@ -18,12 +18,8 @@
     </v-alert>
 
     <div v-else>
-      <v-empty-state
-        v-if="!isLoading && orders.length === 0"
-        title="Chưa có đơn hàng"
-        text="Bạn chưa tạo đơn nào. Hãy mua sắm ngay"
-        icon="mdi-package-variant-closed-remove"
-      >
+      <v-empty-state v-if="!isLoading && orders.length === 0" title="Chưa có đơn hàng"
+        text="Bạn chưa tạo đơn nào. Hãy mua sắm ngay" icon="mdi-package-variant-closed-remove">
         <template #actions>
           <v-btn color="primary" @click="goProducts">Tiếp tục mua sắm</v-btn>
         </template>
@@ -36,6 +32,7 @@
               <div class="d-flex align-center justify-space-between flex-wrap ga-2">
                 <div>
                   <div class="font-weight-bold">Đơn #{{ order.orderId }}</div>
+                  <div class="font-weight-bold">Mã vận đơn: {{ order.trackingCode }}</div>
                   <div class="text-caption text-grey">{{ formatDate(order.orderDate) }}</div>
                 </div>
 
@@ -56,20 +53,14 @@
                 <div class="order-preview-label text-caption text-grey">Ảnh sản phẩm</div>
                 <div class="order-preview-images">
                   <template v-if="getOrderPreviewItems(order).length > 0">
-                    <v-avatar
-                      v-for="(item, index) in getOrderPreviewItems(order)"
-                      :key="`${order.orderId}-${item.orderDetailId || index}`"
-                      size="44"
-                      rounded="lg"
-                      class="order-preview-avatar"
-                    >
+                    <v-avatar v-for="(item, index) in getOrderPreviewItems(order)"
+                      :key="`${order.orderId}-${item.orderDetailId || index}`" size="44" rounded="lg"
+                      class="order-preview-avatar">
                       <v-img :src="item.imageUrl || fallbackImage" cover />
                     </v-avatar>
 
-                    <div
-                      v-if="getOrderPreviewOverflowCount(order) > 0"
-                      class="order-preview-avatar order-preview-avatar--more"
-                    >
+                    <div v-if="getOrderPreviewOverflowCount(order) > 0"
+                      class="order-preview-avatar order-preview-avatar--more">
                       +{{ getOrderPreviewOverflowCount(order) }}
                     </div>
                   </template>
@@ -86,20 +77,14 @@
               <v-card-text class="pt-0">
                 <div class="tracking-scroll">
                   <div class="tracking-row" :style="trackingWidthStyle(order)">
-                    <div
-                      v-for="(step, index) in getTrackingSteps(order)"
-                      :key="`${order.orderId}-${step.code}-${index}`"
-                      class="tracking-step"
-                    >
+                    <div v-for="(step, index) in getTrackingSteps(order)"
+                      :key="`${order.orderId}-${step.code}-${index}`" class="tracking-step">
                       <div class="tracking-icon" :class="`tracking-icon--${step.state}`">
                         <v-icon size="18">{{ step.icon }}</v-icon>
                       </div>
 
-                      <div
-                        v-if="index < getTrackingSteps(order).length - 1"
-                        class="tracking-connector"
-                        :class="connectorClass(getTrackingSteps(order)[index + 1])"
-                      />
+                      <div v-if="index < getTrackingSteps(order).length - 1" class="tracking-connector"
+                        :class="connectorClass(getTrackingSteps(order)[index + 1])" />
 
                       <div class="tracking-label">{{ step.label }}</div>
                       <div class="tracking-time">{{ step.time }}</div>
@@ -109,25 +94,12 @@
               </v-card-text>
             </v-card>
 
-            <v-alert
-              type="info"
-              variant="tonal"
-              density="comfortable"
-              class="mb-3"
-              icon="mdi-map-marker"
-              title="Địa chỉ nhận hàng"
-              :text="formatOrderAddress(order.shippingAddress)"
-            />
+            <v-alert type="info" variant="tonal" density="comfortable" class="mb-3" icon="mdi-map-marker"
+              title="Địa chỉ nhận hàng" :text="formatOrderAddress(order.shippingAddress)" />
 
             <div class="d-flex justify-end mb-3">
-              <v-btn
-                v-if="canCancelOrder(order)"
-                color="error"
-                variant="outlined"
-                size="small"
-                :loading="cancellingOrderId === order.orderId"
-                @click="cancelOrder(order)"
-              >
+              <v-btn v-if="canCancelOrder(order)" color="error" variant="outlined" size="small"
+                :loading="cancellingOrderId === order.orderId" @click="cancelOrder(order)">
                 Hủy đơn hàng
               </v-btn>
             </div>
@@ -142,7 +114,8 @@
 
                 <v-list-item-title class="font-weight-medium">{{ item.productName }}</v-list-item-title>
                 <v-list-item-subtitle>
-                  Màu: {{ item.colorName || 'Không xác định' }} | Số lượng: {{ item.quantity }} | Giá: {{ formatPrice(item.price) }}đ
+                  Màu: {{ item.colorName || 'Không xác định' }} | Số lượng: {{ item.quantity }} | Giá: {{
+                    formatPrice(item.price) }}đ
                 </v-list-item-subtitle>
               </v-list-item>
             </v-list>

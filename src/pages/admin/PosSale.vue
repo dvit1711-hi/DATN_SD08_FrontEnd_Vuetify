@@ -1641,6 +1641,30 @@ function buildReceiptHtml(order, options = {}) {
                     font-size: 12px;
                     color: #333;
                 }
+                .qr-order-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-order-left img {
+    width: 140px;
+    height: 140px;
+    object-fit: contain;
+}
+
+.qr-label {
+    font-size: 12px;
+    margin-top: 6px;
+    font-weight: 600;
+}
+
+.qr-code {
+    font-size: 11px;
+    margin-top: 2px;
+    color: #444;
+}
             </style>
         </head>
         <body>
@@ -1697,7 +1721,9 @@ function buildReceiptHtml(order, options = {}) {
                     </table>
 
                     <div class="bottom-area">
-                        <div class="left-note"></div>
+                        <div class="left-note">
+    ${generateOrderQR(orderCode)}
+</div>
 
                         <div class="summary">
                             <div class="summary-row">
@@ -1770,6 +1796,20 @@ function printReceipt(order = currentOrder.value) {
             printWindow.print()
         }, 200)
     }
+}
+
+function generateOrderQR(orderCode) {
+    if (!orderCode) return ""
+
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(orderCode)}`
+
+    return `
+        <div class="qr-order-left">
+            <img src="${qrUrl}" />
+            <div class="qr-label">Quét mã đơn</div>
+            <div class="qr-code">${orderCode}</div>
+        </div>
+    `
 }
 
 watch(customerMode, async (mode) => {
