@@ -8,13 +8,7 @@
         </p>
       </div>
 
-      <v-btn
-        color="black"
-        variant="outlined"
-        prepend-icon="mdi-refresh"
-        :loading="isLoading"
-        @click="loadOrders"
-      >
+      <v-btn color="black" variant="outlined" prepend-icon="mdi-refresh" :loading="isLoading" @click="loadOrders">
         Làm mới
       </v-btn>
     </div>
@@ -30,28 +24,18 @@
     </v-alert>
 
     <div v-else>
-      <v-empty-state
-        v-if="!isLoading && orders.length === 0"
-        title="Chưa có đơn hàng"
-        text="Bạn chưa tạo đơn nào. Hãy mua sắm ngay"
-        icon="mdi-package-variant-closed-remove"
-      >
+      <v-empty-state v-if="!isLoading && orders.length === 0" title="Chưa có đơn hàng"
+        text="Bạn chưa tạo đơn nào. Hãy mua sắm ngay" icon="mdi-package-variant-closed-remove">
         <template #actions>
           <v-btn color="primary" @click="goProducts"> Tiếp tục mua sắm </v-btn>
         </template>
       </v-empty-state>
 
       <v-expansion-panels v-else variant="accordion">
-        <v-expansion-panel
-          v-for="order in orders"
-          :key="order.orderId"
-          class="mb-3"
-        >
+        <v-expansion-panel v-for="order in orders" :key="order.orderId" class="mb-3">
           <v-expansion-panel-title>
             <div class="w-100 order-summary">
-              <div
-                class="d-flex align-center justify-space-between flex-wrap ga-2"
-              >
+              <div class="d-flex align-center justify-space-between flex-wrap ga-2">
                 <div>
                   <div class="font-weight-bold">Đơn #{{ order.orderId }}</div>
 
@@ -65,28 +49,15 @@
                 </div>
 
                 <div class="d-flex align-center ga-2 flex-wrap justify-end">
-                  <v-chip
-                    size="small"
-                    :color="getDisplayStatus(order).color"
-                    variant="tonal"
-                  >
+                  <v-chip size="small" :color="getDisplayStatus(order).color" variant="tonal">
                     {{ getDisplayStatus(order).label }}
                   </v-chip>
 
-                  <v-chip
-                    size="small"
-                    :color="getPaymentStatusColor(order.paymentStatus)"
-                    variant="tonal"
-                  >
+                  <v-chip size="small" :color="getPaymentStatusColor(order.paymentStatus)" variant="tonal">
                     {{ getPaymentStatusLabel(order.paymentStatus) }}
                   </v-chip>
 
-                  <v-chip
-                    v-if="order.couponCode"
-                    size="small"
-                    color="orange"
-                    variant="tonal"
-                  >
+                  <v-chip v-if="order.couponCode" size="small" color="orange" variant="tonal">
                     Mã: {{ order.couponCode }}
                   </v-chip>
 
@@ -107,23 +78,14 @@
 
                 <div class="order-preview-images">
                   <template v-if="getOrderPreviewItems(order).length > 0">
-                    <v-avatar
-                      v-for="(item, index) in getOrderPreviewItems(order)"
-                      :key="`${order.orderId}-${item.orderDetailId || index}`"
-                      size="44"
-                      rounded="lg"
-                      class="order-preview-avatar"
-                    >
-                      <v-img
-                        :src="resolveOrderItemImageUrl(item.imageUrl)"
-                        cover
-                      />
+                    <v-avatar v-for="(item, index) in getOrderPreviewItems(order)"
+                      :key="`${order.orderId}-${item.orderDetailId || index}`" size="44" rounded="lg"
+                      class="order-preview-avatar">
+                      <v-img :src="resolveOrderItemImageUrl(item.imageUrl)" cover />
                     </v-avatar>
 
-                    <div
-                      v-if="getOrderPreviewOverflowCount(order) > 0"
-                      class="order-preview-avatar order-preview-avatar--more"
-                    >
+                    <div v-if="getOrderPreviewOverflowCount(order) > 0"
+                      class="order-preview-avatar order-preview-avatar--more">
                       +{{ getOrderPreviewOverflowCount(order) }}
                     </div>
                   </template>
@@ -137,31 +99,14 @@
           </v-expansion-panel-title>
 
           <v-expansion-panel-text>
-            <OrderTimeline
-              title="Lịch sử đơn hàng"
-              :steps="getTrackingSteps(order)"
-              :animated="false"
-            />
+            <OrderTimeline title="Lịch sử đơn hàng" :steps="getTrackingSteps(order)" :animated="false" />
 
-            <v-alert
-              type="info"
-              variant="tonal"
-              density="comfortable"
-              class="mb-4"
-              icon="mdi-map-marker"
-              title="Địa chỉ nhận hàng"
-              :text="formatOrderAddress(order.shippingAddress)"
-            />
+            <v-alert type="info" variant="tonal" density="comfortable" class="mb-4" icon="mdi-map-marker"
+              title="Địa chỉ nhận hàng" :text="formatOrderAddress(order.shippingAddress)" />
 
             <div class="d-flex justify-end mb-3">
-              <v-btn
-                v-if="canCancelOrder(order)"
-                color="error"
-                variant="outlined"
-                size="small"
-                :loading="cancellingOrderId === order.orderId"
-                @click="cancelOrder(order)"
-              >
+              <v-btn v-if="canCancelOrder(order)" color="error" variant="outlined" size="small"
+                :loading="cancellingOrderId === order.orderId" @click="cancelOrder(order)">
                 Hủy đơn hàng
               </v-btn>
             </div>
@@ -181,17 +126,10 @@
 
               <v-card-text class="pa-0">
                 <v-list lines="two" class="bg-grey-lighten-5">
-                  <v-list-item
-                    v-for="item in getOrderItems(order)"
-                    :key="item.orderDetailId"
-                    class="py-3"
-                  >
+                  <v-list-item v-for="item in getOrderItems(order)" :key="item.orderDetailId" class="py-3">
                     <template #prepend>
                       <v-avatar size="56" rounded="lg" class="mr-3">
-                        <v-img
-                          :src="resolveOrderItemImageUrl(item.imageUrl)"
-                          cover
-                        />
+                        <v-img :src="resolveOrderItemImageUrl(item.imageUrl)" cover />
                       </v-avatar>
                     </template>
 
@@ -211,30 +149,17 @@
                           Đã mua: {{ getBoughtQuantity(item) }}
                         </v-chip>
 
-                        <v-chip
-                          v-if="getShippingReturnedQuantity(item) > 0"
-                          size="x-small"
-                          color="warning"
-                          variant="tonal"
-                        >
+                        <v-chip v-if="getShippingReturnedQuantity(item) > 0" size="x-small" color="warning"
+                          variant="tonal">
                           Đã hoàn: {{ getShippingReturnedQuantity(item) }}
                         </v-chip>
 
-                        <v-chip
-                          v-if="getCompletedReturnedQuantity(item) > 0"
-                          size="x-small"
-                          color="deep-orange"
-                          variant="tonal"
-                        >
+                        <v-chip v-if="getCompletedReturnedQuantity(item) > 0" size="x-small" color="deep-orange"
+                          variant="tonal">
                           Đã trả: {{ getCompletedReturnedQuantity(item) }}
                         </v-chip>
 
-                        <v-chip
-                          v-if="getReturnedQuantity(item) > 0"
-                          size="x-small"
-                          color="success"
-                          variant="tonal"
-                        >
+                        <v-chip v-if="getReturnedQuantity(item) > 0" size="x-small" color="success" variant="tonal">
                           Còn lại: {{ getRemainingQuantity(item) }}
                         </v-chip>
                       </div>
@@ -244,11 +169,8 @@
               </v-card-text>
             </v-card>
 
-            <v-card
-              v-if="getShippingReturnedItems(order).length > 0"
-              variant="outlined"
-              class="mt-4 returned-table-card returned-table-card--shipping"
-            >
+            <v-card v-if="getShippingReturnedItems(order).length > 0" variant="outlined"
+              class="mt-4 returned-table-card returned-table-card--shipping">
               <v-card-title class="order-items-head">
                 <div class="text-subtitle-1 font-weight-bold">
                   Danh sách sản phẩm hoàn hàng
@@ -274,19 +196,12 @@
                 </thead>
 
                 <tbody>
-                  <tr
-                    v-for="item in getShippingReturnedItems(order)"
-                    :key="`shipping-${order.orderId}-${item.orderDetailId}`"
-                  >
+                  <tr v-for="item in getShippingReturnedItems(order)"
+                    :key="`shipping-${order.orderId}-${item.orderDetailId}`">
                     <td>
                       <div class="returned-product-cell">
-                        <v-img
-                          :src="resolveOrderItemImageUrl(item.imageUrl)"
-                          width="64"
-                          height="64"
-                          cover
-                          class="returned-table-image"
-                        />
+                        <v-img :src="resolveOrderItemImageUrl(item.imageUrl)" width="64" height="64" cover
+                          class="returned-table-image" />
 
                         <div>
                           <div class="returned-table-name">
@@ -342,11 +257,8 @@
               </v-table>
             </v-card>
 
-            <v-card
-              v-if="getCompletedReturnedItems(order).length > 0"
-              variant="outlined"
-              class="mt-4 returned-table-card returned-table-card--completed"
-            >
+            <v-card v-if="getCompletedReturnedItems(order).length > 0" variant="outlined"
+              class="mt-4 returned-table-card returned-table-card--completed">
               <v-card-title class="order-items-head">
                 <div class="text-subtitle-1 font-weight-bold">
                   Danh sách sản phẩm trả hàng
@@ -372,19 +284,12 @@
                 </thead>
 
                 <tbody>
-                  <tr
-                    v-for="item in getCompletedReturnedItems(order)"
-                    :key="`completed-${order.orderId}-${item.orderDetailId}`"
-                  >
+                  <tr v-for="item in getCompletedReturnedItems(order)"
+                    :key="`completed-${order.orderId}-${item.orderDetailId}`">
                     <td>
                       <div class="returned-product-cell">
-                        <v-img
-                          :src="resolveOrderItemImageUrl(item.imageUrl)"
-                          width="64"
-                          height="64"
-                          cover
-                          class="returned-table-image"
-                        />
+                        <v-img :src="resolveOrderItemImageUrl(item.imageUrl)" width="64" height="64" cover
+                          class="returned-table-image" />
 
                         <div>
                           <div class="returned-table-name">
@@ -696,8 +601,8 @@ const loadIdSet = (key) => {
     return new Set(
       Array.isArray(parsed)
         ? parsed
-            .map((value) => Number.parseInt(value, 10))
-            .filter(Number.isFinite)
+          .map((value) => Number.parseInt(value, 10))
+          .filter(Number.isFinite)
         : [],
     );
   } catch {

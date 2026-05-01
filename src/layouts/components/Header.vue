@@ -2,64 +2,29 @@
   <div>
     <!-- Top Navigation Bar -->
     <v-toolbar color="#cdba96" dark height="36" class="px-8">
-      <div
-        class="d-flex align-center"
-        style="width: 100%; justify-content: space-between"
-      >
+      <div class="d-flex align-center" style="width: 100%; justify-content: space-between">
         <div class="d-flex align-center gap-4">
           <!-- Kênh Người Bán - Chỉ hiển thị khi là Admin -->
-          <router-link
-            v-if="isLoggedIn && isAdmin"
-            :to="{ name: 'AdminDashboard' }"
-            class="text-decoration-none text-caption"
-            style="color: white"
-          >
+          <router-link v-if="isLoggedIn && isAdmin" :to="{ name: 'AdminDashboard' }"
+            class="text-decoration-none text-caption" style="color: white">
             Kênh Người Bán
           </router-link>
 
           <!-- Kênh staff -->
-          <router-link
-            v-if="isLoggedIn && isStaff"
-            :to="{ name: 'StaffPosSale' }"
-            class="text-decoration-none text-caption"
-            style="color: white"
-          >
+          <router-link v-if="isLoggedIn && isStaff" :to="{ name: 'StaffPosSale' }"
+            class="text-decoration-none text-caption" style="color: white">
             Kênh Nhân Viên
           </router-link>
         </div>
 
         <div class="d-flex align-center gap-4">
-          <v-menu offset-y>
-            <template v-slot:activator="{ props }">
-              <div
-                v-bind="props"
-                class="d-flex align-center gap-2 text-caption"
-                style="cursor: pointer; color: #000000"
-              >
-                <v-icon size="small">mdi-globe</v-icon>
-                <span>Tiếng Việt</span>
-                <v-icon size="small">mdi-chevron-down</v-icon>
-              </div>
-            </template>
-            <v-list density="compact">
-              <v-list-item title="Tiếng Việt" />
-              <v-list-item title="English" />
-            </v-list>
-          </v-menu>
 
-          <router-link
-            v-if="!isLoggedIn"
-            :to="{ name: 'Register' }"
-            class="text-white text-decoration-none text-caption"
-          >
+          <router-link v-if="!isLoggedIn" :to="{ name: 'Register' }"
+            class="text-white text-decoration-none text-caption">
             Đăng Ký
           </router-link>
 
-          <router-link
-            v-if="!isLoggedIn"
-            :to="{ name: 'Login' }"
-            class="text-white text-decoration-none text-caption"
-          >
+          <router-link v-if="!isLoggedIn" :to="{ name: 'Login' }" class="text-white text-decoration-none text-caption">
             Đăng Nhập
           </router-link>
         </div>
@@ -68,20 +33,11 @@
 
     <!-- Main Header -->
     <v-toolbar color="#cdba96" dark height="80" class="px-8">
-      <div
-        class="d-flex align-center"
-        style="width: 100%; justify-content: space-between"
-      >
+      <div class="d-flex align-center" style="width: 100%; justify-content: space-between">
         <!-- Logo -->
-        <router-link
-          :to="{ name: 'Home' }"
-          class="d-flex align-center gap-3 text-decoration-none"
-        >
+        <router-link :to="{ name: 'Home' }" class="d-flex align-center gap-3 text-decoration-none">
           <img src="/images/logo2.png" alt="DTVD" class="logo-image" />
-          <span
-            class="font-weight-bold text-dark"
-            style="font-size: 28px; letter-spacing: 1px"
-          >
+          <span class="font-weight-bold text-dark" style="font-size: 28px; letter-spacing: 1px">
             Baseball Cap Shop
           </span>
         </router-link>
@@ -89,73 +45,39 @@
         <!-- Search Bar -->
         <div class="flex-grow-1 mx-6" style="max-width: 600px">
           <div class="search-bar-header">
-            <v-text-field
-              v-model="searchQuery"
-              placeholder="Tìm kiếm"
-              variant="solo"
-              flat
-              hide-details
-              class="search-input-header"
-            />
-            <v-btn
-              icon="mdi-magnify"
-              variant="flat"
-              color="black"
-              size="x-large"
-              class="search-btn-header"
-              @click="handleSearch"
-            />
+            <v-text-field v-model="searchQuery" placeholder="Tìm kiếm" variant="solo" flat hide-details
+              class="search-input-header" />
+            <v-btn icon="mdi-magnify" variant="flat" color="black" size="x-large" class="search-btn-header"
+              @click="handleSearch" />
           </div>
         </div>
 
-        <!-- Right Side Actions -->
         <div class="d-flex align-center gap-4">
           <!-- Shopping Cart -->
-          <router-link
-            :to="{ name: 'Cart' }"
-            class="d-flex flex-column align-center text-decoration-none gap-1"
-            style="color: white"
-          >
-            <v-badge
-              color="red"
-              :content="cartCount"
-              offset-x="-8"
-              offset-y="8"
-            >
-              <v-icon size="28" style="color: #000000"
-                >mdi-shopping-outline</v-icon
-              >
+          <router-link :to="{ name: 'Cart' }" class="d-flex flex-column align-center text-decoration-none gap-1"
+            style="color: white">
+            <v-badge color="red" :content="cartCount" offset-x="-8" offset-y="8">
+              <v-icon size="28" style="color: #000000">mdi-shopping-outline</v-icon>
             </v-badge>
             <span class="text-caption" style="color: #000000">Giỏ Hàng</span>
           </router-link>
 
-          <!-- User Menu -->
           <v-menu offset-y v-if="isLoggedIn">
             <template v-slot:activator="{ props }">
-              <div
-                v-bind="props"
-                class="d-flex align-center gap-2 cursor-pointer"
-              >
+              <div v-bind="props" class="d-flex align-center gap-2 cursor-pointer">
                 <v-avatar v-if="userAvatar" size="32" :image="userAvatar" />
-                <v-icon v-else size="32" style="color: #000000"
-                  >mdi-account-circle</v-icon
-                >
+                <v-icon v-else size="32" style="color: #000000">mdi-account-circle</v-icon>
                 <span class="text-caption" style="color: #000000">{{
                   username
                 }}</span>
               </div>
             </template>
+
             <v-list density="compact">
-              <v-list-item
-                :to="{ name: 'AccountSecurity' }"
-                title="Bảo mật Tài khoản"
-              />
-              <v-list-item
-                :to="{ name: 'AccountSetting' }"
-                title="Cài đặt Tài khoản"
-              />
+              <v-list-item :to="{ name: 'AccountSecurity' }" title="Bảo mật Tài khoản" />
+              <v-list-item :to="{ name: 'AccountSetting' }" title="Cài đặt Tài khoản" />
               <v-divider />
-              <v-list-item title="Đăng Xuất" @click="handleLogout" />
+              <v-list-item :title="t('common.logout')" @click="handleLogout" />
             </v-list>
           </v-menu>
         </div>
@@ -163,47 +85,34 @@
     </v-toolbar>
 
     <!-- Category Navigation -->
-    <v-toolbar color="#FFFFFF" height="50" class="px-8 border-bottom">
+    <v-toolbar :color="appTheme === 'dark' ? '#1e1e1e' : '#FFFFFF'" height="50" class="px-8 border-bottom">
       <div class="d-flex align-center gap-6">
-        <router-link
-          :to="{ name: 'Home' }"
-          class="text-decoration-none text-body2 font-weight-medium text-dark"
-        >
+        <router-link :to="{ name: 'Home' }" class="text-decoration-none text-body2 font-weight-medium text-dark">
           Trang Chủ
         </router-link>
 
-        <router-link
-          :to="{ name: 'ProductList' }"
-          class="text-decoration-none text-body2 font-weight-medium text-dark"
-        >
+        <router-link :to="{ name: 'ProductList' }" class="text-decoration-none text-body2 font-weight-medium text-dark">
           Sản Phẩm
         </router-link>
 
         <v-menu offset-y>
           <template v-slot:activator="{ props }">
-            <div
-              v-bind="props"
+            <div v-bind="props"
               class="text-decoration-none text-body2 font-weight-medium text-dark d-flex align-center gap-1"
-              style="cursor: pointer"
-            >
+              style="cursor: pointer">
               <span>Danh Mục</span>
               <v-icon size="20">mdi-chevron-down</v-icon>
             </div>
           </template>
+
           <v-list density="compact">
             <v-list-item title="Đánh giá" :to="{ name: 'Review' }" />
-            <v-list-item
-              title="Lịch sử mua hàng"
-              :to="{ name: 'PurchaseHistory' }"
-            />
+            <v-list-item title="Lịch sử mua hàng" :to="{ name: 'PurchaseHistory' }" />
           </v-list>
         </v-menu>
 
-        <router-link
-          :to="{ name: 'Promotion' }"
-          class="text-decoration-none text-body2 font-weight-medium"
-          style="color: #ff6633"
-        >
+        <router-link :to="{ name: 'Promotion' }" class="text-decoration-none text-body2 font-weight-medium"
+          style="color: #ff6633">
           🎉 Khuyến Mãi & Mã Giảm Giá
         </router-link>
       </div>
@@ -212,18 +121,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue";
-import { useRouter } from "vue-router";
-import axios from "axios";
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
-const router = useRouter();
-const searchQuery = ref("");
-const cartCount = ref(0);
-const isAdmin = ref(false);
-const isStaff = ref(false);
-const isLoggedIn = ref(false);
-const username = ref("");
-const userAvatar = ref("");
+
+const router = useRouter()
+
+
+const searchQuery = ref('')
+const cartCount = ref(0)
+const isAdmin = ref(false)
+const isStaff = ref(false)
+const isLoggedIn = ref(false)
+const username = ref('')
+const userAvatar = ref('')
 
 const parseStoredRoles = (): string[] => {
   const userRole = localStorage.getItem("userRole");
@@ -265,10 +177,10 @@ const loadCartCount = async () => {
       try {
         const config = token
           ? {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
           : undefined;
 
         const cartRes = await axios.post(
@@ -432,8 +344,12 @@ a:hover {
   color: #333;
 }
 
+.nav-link {
+  color: rgb(var(--v-theme-on-surface));
+}
+
 .border-bottom {
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .gap-1 {
@@ -454,6 +370,23 @@ a:hover {
 
 .gap-6 {
   gap: 1.5rem;
+}
+
+.top-action-link {
+  cursor: pointer;
+  color: #000000;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.top-action-link:hover,
+.top-action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.top-action-btn {
+  color: #000000 !important;
+  text-transform: none;
 }
 
 .search-bar-header {

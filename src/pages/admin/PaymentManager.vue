@@ -5,26 +5,15 @@
         <h1 class="text-h4 font-weight-bold mb-1">Xác nhận thanh toán</h1>
       </div>
 
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-refresh"
-        @click="loadOrders"
-        :loading="isLoading"
-      >
+      <v-btn color="primary" prepend-icon="mdi-refresh" @click="loadOrders" :loading="isLoading">
         Làm mới
       </v-btn>
     </div>
 
     <v-card rounded="xl" elevation="0" class="pa-4 mb-6">
-      <v-text-field
-        v-model="searchKeyword"
-        label="Tìm kiếm"
-        placeholder="Tìm theo mã đơn, tên khách hàng, phương thức, trạng thái..."
-        prepend-inner-icon="mdi-magnify"
-        variant="outlined"
-        density="comfortable"
-        clearable
-      />
+      <v-text-field v-model="searchKeyword" label="Tìm kiếm"
+        placeholder="Tìm theo mã đơn, tên khách hàng, phương thức, trạng thái..." prepend-inner-icon="mdi-magnify"
+        variant="outlined" density="comfortable" clearable />
 
       <div v-if="searchKeyword" class="text-caption text-medium-emphasis mt-2">
         Tìm thấy <strong>{{ searchedOrders.length }}</strong> kết quả
@@ -42,45 +31,28 @@
           </div>
         </div>
 
-        <v-chip
-          :color="paymentTab === 'online' ? 'primary' : 'deep-orange'"
-          variant="tonal"
-          size="small"
-        >
+        <v-chip :color="paymentTab === 'online' ? 'primary' : 'deep-orange'" variant="tonal" size="small">
           {{ currentTabOrders.length }} đơn
         </v-chip>
       </div>
 
       <div class="custom-payment-tabs">
-        <button
-          type="button"
-          class="custom-payment-tab"
-          :class="{ active: paymentTab === 'online' }"
-          @click="paymentTab = 'online'"
-        >
+        <button type="button" class="custom-payment-tab" :class="{ active: paymentTab === 'online' }"
+          @click="paymentTab = 'online'">
           <v-icon size="16">mdi-web</v-icon>
           <span>Online</span>
         </button>
 
-        <button
-          type="button"
-          class="custom-payment-tab"
-          :class="{ active: paymentTab === 'offline' }"
-          @click="paymentTab = 'offline'"
-        >
+        <button type="button" class="custom-payment-tab" :class="{ active: paymentTab === 'offline' }"
+          @click="paymentTab = 'offline'">
           <v-icon size="16">mdi-store</v-icon>
           <span>Offline</span>
         </button>
       </div>
 
       <div class="pt-3">
-        <v-data-table
-          :headers="headers"
-          :items="currentTabOrders"
-          :loading="isLoading"
-          item-key="orderId"
-          class="elevation-0"
-        >
+        <v-data-table :headers="headers" :items="currentTabOrders" :loading="isLoading" item-key="orderId"
+          class="elevation-0">
           <template #item.orderInfo="{ item }">
             <div>
               <div class="font-weight-bold">
@@ -94,11 +66,7 @@
           </template>
 
           <template #item.paymentStatus="{ item }">
-            <v-chip
-              size="small"
-              :color="getPaymentStatusColor(getRawItem(item)?.paymentStatus)"
-              variant="tonal"
-            >
+            <v-chip size="small" :color="getPaymentStatusColor(getRawItem(item)?.paymentStatus)" variant="tonal">
               {{ getPaymentStatusLabel(getRawItem(item)?.paymentStatus) }}
             </v-chip>
           </template>
@@ -110,11 +78,7 @@
           </template>
 
           <template #item.orderStatus="{ item }">
-            <v-chip
-              size="small"
-              :color="getOrderStatusColor(getRawItem(item))"
-              variant="tonal"
-            >
+            <v-chip size="small" :color="getOrderStatusColor(getRawItem(item))" variant="tonal">
               {{ getOrderStatusLabel(getRawItem(item)) }}
             </v-chip>
           </template>
@@ -127,12 +91,7 @@
 
           <template #item.actions="{ item }">
             <div class="d-flex ga-2">
-              <v-btn
-                color="primary"
-                variant="tonal"
-                size="small"
-                @click="goToPaymentDetail(getRawItem(item))"
-              >
+              <v-btn color="primary" variant="tonal" size="small" @click="goToPaymentDetail(getRawItem(item))">
                 Chi tiết
               </v-btn>
             </div>
@@ -141,12 +100,7 @@
       </div>
     </v-card>
 
-    <v-snackbar
-      v-model="showSnackbar"
-      :color="snackbarColor"
-      timeout="3000"
-      top
-    >
+    <v-snackbar v-model="showSnackbar" :color="snackbarColor" timeout="3000" top>
       {{ snackbarMessage }}
     </v-snackbar>
   </v-container>
@@ -190,8 +144,8 @@ const loadIdSet = (key) => {
     return new Set(
       Array.isArray(parsed)
         ? parsed
-            .map((value) => Number.parseInt(value, 10))
-            .filter(Number.isFinite)
+          .map((value) => Number.parseInt(value, 10))
+          .filter(Number.isFinite)
         : [],
     );
   } catch {
