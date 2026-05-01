@@ -525,17 +525,6 @@
       </v-col>
     </v-row>
 
-    <v-empty-state
-      v-if="!isLoading"
-      title="Chưa có sản phẩm để thanh toán"
-      text="Vui lòng chọn sản phẩm trong giỏ hàng trước"
-      icon="mdi-cart-off"
-    >
-      <template #actions>
-        <v-btn color="primary" @click="goBackCart">Về giỏ hàng</v-btn>
-      </template>
-    </v-empty-state>
-
     <div v-if="isLoading" class="d-flex justify-center py-16">
       <v-progress-circular indeterminate color="primary" size="48" />
     </div>
@@ -715,7 +704,8 @@ const finalTotal = computed(() => Math.max(0, totalPrice.value - discountAmount.
 const qualifiedUserClaimedCoupons = computed(() => {
   return userClaimedCoupons.value.filter(coupon => {
     const minOrderValue = Number(coupon.discountCoupon?.minOrderValue) || 0
-    return totalPrice.value >= minOrderValue
+    const isNotExpired = !isExpired(coupon.discountCoupon?.endDate)
+    return totalPrice.value >= minOrderValue && isNotExpired
   })
 })
 
@@ -723,7 +713,8 @@ const couponsDisplay = computed(() => {
   return availableCoupons.value
     .filter(coupon => {
       const minOrderValue = Number(coupon.minOrderValue) || 0
-      return totalPrice.value >= minOrderValue
+      const isNotExpired = !isExpired(coupon.endDate)
+      return totalPrice.value >= minOrderValue && isNotExpired
     })
     .map(coupon => {
       let displayText = coupon.couponCode
@@ -739,6 +730,12 @@ const couponsDisplay = computed(() => {
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
 
 const todayText = () => new Date().toISOString().slice(0, 10)
+
+const isExpired = (endDate) => {
+  if (!endDate) return false
+  const today = todayText()
+  return endDate < today
+}
 
 // Check if coupon is valid and applicable
 const isCouponValid = (coupon) => {

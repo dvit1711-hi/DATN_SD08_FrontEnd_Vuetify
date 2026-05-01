@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@fontsource/roboto": "^5.2.9",
-    "@mdi/font": "7.4.47",
+    "@mdi/font": "^7.4.47",
     "apexcharts": "^5.10.4",
     "axios": "^1.13.6",
     "jsbarcode": "^3.12.3",
