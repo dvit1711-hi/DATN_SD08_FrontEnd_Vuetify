@@ -5,7 +5,7 @@
       <div class="header-content">
         <div class="d-flex align-center gap-4 mb-4">
           <div class="header-icon">
-            <v-icon icon="mdi-gift-multiple" size="40" color="white"></v-icon>
+            <v-icon icon="mdi-gift" size="40" color="white"></v-icon>
           </div>
           <div>
             <h1 class="text-h3 font-weight-bold mb-1">Khuyến Mãi & Mã Giảm Giá</h1>
@@ -32,7 +32,7 @@
               text-color="white"
               class="ml-2"
             >
-              {{ availableCoupons.length }}
+              {{ validAvailableCoupons.length }}
             </v-chip>
           </div>
         </v-tab>
@@ -46,7 +46,7 @@
               text-color="white"
               class="ml-2"
             >
-              {{ claimedCoupons.length }}
+              {{ validClaimedCoupons.length }}
             </v-chip>
           </div>
         </v-tab>
@@ -60,9 +60,9 @@
 
     <!-- Available Coupons Tab -->
     <div v-else-if="activeTab === 'available'">
-      <v-row v-if="availableCoupons.length > 0" class="ga-4">
+      <v-row v-if="validAvailableCoupons.length > 0" class="ga-4">
         <v-col
-          v-for="coupon in availableCoupons"
+          v-for="coupon in validAvailableCoupons"
           :key="coupon.id"
           cols="12"
           sm="6"
@@ -157,9 +157,9 @@
 
     <!-- Claimed Coupons Tab -->
     <div v-else-if="activeTab === 'claimed'">
-      <v-row v-if="claimedCoupons.length > 0" class="ga-4">
+      <v-row v-if="validClaimedCoupons.length > 0" class="ga-4">
         <v-col
-          v-for="userCoupon in claimedCoupons"
+          v-for="userCoupon in validClaimedCoupons"
           :key="userCoupon.id"
           cols="12"
           sm="6"
@@ -215,22 +215,22 @@
               <!-- Action Buttons -->
               <div class="d-flex gap-2">
                 <v-btn
-                  block
                   variant="flat"
                   color="primary"
                   size="small"
                   icon="mdi-content-copy"
                   @click="copyCouponCode(userCoupon.discountCoupon.couponCode)"
+                  class="flex-grow-1"
                 >
                   Sao Chép
                 </v-btn>
                 <v-btn
-                  block
                   variant="outlined"
                   color="error"
                   size="small"
                   icon="mdi-delete"
                   @click="removeCoupon(userCoupon.id)"
+                  class="flex-grow-1"
                 >
                   Xóa
                 </v-btn>
@@ -367,22 +367,22 @@
 
           <div class="d-flex gap-2">
             <v-btn
-              block
               variant="outlined"
               color="primary"
               size="large"
               icon="mdi-content-copy"
               @click="copyCouponCode(selectedCouponDetail.couponCode)"
+              class="flex-grow-1"
             >
               Sao Chép Mã
             </v-btn>
             <v-btn
-              block
               color="primary"
               size="large"
               :disabled="isUserClaimedThisCoupon(selectedCouponDetail.id)"
               :loading="claimingId === selectedCouponDetail.id"
               @click="claimCoupon(selectedCouponDetail)"
+              class="flex-grow-1"
             >
               {{ isUserClaimedThisCoupon(selectedCouponDetail.id) ? '✓ Đã nhận' : 'Nhận Mã' }}
             </v-btn>
@@ -428,6 +428,15 @@ const getButtonColor = (coupon) => {
   return coupon.discountType === 'percent' ? '#FF6B6B' : '#4CAF50'
 }
 
+const isExpired = (endDate) => {
+  if (!endDate) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const end = new Date(endDate)
+  end.setHours(0, 0, 0, 0)
+  return end < today
+}
+
 const daysUntilExpiry = (endDate) => {
   if (!endDate) return 0
   const today = new Date()
@@ -466,6 +475,14 @@ const getStatusLabel = (status) => {
 const isUserClaimedThisCoupon = (couponId) => {
   return claimedCoupons.value.some((uc) => uc.discountCoupon?.id === couponId)
 }
+
+const validAvailableCoupons = computed(() => {
+  return availableCoupons.value.filter(coupon => !isExpired(coupon.endDate))
+})
+
+const validClaimedCoupons = computed(() => {
+  return claimedCoupons.value.filter(userCoupon => !isExpired(userCoupon.discountCoupon?.endDate))
+})
 
 const loadAvailableCoupons = async () => {
   try {
@@ -662,10 +679,10 @@ onMounted(async () => {
 /* Discount Badge */
 .discount-badge {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 80px;
-  height: 80px;
+  top: 12px;
+  right: 12px;
+  width: 120px;
+  height: 90px;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
@@ -676,6 +693,7 @@ onMounted(async () => {
   color: white;
   font-weight: bold;
   border: 3px solid white;
+  padding: 8px;
 }
 
 .discount-badge.percent {
