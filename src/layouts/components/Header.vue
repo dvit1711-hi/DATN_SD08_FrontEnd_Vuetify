@@ -77,7 +77,7 @@
               <v-list-item :to="{ name: 'AccountSecurity' }" title="Bảo mật Tài khoản" />
               <v-list-item :to="{ name: 'AccountSetting' }" title="Cài đặt Tài khoản" />
               <v-divider />
-              <v-list-item :title="t('common.logout')" @click="handleLogout" />
+              <v-list-item title="Đăng xuất" @click="handleLogout" />
             </v-list>
           </v-menu>
         </div>
@@ -85,7 +85,7 @@
     </v-toolbar>
 
     <!-- Category Navigation -->
-    <v-toolbar :color="appTheme === 'dark' ? '#1e1e1e' : '#FFFFFF'" height="50" class="px-8 border-bottom">
+    <v-toolbar color="#f5f5f5" height="48" class="px-8 border-bottom">
       <div class="d-flex align-center gap-6">
         <router-link :to="{ name: 'Home' }" class="text-decoration-none text-body2 font-weight-medium text-dark">
           Trang Chủ
@@ -124,7 +124,6 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-
 
 const router = useRouter()
 

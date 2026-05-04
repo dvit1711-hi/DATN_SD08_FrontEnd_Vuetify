@@ -4,7 +4,7 @@
     <div class="mb-8">
       <div class="d-flex align-center gap-3 mb-3">
         <div class="header-icon">
-          <v-icon icon="mdi-shopping-cart" size="32" color="white"></v-icon>
+          <v-icon icon="mdi-cart"></v-icon>
         </div>
         <div>
           <h1 class="text-h4 font-weight-bold mb-1">Giỏ hàng của bạn</h1>
@@ -231,17 +231,6 @@
           </v-card>
         </v-col>
       </v-row>
-
-      <v-empty-state
-        v-if="!isLoading"
-        title="Giỏ hàng đang trống"
-        text="Hãy thêm sản phẩm bạn yêu thích vào giỏ hàng"
-        icon="mdi-cart-outline"
-      >
-        <template #actions>
-          <v-btn color="primary" @click="goProducts">Tiếp tục mua sắm</v-btn>
-        </template>
-      </v-empty-state>
 
       <div v-if="isLoading" class="d-flex justify-center py-16">
         <v-progress-circular indeterminate color="primary" size="48" />
