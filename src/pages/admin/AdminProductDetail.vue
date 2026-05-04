@@ -13,6 +13,8 @@
       </v-btn>
     </div>
 
+
+    <!-- <v-card  -->
     <VariantColorTable
       v-for="group in groupedByColor"
       :key="group.colorID"

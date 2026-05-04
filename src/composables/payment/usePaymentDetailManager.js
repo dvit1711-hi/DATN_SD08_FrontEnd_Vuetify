@@ -1425,273 +1425,198 @@ const syncReturnStepFromBackend = (order) => {
       .join("");
   };
 
-  const buildInvoiceHtml = (order, type = "shipping") => {
-    const isCompletedInvoice = type === "completed";
-    const title = isCompletedInvoice ? "HÓA ĐƠN BÁN HÀNG" : "HÓA ĐƠN GIAO HÀNG";
-    const paymentText = getPaymentStatusLabel(order?.paymentStatus);
-    const orderText = getOrderStatusLabel(order);
+  const buildInvoiceHtml = (order) => {
+  return `
+  <!DOCTYPE html>
+  <html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hóa đơn</title>
+    <style>
+      body {
+        font-family: Arial;
+        padding: 20px;
+        color: #111;
+      }
 
-    return `
-      <!DOCTYPE html>
-      <html lang="vi">
-        <head>
-          <meta charset="UTF-8" />
-          <title>${title}</title>
-          <style>
-            * {
-              box-sizing: border-box;
-            }
+      .invoice {
+        max-width: 900px;
+        margin: auto;
+      }
 
-            body {
-              font-family: Arial, sans-serif;
-              color: #111;
-              margin: 0;
-              padding: 24px;
-              background: #fff;
-            }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
 
-            .invoice {
-              max-width: 820px;
-              margin: 0 auto;
-            }
+      .logo {
+        font-size: 22px;
+        font-weight: bold;
+      }
 
-            .header {
-              display: flex;
-              justify-content: space-between;
-              gap: 16px;
-              border-bottom: 2px solid #111;
-              padding-bottom: 16px;
-              margin-bottom: 18px;
-            }
+      .barcode {
+        text-align: center;
+      }
 
-            .shop-name {
-              font-size: 22px;
-              font-weight: 800;
-              margin-bottom: 4px;
-            }
+      .title {
+        text-align: center;
+        font-size: 28px;
+        font-weight: bold;
+        margin: 20px 0;
+      }
 
-            .title {
-              text-align: right;
-              font-size: 22px;
-              font-weight: 800;
-            }
+      .info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+      }
 
-            .code {
-              text-align: right;
-              margin-top: 6px;
-              font-size: 13px;
-            }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
 
-            .info-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 8px 28px;
-              margin-bottom: 18px;
-              font-size: 14px;
-            }
+      th, td {
+        border: 1px solid #ccc;
+        padding: 10px;
+      }
 
-            .info-row {
-              display: flex;
-              justify-content: space-between;
-              gap: 12px;
-              border-bottom: 1px dashed #ddd;
-              padding: 6px 0;
-            }
+      th {
+        background: #f5f5f5;
+      }
 
-            .label {
-              color: #555;
-            }
+      .right { text-align: right; }
+      .center { text-align: center; }
 
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 12px;
-              font-size: 14px;
-            }
+      .bottom {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+      }
 
-            th,
-            td {
-              border: 1px solid #ddd;
-              padding: 10px;
-              vertical-align: top;
-            }
+      .qr {
+        width: 150px;
+      }
 
-            th {
-              background: #f3f4f6;
-              font-weight: 700;
-            }
+      .total {
+        min-width: 300px;
+      }
 
-            .center {
-              text-align: center;
-            }
+      .total div {
+        display: flex;
+        justify-content: space-between;
+        margin: 5px 0;
+      }
 
-            .right {
-              text-align: right;
-            }
+      .grand {
+        font-size: 20px;
+        font-weight: bold;
+        border-top: 2px solid #000;
+        padding-top: 10px;
+      }
+    </style>
+  </head>
 
-            .product-name {
-              font-weight: 700;
-            }
+  <body>
+    <div class="invoice">
 
-            .variant {
-              margin-top: 3px;
-              font-size: 12px;
-              color: #666;
-            }
+      <!-- HEADER -->
+      <div class="top">
+        <div>
+          <div class="logo">DTVD</div>
+          <div>SĐT: ${order?.customerPhone}</div>
+          <div>Email: example@gmail.com</div>
+        </div>
 
-            .empty-row {
-              text-align: center;
-              color: #777;
-              padding: 18px;
-            }
+        <div class="barcode">
+          <!-- barcode giả -->
+          <div>||||||||||||||||||||||||</div>
+          <small>${order?.id}</small>
+        </div>
+      </div>
 
-            .total-box {
-              margin-top: 16px;
-              display: flex;
-              justify-content: flex-end;
-            }
+      <!-- TITLE -->
+      <div class="title">HÓA ĐƠN BÁN HÀNG</div>
 
-            .total-line {
-              min-width: 280px;
-              display: flex;
-              justify-content: space-between;
-              font-size: 18px;
-              font-weight: 800;
-              border-top: 2px solid #111;
-              padding-top: 10px;
-            }
+      <!-- INFO -->
+      <div class="info">
+        <div>
+          <div><b>Khách hàng:</b> ${order?.customerName}</div>
+          <div><b>Địa chỉ:</b> ${order?.shippingAddress}</div>
+          <div><b>Nhân viên:</b> admin</div>
+        </div>
 
-            .note {
-              margin-top: 18px;
-              font-size: 13px;
-              color: #555;
-            }
+        <div>
+          <div><b>Mã hóa đơn:</b> ${order?.id}</div>
+          <div><b>Ngày:</b> ${new Date().toLocaleString()}</div>
+          <div><b>Trạng thái:</b> PAID</div>
+        </div>
+      </div>
 
-            .signatures {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 80px;
-              margin-top: 44px;
-              text-align: center;
-              font-size: 14px;
-            }
+      <!-- TABLE -->
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Tên sản phẩm</th>
+            <th>SL</th>
+            <th>Đơn giá</th>
+            <th>Thành tiền</th>
+            <th>Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${order.items.map((item, i) => `
+            <tr>
+              <td class="center">${i + 1}</td>
+              <td>
+                <b>${item.name}</b><br/>
+                <small>${item.variant || ""}</small>
+              </td>
+              <td class="center">${item.qty}</td>
+              <td class="right">${item.price}</td>
+              <td class="right">${item.price * item.qty}</td>
+              <td class="center">PAID</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
 
-            .sign-title {
-              font-weight: 700;
-              margin-bottom: 64px;
-            }
+      <!-- BOTTOM -->
+      <div class="bottom">
+        <div class="qr">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${order.id}" />
+          <div>Quét mã đơn</div>
+        </div>
 
-            @media print {
-              body {
-                padding: 0;
-              }
+        <div class="total">
+          <div><span>Tổng tiền hàng:</span><span>${order.total}</span></div>
+          <div><span>Giảm giá:</span><span>0</span></div>
+          <div><span>Phí ship:</span><span>0</span></div>
 
-              .invoice {
-                max-width: none;
-              }
-            }
-          </style>
-        </head>
-
-        <body>
-          <div class="invoice">
-            <div class="header">
-              <div>
-                <div class="shop-name">BASEBALL CAP SALES</div>
-                <div>Địa chỉ: ${order?.shippingAddress || "-"}</div>
-                <div>Khách hàng: ${getDisplayCustomer(order)}</div>
-                <div>SĐT: ${order?.customerPhone || "-"}</div>
-              </div>
-
-              <div>
-                <div class="title">${title}</div>
-                <div class="code">Mã đơn: ${getDisplayOrderCode(order)}</div>
-                <div class="code">Ngày in: ${formatDate(new Date())}</div>
-              </div>
-            </div>
-
-            <div class="info-grid">
-              <div class="info-row">
-                <span class="label">Loại đơn</span>
-                <strong>${getOrderTypeLabel(order)}</strong>
-              </div>
-
-              <div class="info-row">
-                <span class="label">Ngày tạo</span>
-                <strong>${formatDate(order?.orderDate)}</strong>
-              </div>
-
-              <div class="info-row">
-                <span class="label">Trạng thái đơn</span>
-                <strong>${orderText}</strong>
-              </div>
-
-              <div class="info-row">
-                <span class="label">Thanh toán</span>
-                <strong>${paymentText}</strong>
-              </div>
-
-              <div class="info-row">
-                <span class="label">Phương thức</span>
-                <strong>${order?.paymentMethod || "-"}</strong>
-              </div>
-
-              <div class="info-row">
-                <span class="label">Mã giảm giá</span>
-                <strong>${order?.couponCode || "-"}</strong>
-              </div>
-            </div>
-
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 54px;">STT</th>
-                  <th>Sản phẩm</th>
-                  <th style="width: 90px;">SL</th>
-                  <th style="width: 140px;">Đơn giá</th>
-                  <th style="width: 150px;">Thành tiền</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${buildInvoiceRows(order)}
-              </tbody>
-            </table>
-
-            <div class="total-box">
-              <div class="total-line">
-                <span>Tổng tiền</span>
-                <span>${formatPrice(order?.totalAmount)}đ</span>
-              </div>
-            </div>
-
-            ${
-              isCompletedInvoice
-                ? `<div class="note">Đơn hàng đã hoàn thành. Cảm ơn quý khách đã mua hàng.</div>`
-                : `<div class="note">Phiếu dùng cho nhân viên giao hàng/đơn vị vận chuyển. Vui lòng kiểm tra thông tin khách hàng trước khi giao.</div>`
-            }
-
-            <div class="signatures">
-              <div>
-                <div class="sign-title">Người lập phiếu</div>
-                <div>................................</div>
-              </div>
-
-              <div>
-                <div class="sign-title">Người nhận hàng</div>
-                <div>................................</div>
-              </div>
-            </div>
+          <div class="grand">
+            <span>Tổng thanh toán:</span>
+            <span>${order.total}</span>
           </div>
+        </div>
+      </div>
 
-          <script>
-            window.onload = function () {
-              window.print()
-            }
-          <\/script>
-        </body>
-      </html>
-    `;
-  };
+      <p style="text-align:center; margin-top:20px">
+        Cảm ơn quý khách đã mua hàng
+      </p>
+
+    </div>
+
+    <script>
+      window.onload = () => window.print();
+    </script>
+
+  </body>
+  </html>
+  `;
+};
 
   const printInvoice = (order, type = "shipping") => {
     if (!order) return;

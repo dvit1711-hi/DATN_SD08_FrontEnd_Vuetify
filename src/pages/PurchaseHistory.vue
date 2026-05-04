@@ -688,6 +688,12 @@ const getOnlineBaseSteps = () => [
     time: "-",
   },
   {
+    code: "CONFIRMED", // ✅ thêm
+    label: "Đã xác nhận",
+    icon: "mdi-check-circle-outline",
+    time: "-",
+  },
+  {
     code: "TRANSFER_CONFIRM",
     label: "Xác nhận thanh toán",
     icon: "mdi-bank-check",
@@ -724,6 +730,12 @@ const getCodBaseSteps = () => [
     code: "WAIT_CONFIRM",
     label: "Chờ xác nhận",
     icon: "mdi-text-box-check-outline",
+    time: "-",
+  },
+    {
+    code: "CONFIRMED", // ✅ thêm
+    label: "Đã xác nhận",
+    icon: "mdi-check-circle-outline",
     time: "-",
   },
   {
@@ -822,21 +834,31 @@ const getTrackingSteps = (order) => {
   let activeIndex = 0;
 
   if (isOnlinePaymentMethod(order)) {
-    if (orderStatus === "PAID") {
-      activeIndex = 5;
-    } else if (
-      paymentStatus === "UNPAID" &&
-      orderStatus === "PENDING_PAYMENT"
-    ) {
-      activeIndex = 0;
-    } else if (paymentStatus === "PAID" && !uiShippingStarted) {
-      activeIndex = 2;
-    } else if (paymentStatus === "PAID" && uiShippingStarted && !uiDelivered) {
-      activeIndex = 3;
-    } else if (paymentStatus === "PAID" && uiDelivered) {
-      activeIndex = 4;
-    }
-  } else {
+
+  if (orderStatus === "PAID") {
+    activeIndex = 6; // COMPLETED
+  }
+
+  else if (paymentStatus === "PAID" && uiDelivered) {
+    activeIndex = 5; // DELIVERED
+  }
+
+  else if (paymentStatus === "PAID" && uiShippingStarted) {
+    activeIndex = 4; // SHIPPING
+  }
+
+  else if (paymentStatus === "PAID") {
+    activeIndex = 3; // WAIT_SHIP
+  }
+
+  else if (orderStatus === "CONFIRMED") {
+    activeIndex = 1; // ✅ FIX QUAN TRỌNG
+  }
+
+  else if (orderStatus === "PENDING_PAYMENT") {
+    activeIndex = 0; // WAIT_CONFIRM
+  }
+} else {
     if (orderStatus === "PAID") {
       activeIndex = 5;
     } else if (
@@ -865,7 +887,8 @@ const getTrackingSteps = (order) => {
     }
   }
 
-  return baseSteps.map((step, index) => {
+  return baseSteps.slice(0, activeIndex + 1)
+  .map((step, index) => {
     let state = "pending";
 
     if (index < activeIndex) {

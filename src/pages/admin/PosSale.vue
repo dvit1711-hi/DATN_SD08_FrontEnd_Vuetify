@@ -1253,7 +1253,7 @@ async function confirmBankingPayment() {
 function isPendingOrder(order) {
     return String(order?.status || "")
         .trim()
-        .toUpperCase() === "PENDING"
+        .toUpperCase() === "PENDING_PAYMENT"
 }
 
 function escapeHtml(value) {
