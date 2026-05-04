@@ -232,17 +232,6 @@
         </v-col>
       </v-row>
 
-      <v-empty-state
-        v-if="!isLoading"
-        title="Giỏ hàng đang trống"
-        text="Hãy thêm sản phẩm bạn yêu thích vào giỏ hàng"
-        icon="mdi-basket-outline"
-      >
-        <template #actions>
-          <v-btn color="primary" @click="goProducts">Tiếp tục mua sắm</v-btn>
-        </template>
-      </v-empty-state>
-
       <div v-if="isLoading" class="d-flex justify-center py-16">
         <v-progress-circular indeterminate color="primary" size="48" />
       </div>

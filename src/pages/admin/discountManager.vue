@@ -97,16 +97,6 @@
             </v-chip>
           </template>
 
-          <template #item.active="{ item }">
-            <v-switch
-              v-model="item.active"
-              color="success"
-              hide-details
-              inset
-              @update:model-value="toggleCouponActive(item)"
-            />
-          </template>
-
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
               <v-btn 
@@ -199,9 +189,9 @@
                 type="number"
                 label="Đơn tối thiểu"
                 variant="outlined"
-                :rules="validationRules.minValue"
+                :rules="validationRules.minOrderValue"
                 :error="showValidationErrors && form.minOrderValue < 0"
-                :error-messages="showValidationErrors && form.minOrderValue < 0 ? ['Phải lớn hơn hoặc bằng 0'] : []"
+                :error-messages="showValidationErrors && form.minOrderValue < 0 ? ['Đơn tối thiểu phải >= 0'] : []"
               />
             </v-col>
 
@@ -212,9 +202,9 @@
                 label="Giảm tối đa"
                 variant="outlined"
                 :disabled="form.discountType === 'fixed'"
-                :rules="validationRules.minValue"
-                :error="showValidationErrors && form.maxDiscountValue < 0"
-                :error-messages="showValidationErrors && form.maxDiscountValue < 0 ? ['Phải lớn hơn hoặc bằng 0'] : []"
+                :rules="validationRules.maxDiscountValue"
+                :error="showValidationErrors && form.maxDiscountValue <= 0"
+                :error-messages="showValidationErrors && form.maxDiscountValue <= 0 ? ['Giảm tối đa phải > 0'] : []"
               />
             </v-col>
 
@@ -230,24 +220,15 @@
               />
             </v-col>
 
-            <v-col cols="12" md="6" class="d-flex align-center">
-              <v-switch
-                v-model="form.active"
-                label="Kích hoạt"
-                color="success"
-                hide-details
-              />
-            </v-col>
-
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="form.startDate"
                 label="Ngày bắt đầu"
                 type="date"
                 variant="outlined"
-                :rules="validationRules.required"
+                :rules="validationRules.startDate"
                 :error="showValidationErrors && !form.startDate"
-                :error-messages="showValidationErrors && !form.startDate ? ['Vui lòng điền vào trường này.'] : []"
+                :error-messages="showValidationErrors && !form.startDate ? ['Ngày bắt đầu không được để trống'] : []"
               />
             </v-col>
 
@@ -257,9 +238,9 @@
                 label="Ngày kết thúc"
                 type="date"
                 variant="outlined"
-                :rules="validationRules.required"
+                :rules="validationRules.endDate"
                 :error="showValidationErrors && !form.endDate"
-                :error-messages="showValidationErrors && !form.endDate ? ['Vui lòng điền vào trường này.'] : []"
+                :error-messages="showValidationErrors && !form.endDate ? ['Ngày kết thúc không được để trống'] : []"
               />
             </v-col>
 
@@ -354,6 +335,42 @@ const validationRules = {
       return true
     },
   ],
+  minOrderValue: [
+    (v) => {
+      if (v === null || v === undefined || v === '') return true
+      const val = Number(v)
+      if (val < 0) return 'Đơn tối thiểu phải >= 0'
+      return true
+    },
+  ],
+  maxDiscountValue: [
+    (v) => {
+      if (v === null || v === undefined || v === '') return true
+      const val = Number(v)
+      if (val < 0) return 'Giảm tối đa phải >= 0'
+      return true
+    },
+  ],
+  startDate: [
+    (v) => {
+      if (!v) return 'Ngày bắt đầu không được để trống'
+      const startDate = new Date(v)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (startDate < today) return 'Ngày bắt đầu không được trong quá khứ'
+      return true
+    },
+  ],
+  endDate: [
+    (v) => {
+      if (!v) return 'Ngày kết thúc không được để trống'
+      const endDate = new Date(v)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (endDate < today) return 'Ngày kết thúc không được trong quá khứ'
+      return true
+    },
+  ],
 }
 
 const discountTypeOptions = [
@@ -371,7 +388,6 @@ const headers = [
   { title: 'Thời gian', key: 'dateRange', sortable: false },
   { title: 'Số lượng', key: 'quantity' },
   { title: 'Trạng thái', key: 'status', sortable: false },
-  { title: 'Bật/Tắt', key: 'active', sortable: false },
   { title: 'Thao tác', key: 'actions', sortable: false },
 ]
 
@@ -551,6 +567,22 @@ const saveDiscount = async () => {
     return
   }
 
+  if (Number(form.value.minOrderValue) < 0) {
+    errorMessage.value = 'Đơn tối thiểu phải >= 0'
+    return
+  }
+
+  if (Number(form.value.maxDiscountValue) < 0) {
+    errorMessage.value = 'Giảm tối đa phải >= 0'
+    return
+  }
+
+  // Validate maxDiscountValue for percent type
+  if (form.value.discountType === 'percent' && Number(form.value.maxDiscountValue) < Number(form.value.discountValue)) {
+    errorMessage.value = 'Giảm tối đa phải >= giá trị giảm cho loại phần trăm'
+    return
+  }
+
   if (!form.value.startDate) {
     errorMessage.value = 'Ngày bắt đầu không được để trống'
     return
@@ -565,6 +597,26 @@ const saveDiscount = async () => {
   if (form.value.startDate > form.value.endDate) {
     errorMessage.value = 'Ngày bắt đầu phải trước ngày kết thúc'
     return
+  }
+
+  // Check startDate not in the past
+  const startDate = new Date(form.value.startDate)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (startDate < today) {
+    errorMessage.value = 'Ngày bắt đầu không được trong quá khứ'
+    return
+  }
+
+  // Check for duplicate coupon code (only when creating new)
+  if (!isEdit.value) {
+    const isDuplicate = discounts.value.some(
+      (d) => d.couponCode.toLowerCase() === form.value.couponCode.toLowerCase()
+    )
+    if (isDuplicate) {
+      errorMessage.value = 'Mã giảm giá này đã tồn tại'
+      return
+    }
   }
 
   try {
@@ -612,20 +664,7 @@ const removeDiscount = async (id) => {
   }
 }
 
-const toggleCouponActive = async (item) => {
-  try {
-    isLoading.value = true
-    errorMessage.value = ''
-    const updateData = sanitizeFormData({ ...item, active: item.active })
-    await updateDiscountCoupon(item.id, { active: updateData.active })
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Cập nhật trạng thái thất bại. Vui lòng thử lại'
-    item.active = !item.active
-    console.error('Error toggling coupon status:', error)
-  } finally {
-    isLoading.value = false
-  }
-}
+
 </script>
 
 <style scoped>
