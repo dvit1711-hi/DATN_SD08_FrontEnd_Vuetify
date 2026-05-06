@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import JsBarcode from "jsbarcode";
 import paymentApi from "@/api/paymentApi";
 import {
   formatDate,
@@ -1426,196 +1427,288 @@ const syncReturnStepFromBackend = (order) => {
   };
 
   const buildInvoiceHtml = (order) => {
+  const formatCurrency = (n) => {
+    const value = Number(n || 0);
+    return value.toLocaleString("vi-VN") + " đ";
+  };
+
+  const orderCode = getDisplayOrderCode(order);
+  const storeLogoUrl = order.storeLogo || "/images/logo1.jpg";
+  const storeName = order.storeName || "DTVĐ";
+  const storePhone = order.storePhone || "0123456789";
+  const storeEmail = order.storeEmail || "fshoesweb@gmail.com";
+  const storeAddress = order.storeAddress || "Địa chỉ cửa hàng của bạn";
+
+  const customerName =
+    order?.customerName || order?.receiverName || order?.buyerName || order?.customer?.name || "Khách hàng";
+  const shippingAddress =
+    order?.shippingAddress || order?.address || order?.deliveryAddress || order?.customer?.address || "Tại cửa hàng";
+  const orderDate = order?.orderDate
+    ? new Date(order.orderDate).toLocaleString("vi-VN")
+    : new Date().toLocaleString("vi-VN");
+  const paymentStatus = order?.paymentStatus || "PAID";
+
+  const barcodeBlock = `
+            <div class="barcode-box">
+                <svg id="barcode-order" width="100%" height="50"></svg>
+                <div class="barcode-label">Mã hóa đơn: ${orderCode}</div>
+            </div>
+        `;
+
+  const generateOrderQR = (code) => {
+    if (!code) return "";
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(code)}`;
+    return `
+        <div class="qr-order-left">
+            <img src="${qrUrl}" />
+            <div class="qr-label">Quét mã đơn</div>
+            <div class="qr-code">${code}</div>
+        </div>
+    `;
+  };
+
+  const getInvoiceItems = (orderData = {}) => {
+    const candidates = [
+      orderData.items,
+      orderData.orderItems,
+      orderData.orderDetails,
+      orderData.details,
+      orderData.orderDetailList,
+      orderData.order_items,
+      orderData.order_detail_list,
+    ];
+
+    return candidates.find((value) => Array.isArray(value)) || [];
+  };
+
+  const getItemName = (item) => {
+    return (
+      item?.productName ||
+      item?.name ||
+      item?.productColorName ||
+      item?.product?.productName ||
+      item?.productColor?.productName ||
+      item?.nameProduct ||
+      "Sản phẩm"
+    );
+  };
+
+  const getItemVariant = (item) => {
+    const color = item?.colorName || item?.color || item?.productColor?.colorName || "";
+    const size = item?.sizeName || item?.size || item?.productColor?.sizeName || "";
+    const variant = [color, size].filter(Boolean).join(" / ");
+    return variant || item?.variant || "";
+  };
+
+  const getItemQuantity = (item) => {
+    return Number(item?.quantity ?? item?.qty ?? item?.amount ?? 0);
+  };
+
+  const getItemPrice = (item) => {
+    return Number(
+      item?.price ?? item?.unitPrice ?? item?.salePrice ?? item?.priceAfterDiscount ?? 0,
+    );
+  };
+
+  const getItemTotal = (item) => {
+    const explicitTotal = Number(item?.total ?? item?.totalAmount ?? item?.lineTotal ?? 0);
+    if (explicitTotal > 0) return explicitTotal;
+    return getItemQuantity(item) * getItemPrice(item);
+  };
+
+  const invoiceItems = getInvoiceItems(order);
+  const invoiceTotal = Number(
+    order?.totalAmount ?? order?.total ?? order?.grandTotal ?? order?.orderTotal ??
+      invoiceItems.reduce((sum, item) => sum + getItemTotal(item), 0),
+  );
+  const invoiceCode = order?.orderId || order?.id || order?.orderCode || order?.trackingCode || "-";
+
+  const bankInfoBlock =
+    order?.bankName || order?.accountNumber || order?.accountName || order?.transferContent || order?.amount
+      ? `
+        <div class="banking-box">
+            ${order?.bankName ? `<div><strong>Ngân hàng:</strong> ${order.bankName}</div>` : ""}
+            ${order?.accountNumber ? `<div><strong>Số tài khoản:</strong> ${order.accountNumber}</div>` : ""}
+            ${order?.accountName ? `<div><strong>Chủ tài khoản:</strong> ${order.accountName}</div>` : ""}
+            ${order?.transferContent ? `<div><strong>Nội dung CK:</strong> ${order.transferContent}</div>` : ""}
+            ${order?.amount ? `<div><strong>Số tiền CK:</strong> ${formatCurrency(order.amount)}</div>` : ""}
+        </div>
+      `
+      : "";
+
+  const invoiceRows = invoiceItems.length
+    ? invoiceItems
+        .map((item, index) => {
+          const quantity = getItemQuantity(item);
+          const price = getItemPrice(item);
+          const total = getItemTotal(item);
+          return `
+                    <tr>
+                        <td class="center">${index + 1}</td>
+                        <td>
+                            <div class="product-name">${getItemName(item)}</div>
+                            ${getItemVariant(item) ? `<div class="product-sub">${getItemVariant(item)}</div>` : ""}
+                        </td>
+                        <td class="center">${quantity}</td>
+                        <td class="right">${formatCurrency(price)}</td>
+                        <td class="right">${formatCurrency(total)}</td>
+                        <td class="center">${paymentStatus}</td>
+                    </tr>
+                    `;
+        })
+        .join("")
+    : `
+                <tr>
+                    <td colspan="6" class="center">Không có chi tiết sản phẩm</td>
+                </tr>
+            `;
+
   return `
-  <!DOCTYPE html>
-  <html lang="vi">
-  <head>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
     <meta charset="UTF-8" />
-    <title>Hóa đơn</title>
+    <title>Hóa đơn bán hàng #${invoiceCode}</title>
+
     <style>
-      body {
-        font-family: Arial;
-        padding: 20px;
-        color: #111;
-      }
+        @page { size: A5 portrait; margin: 10mm; }
+        body { margin:0; font-family: Arial, Helvetica, sans-serif; font-size:13px; }
 
-      .invoice {
-        max-width: 900px;
-        margin: auto;
-      }
+        .receipt { width:100%; padding:8px; }
+        .top-header {
+            display:grid; grid-template-columns:150px 1fr 220px;
+            gap:12px; align-items:center; margin-bottom:8px;
+        }
+        .logo-box { display:flex; align-items:center; justify-content:center; }
+        .header-logo { width:140px; max-height:80px; object-fit:contain; }
+        .shop-info { text-align:center; }
+        .shop-name { font-size:28px; font-weight:700; margin-bottom:6px; }
+        .shop-line { margin:2px 0; font-size:13px; }
+        .barcode-box {
+            width:180px; max-width:180px; margin:0;
+            padding:0; box-sizing:border-box;
+            border:none; background:none;
+            text-align:left;
+        }
+        .barcode-box svg { width:100%; height:38px; display:block; }
+        .barcode-label { margin-top:6px; font-size:11px; font-weight:400; color:#111; }
 
-      .top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
+        .title {
+            text-align:center; font-size:30px;
+            margin:14px 0 12px; font-weight:800; text-transform:uppercase;
+        }
 
-      .logo {
-        font-size: 22px;
-        font-weight: bold;
-      }
+        .meta-grid { display:flex; justify-content:space-between; margin-bottom:10px; gap:16px; }
+        .meta-col { width:48%; line-height:1.55; }
 
-      .barcode {
-        text-align: center;
-      }
+        table { width:100%; border-collapse:collapse; border:1px solid #111; table-layout:fixed; margin-top:4px; }
+        th,td { border:1px solid #111; box-sizing:border-box; padding:6px 7px; font-size:12.5px; word-break:break-word; }
+        th { text-align:center; font-weight:700; }
 
-      .title {
-        text-align: center;
-        font-size: 28px;
-        font-weight: bold;
-        margin: 20px 0;
-      }
+        .center { text-align:center; }
+        .right { text-align:right; white-space:nowrap; }
 
-      .info {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 15px;
-      }
+        .product-name { font-weight:700; }
+        .product-sub { color:#444; font-size:11px; margin-top:2px; }
 
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-      }
+        .bottom-area { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-top:12px; }
+        .left-note { flex:1; min-height:120px; }
+        .summary { width:240px; min-width:180px; margin-left:auto; }
+        .summary-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:4px 0; font-size:13px; }
+        .summary-row span { white-space:normal; word-break:break-word; }
+        .summary-row strong { white-space:nowrap; }
+        .summary-row.total { font-size:16px; font-weight:800; margin-top:8px; line-height:1.2; }
+        .summary-row.total span { font-size:14px; }
 
-      th, td {
-        border: 1px solid #ccc;
-        padding: 10px;
-      }
+        .qr-order-left { display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        .qr-order-left img { width:140px; height:140px; object-fit:contain; }
+        .qr-label { font-size:12px; margin-top:6px; font-weight:600; }
+        .qr-code { font-size:11px; margin-top:2px; color:#444; }
 
-      th {
-        background: #f5f5f5;
-      }
-
-      .right { text-align: right; }
-      .center { text-align: center; }
-
-      .bottom {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 20px;
-      }
-
-      .qr {
-        width: 150px;
-      }
-
-      .total {
-        min-width: 300px;
-      }
-
-      .total div {
-        display: flex;
-        justify-content: space-between;
-        margin: 5px 0;
-      }
-
-      .grand {
-        font-size: 20px;
-        font-weight: bold;
-        border-top: 2px solid #000;
-        padding-top: 10px;
-      }
+        .banking-box { margin-top:10px; padding-top:8px; border-top:1px dashed #444; line-height:1.55; font-size:12.5px; }
+        .footer { text-align:center; margin-top:16px; font-size:12px; color:#333; }
     </style>
-  </head>
+</head>
 
-  <body>
-    <div class="invoice">
+<body>
+    <div class="receipt">
 
-      <!-- HEADER -->
-      <div class="top">
-        <div>
-          <div class="logo">DTVD</div>
-          <div>SĐT: ${order?.customerPhone}</div>
-          <div>Email: example@gmail.com</div>
+        <div class="top-header">
+            <div class="logo-box">
+                <img class="header-logo" src="${storeLogoUrl}" />
+            </div>
+
+            <div class="shop-info">
+                <div class="shop-name">${storeName}</div>
+                <div class="shop-line"><b>SĐT:</b> ${storePhone}</div>
+                <div class="shop-line"><b>Email:</b> ${storeEmail}</div>
+                <div class="shop-line">${storeAddress}</div>
+            </div>
+
+            ${barcodeBlock}
         </div>
 
-        <div class="barcode">
-          <!-- barcode giả -->
-          <div>||||||||||||||||||||||||</div>
-          <small>${order?.id}</small>
-        </div>
-      </div>
+        <div class="title">HÓA ĐƠN BÁN HÀNG</div>
 
-      <!-- TITLE -->
-      <div class="title">HÓA ĐƠN BÁN HÀNG</div>
-
-      <!-- INFO -->
-      <div class="info">
-        <div>
-          <div><b>Khách hàng:</b> ${order?.customerName}</div>
-          <div><b>Địa chỉ:</b> ${order?.shippingAddress}</div>
-          <div><b>Nhân viên:</b> admin</div>
+        <div class="meta-grid">
+            <div class="meta-col">
+                <div><b>Khách hàng:</b> ${customerName}</div>
+                <div><b>Địa chỉ nhận hàng:</b> ${shippingAddress}</div>
+                <div><b>Nhân viên:</b> ${order.employeeName || order.staffName || "admin"}</div>
+            </div>
+            <div class="meta-col" style="text-align:right;">
+                <div><b>Mã hóa đơn:</b> ${invoiceCode}</div>
+                <div><b>Ngày tạo:</b> ${orderDate}</div>
+                <div><b>Trạng thái:</b> ${paymentStatus}</div>
+            </div>
         </div>
 
-        <div>
-          <div><b>Mã hóa đơn:</b> ${order?.id}</div>
-          <div><b>Ngày:</b> ${new Date().toLocaleString()}</div>
-          <div><b>Trạng thái:</b> PAID</div>
-        </div>
-      </div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:40px;">STT</th>
+                    <th>Tên sản phẩm</th>
+                    <th style="width:70px;">Số lượng</th>
+                    <th style="width:110px;">Đơn giá</th>
+                    <th style="width:120px;">Thành tiền</th>
+                    <th style="width:90px;">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${invoiceRows}
+            </tbody>
+        </table>
 
-      <!-- TABLE -->
-      <table>
-        <thead>
-          <tr>
-            <th>STT</th>
-            <th>Tên sản phẩm</th>
-            <th>SL</th>
-            <th>Đơn giá</th>
-            <th>Thành tiền</th>
-            <th>Trạng thái</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${order.items.map((item, i) => `
-            <tr>
-              <td class="center">${i + 1}</td>
-              <td>
-                <b>${item.name}</b><br/>
-                <small>${item.variant || ""}</small>
-              </td>
-              <td class="center">${item.qty}</td>
-              <td class="right">${item.price}</td>
-              <td class="right">${item.price * item.qty}</td>
-              <td class="center">PAID</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-
-      <!-- BOTTOM -->
-      <div class="bottom">
-        <div class="qr">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${order.id}" />
-          <div>Quét mã đơn</div>
+        <div class="bottom-area">
+            <div class="left-note">
+                ${generateOrderQR(orderCode)}
+                ${bankInfoBlock}
+            </div>
+            <div class="summary">
+                <div class="summary-row">
+                    <span>Tổng tiền hàng:</span>
+                    <strong>${formatCurrency(invoiceTotal)}</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Giảm giá:</span>
+                    <strong>${formatCurrency(order.discountAmount || order.discount || 0)}</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Phí giao hàng:</span>
+                    <strong>${formatCurrency(order.deliveryFee || order.shippingFee || 0)}</strong>
+                </div>
+                <div class="summary-row total">
+                    <span>Tổng tiền cần thanh toán:</span>
+                    <strong>${formatCurrency(order?.totalAmount ?? order?.total ?? invoiceTotal)}</strong>
+                </div>
+            </div>
         </div>
 
-        <div class="total">
-          <div><span>Tổng tiền hàng:</span><span>${order.total}</span></div>
-          <div><span>Giảm giá:</span><span>0</span></div>
-          <div><span>Phí ship:</span><span>0</span></div>
-
-          <div class="grand">
-            <span>Tổng thanh toán:</span>
-            <span>${order.total}</span>
-          </div>
-        </div>
-      </div>
-
-      <p style="text-align:center; margin-top:20px">
-        Cảm ơn quý khách đã mua hàng
-      </p>
-
+        <div class="footer">Cảm ơn quý khách đã mua hàng</div>
     </div>
-
-    <script>
-      window.onload = () => window.print();
-    </script>
-
-  </body>
-  </html>
-  `;
+</body>
+</html>
+`;
 };
 
   const printInvoice = (order, type = "shipping") => {
@@ -1633,6 +1726,25 @@ const syncReturnStepFromBackend = (order) => {
     printWindow.document.open();
     printWindow.document.write(buildInvoiceHtml(order, type));
     printWindow.document.close();
+
+    printWindow.onload = () => {
+      const barcodeEl = printWindow.document.getElementById("barcode-order");
+
+      if (barcodeEl) {
+        JsBarcode(barcodeEl, getDisplayOrderCode(order), {
+          format: "CODE128",
+          width: 1.2,
+          height: 40,
+          displayValue: false,
+          margin: 0,
+        });
+      }
+
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 200);
+    };
   };
 
   const printShippingInvoice = (order) => {
