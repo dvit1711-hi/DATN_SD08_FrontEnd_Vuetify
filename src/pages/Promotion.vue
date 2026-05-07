@@ -1,236 +1,199 @@
 <template>
   <v-container class="promotion-container" fluid>
-    <!-- Enhanced Header Section -->
-    <div class="header-section mb-8">
+    <!-- HEADER -->
+    <div class="header-section">
       <div class="header-content">
-        <div class="d-flex align-center gap-4 mb-4">
-          <div class="header-icon">
-            <v-icon icon="mdi-gift" size="40" color="white"></v-icon>
-          </div>
-          <div>
-            <h1 class="text-h3 font-weight-bold mb-1">Khuyến Mãi & Mã Giảm Giá</h1>
-            <p class="text-subtitle-1 text-grey-darken-1">Nhận các mã giảm giá mới nhất và sử dụng khi thanh toán đơn hàng của bạn</p>
-          </div>
+        <div class="section-label">
+          PROMOTION
         </div>
+
+        <h1>Khuyến mãi & mã giảm giá</h1>
+
+        <p>
+          Nhận các mã giảm giá mới nhất và sử dụng khi thanh toán đơn hàng của bạn
+        </p>
       </div>
     </div>
 
-    <!-- Enhanced Tabs Section -->
-    <div class="tabs-section mb-8">
-      <v-tabs 
-        v-model="activeTab" 
+    <!-- TABS -->
+    <div class="tabs-section">
+      <v-tabs
+        v-model="activeTab"
         class="custom-tabs"
-        slider-color="primary"
+        slider-color="black"
       >
         <v-tab value="available" class="tab-item">
-          <div class="d-flex align-center gap-2">
-            <v-icon icon="mdi-gift-outline" size="20"></v-icon>
-            <span>Mã Khả Dụng</span>
-            <v-chip 
-              size="small" 
-              color="primary" 
-              text-color="white"
-              class="ml-2"
-            >
-              {{ validAvailableCoupons.length }}
-            </v-chip>
-          </div>
+          Mã khả dụng
         </v-tab>
+
         <v-tab value="claimed" class="tab-item">
-          <div class="d-flex align-center gap-2">
-            <v-icon icon="mdi-check-circle-outline" size="20"></v-icon>
-            <span>Mã Đã Nhận</span>
-            <v-chip 
-              size="small" 
-              color="success" 
-              text-color="white"
-              class="ml-2"
-            >
-              {{ validClaimedCoupons.length }}
-            </v-chip>
-          </div>
+          Mã đã nhận
         </v-tab>
       </v-tabs>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="isLoading" class="d-flex justify-center py-16">
-      <v-progress-circular indeterminate color="primary" size="48" />
+    <!-- LOADING -->
+    <div
+      v-if="isLoading"
+      class="d-flex justify-center py-16"
+    >
+      <v-progress-circular
+        indeterminate
+        color="black"
+        size="40"
+      />
     </div>
 
-    <!-- Available Coupons Tab -->
+    <!-- AVAILABLE -->
     <div v-else-if="activeTab === 'available'">
-      <v-row v-if="validAvailableCoupons.length > 0" class="ga-4">
+      <v-row>
         <v-col
           v-for="coupon in validAvailableCoupons"
           :key="coupon.id"
           cols="12"
-          sm="6"
           md="6"
-          lg="3"
-          xl="3"
+          lg="4"
         >
-          <div class="coupon-card-wrapper">
-            <v-card class="coupon-card h-100 position-relative" elevation="0">
-              <!-- Top Discount Badge -->
-              <div class="discount-badge" :class="coupon.discountType === 'percent' ? 'percent' : 'fixed'">
-                <div class="badge-value">
-                  {{ coupon.discountType === 'percent' ? coupon.discountValue + '%' : formatPrice(coupon.discountValue) }}
-                </div>
-                <div class="badge-label">{{ coupon.discountType === 'percent' ? 'Giảm' : 'Giảm' }}</div>
+          <v-card
+            class="coupon-card"
+            elevation="0"
+          >
+            <!-- TOP -->
+            <div class="card-top">
+              <div class="coupon-code">
+                {{ coupon.couponCode }}
               </div>
 
-              <!-- Card Header with Gradient -->
-              <div class="card-header" :style="{ background: getGradientBg(coupon.discountType) }">
-                <v-icon size="48" color="white">{{ coupon.discountType === 'percent' ? 'mdi-percent' : 'mdi-currency-usd' }}</v-icon>
+              <div class="discount-badge">
+                {{
+                  coupon.discountType === 'percent'
+                    ? `${coupon.discountValue}%`
+                    : `${formatPrice(coupon.discountValue)}đ`
+                }}
+              </div>
+            </div>
+
+            <!-- BODY -->
+            <v-card-text class="card-body">
+              <div class="coupon-name">
+                {{ coupon.name }}
               </div>
 
-              <!-- Card Content -->
-              <v-card-text class="pa-4">
-                <!-- Coupon Title -->
-                <div class="mb-3">
-                  <div class="text-subtitle-2 text-grey font-weight-medium">{{ coupon.name }}</div>
-                  <div class="text-h6 font-weight-bold line-clamp-2">{{ coupon.couponCode }}</div>
-                </div>
+              <div class="coupon-meta">
+                <div class="meta-item">
+                  <span>Đơn tối thiểu</span>
 
-                <!-- Min Order Value -->
-                <div class="info-box mb-3">
-                  <div class="info-label">Đơn hàng tối thiểu</div>
-                  <div class="info-value text-success font-weight-bold">
+                  <strong>
                     {{ formatPrice(coupon.minOrderValue) }}đ
-                  </div>
+                  </strong>
                 </div>
 
-                <!-- Expiry Info -->
-                <div class="d-flex gap-2 mb-4">
-                  <div class="flex-grow-1">
-                    <div class="text-caption text-grey">Lượt còn lại</div>
-                    <div class="font-weight-bold">{{ coupon.quantity > 0 ? '✓ Có' : '✗ Hết' }}</div>
-                  </div>
-                  <div class="flex-grow-1 text-right">
-                    <div class="text-caption text-grey">Hết hạn trong</div>
-                    <div class="font-weight-bold" :class="daysUntilExpiry(coupon.endDate) <= 3 ? 'text-error' : 'text-primary'">
-                      {{ daysUntilExpiry(coupon.endDate) }} ngày
-                    </div>
-                  </div>
-                </div>
+                <div class="meta-item">
+                  <span>Hết hạn sau</span>
 
-                <!-- Action Buttons -->
-                <div class="d-flex gap-2">
-                  <v-btn
-                    size="small"
-                    variant="tonal"
-                    color="primary"
-                    icon="mdi-information-outline"
-                    @click="showCouponDetails(coupon)"
-                    class="flex-grow-1"
-                  >
-                    Chi tiết
-                  </v-btn>
-                  
-                  <v-btn
-                    size="small"
-                    :variant="isUserClaimedThisCoupon(coupon.id) ? 'tonal' : 'flat'"
-                    :color="isUserClaimedThisCoupon(coupon.id) ? 'success' : getButtonColor(coupon)"
-                    :disabled="isUserClaimedThisCoupon(coupon.id)"
-                    :loading="claimingId === coupon.id"
-                    @click="claimCoupon(coupon)"
-                    class="flex-grow-1"
-                  >
-                    {{ isUserClaimedThisCoupon(coupon.id) ? '✓ Đã nhận' : 'Nhận Mã' }}
-                  </v-btn>
+                  <strong>
+                    {{ daysUntilExpiry(coupon.endDate) }} ngày
+                  </strong>
                 </div>
-              </v-card-text>
-            </v-card>
-          </div>
+              </div>
+
+              <div class="coupon-actions">
+                <v-btn
+                  variant="outlined"
+                  color="black"
+                  size="large"
+                  @click="showCouponDetails(coupon)"
+                >
+                  Chi tiết
+                </v-btn>
+
+                <v-btn
+                  variant="flat"
+                  color="black"
+                  size="large"
+                  :disabled="isUserClaimedThisCoupon(coupon.id)"
+                  :loading="claimingId === coupon.id"
+                  @click="claimCoupon(coupon)"
+                >
+                  {{
+                    isUserClaimedThisCoupon(coupon.id)
+                      ? 'Đã nhận'
+                      : 'Nhận mã'
+                  }}
+                </v-btn>
+              </div>
+            </v-card-text>
+          </v-card>
         </v-col>
       </v-row>
-
-      <v-empty-state
-        v-else
-        icon="mdi-gift-off"
-        title="Không có mã giảm giá khả dụng"
-        text="Hãy kiểm tra lại sau, sẽ có những mã mới!"
-        class="empty-state"
-      />
     </div>
 
-    <!-- Claimed Coupons Tab -->
+    <!-- CLAIMED -->
     <div v-else-if="activeTab === 'claimed'">
-      <v-row v-if="validClaimedCoupons.length > 0" class="ga-4">
+      <v-row>
         <v-col
           v-for="userCoupon in validClaimedCoupons"
           :key="userCoupon.id"
           cols="12"
-          sm="6"
           md="6"
-          lg="3"
-          xl="3"
+          lg="4"
         >
-          <v-card class="claimed-coupon-card h-100 position-relative" elevation="0">
-            <!-- Status Badge -->
-            <div class="status-badge" :class="userCoupon.status">
+          <v-card
+            class="coupon-card"
+            elevation="0"
+          >
+            <div class="claimed-status">
               {{ getStatusLabel(userCoupon.status) }}
             </div>
 
-            <!-- Card Header -->
-            <div class="claimed-card-header">
-              <v-icon size="40" color="white">mdi-check-decagram</v-icon>
+            <div class="card-top">
+              <div class="coupon-code">
+                {{ userCoupon.discountCoupon.couponCode }}
+              </div>
             </div>
 
-            <!-- Card Content -->
-            <v-card-text class="pa-4">
-              <!-- Coupon Code -->
-              <div class="mb-3">
-                <div class="text-caption text-grey">Mã giảm giá</div>
-                <div class="text-h5 font-weight-bold" style="font-family: 'Courier New', monospace;">
-                  {{ userCoupon.discountCoupon.couponCode }}
+            <v-card-text class="card-body">
+              <div class="coupon-name">
+                {{
+                  userCoupon.discountCoupon.discountType === 'percent'
+                    ? `${userCoupon.discountCoupon.discountValue}%`
+                    : `${formatPrice(userCoupon.discountCoupon.discountValue)}đ`
+                }}
+              </div>
+
+              <div class="coupon-meta">
+                <div class="meta-item">
+                  <span>Ngày nhận</span>
+
+                  <strong>
+                    {{ formatDate(userCoupon.claimedDate) }}
+                  </strong>
+                </div>
+
+                <div class="meta-item">
+                  <span>Hết hạn</span>
+
+                  <strong>
+                    {{ formatDate(userCoupon.discountCoupon.endDate) }}
+                  </strong>
                 </div>
               </div>
 
-              <!-- Discount Value -->
-              <div class="discount-info mb-4">
-                <div class="discount-label">Giảm giá</div>
-                <div class="discount-amount">
-                  {{
-                    userCoupon.discountCoupon.discountType === 'percent'
-                      ? userCoupon.discountCoupon.discountValue + '%'
-                      : formatPrice(userCoupon.discountCoupon.discountValue) + 'đ'
-                  }}
-                </div>
-              </div>
-
-              <!-- Dates -->
-              <div class="dates-section mb-4">
-                <div class="date-item">
-                  <span class="text-caption text-grey">📅 Nhận vào</span>
-                  <div class="text-body-2 font-weight-medium">{{ formatDate(userCoupon.claimedDate) }}</div>
-                </div>
-                <div v-if="userCoupon.usedDate" class="date-item">
-                  <span class="text-caption text-grey">✅ Sử dụng</span>
-                  <div class="text-body-2 font-weight-medium">{{ formatDate(userCoupon.usedDate) }}</div>
-                </div>
-              </div>
-
-              <!-- Action Buttons -->
-              <div class="d-flex gap-2">
-                <v-btn
-                  variant="flat"
-                  color="primary"
-                  size="small"
-                  icon="mdi-content-copy"
-                  @click="copyCouponCode(userCoupon.discountCoupon.couponCode)"
-                  class="flex-grow-1"
-                >
-                  Sao Chép
-                </v-btn>
+              <div class="coupon-actions">
                 <v-btn
                   variant="outlined"
-                  color="error"
-                  size="small"
-                  icon="mdi-delete"
+                  color="black"
+                  size="large"
+                  @click="copyCouponCode(userCoupon.discountCoupon.couponCode)"
+                >
+                  Sao chép
+                </v-btn>
+
+                <v-btn
+                  variant="flat"
+                  color="black"
+                  size="large"
                   @click="removeCoupon(userCoupon.id)"
-                  class="flex-grow-1"
                 >
                   Xóa
                 </v-btn>
@@ -239,162 +202,94 @@
           </v-card>
         </v-col>
       </v-row>
-
-      <v-empty-state
-        v-else
-        icon="mdi-gift-outline"
-        title="Bạn chưa nhận mã giảm giá nào"
-        text="Hãy nhận các mã ở tab 'Mã Khả Dụng' để sử dụng khi thanh toán"
-        class="empty-state"
-      >
-        <template #actions>
-          <v-btn 
-            color="primary" 
-            size="large"
-            @click="activeTab = 'available'"
-          >
-            <v-icon start>mdi-arrow-left</v-icon>
-            Quay lại mã khả dụng
-          </v-btn>
-        </template>
-      </v-empty-state>
     </div>
 
-    <!-- Snackbar Notifications -->
-    <v-snackbar v-model="showSnackbar" :color="snackbarColor" timeout="3000" top>
+    <!-- DIALOG CHI TIẾT -->
+    <v-dialog
+      v-model="showDetailsDialog"
+      width="520"
+    >
+      <v-card
+        v-if="selectedCouponDetail"
+        class="details-card"
+      >
+        <v-card-text class="pa-8">
+          <div class="dialog-top">
+            <div>
+              <div class="dialog-label">
+                Mã giảm giá
+              </div>
+
+              <div class="dialog-code">
+                {{ selectedCouponDetail.couponCode }}
+              </div>
+            </div>
+
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              @click="showDetailsDialog = false"
+            />
+          </div>
+
+          <div class="dialog-price">
+            {{
+              selectedCouponDetail.discountType === 'percent'
+                ? `${selectedCouponDetail.discountValue}%`
+                : `${formatPrice(selectedCouponDetail.discountValue)}đ`
+            }}
+          </div>
+
+          <div class="dialog-grid">
+            <div class="dialog-item">
+              <span>Đơn tối thiểu</span>
+
+              <strong>
+                {{ formatPrice(selectedCouponDetail.minOrderValue) }}đ
+              </strong>
+            </div>
+
+            <div class="dialog-item">
+              <span>Số lượng</span>
+
+              <strong>
+                {{ selectedCouponDetail.quantity }}
+              </strong>
+            </div>
+
+            <div class="dialog-item">
+              <span>Ngày bắt đầu</span>
+
+              <strong>
+                {{ formatDate(selectedCouponDetail.startDate) }}
+              </strong>
+            </div>
+
+            <div class="dialog-item">
+              <span>Ngày kết thúc</span>
+
+              <strong>
+                {{ formatDate(selectedCouponDetail.endDate) }}
+              </strong>
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- SNACKBAR -->
+    <v-snackbar
+      v-model="showSnackbar"
+      :color="snackbarColor"
+      timeout="3000"
+    >
       {{ snackbarMessage }}
     </v-snackbar>
-
-    <!-- Confirm Delete Dialog -->
-    <v-dialog v-model="showDeleteDialog" width="400" class="delete-dialog">
-      <v-card class="delete-card">
-        <div class="delete-header">
-          <v-icon icon="mdi-alert-circle-outline" size="48" color="error"></v-icon>
-        </div>
-        <v-card-title class="text-center text-h5 font-weight-bold">Xác nhận xóa</v-card-title>
-        <v-card-text class="text-center text-body-2 py-6">
-          Bạn có chắc chắn muốn xóa mã giảm giá này không? Hành động này không thể hoàn tác.
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="pa-4">
-          <v-btn 
-            variant="text" 
-            color="grey-darken-1"
-            block
-            @click="showDeleteDialog = false"
-          >
-            Hủy
-          </v-btn>
-          <v-btn
-            color="error"
-            variant="flat"
-            block
-            :loading="isDeleting"
-            @click="confirmDelete"
-          >
-            Xóa Mã
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Coupon Details Dialog -->
-    <v-dialog v-model="showDetailsDialog" width="600" class="details-dialog">
-      <v-card v-if="selectedCouponDetail" class="details-card">
-        <div class="details-header" :style="{ background: getGradientBg(selectedCouponDetail.discountType) }">
-          <div class="details-badge">
-            <div class="badge-value">
-              {{ selectedCouponDetail.discountType === 'percent' ? selectedCouponDetail.discountValue + '%' : formatPrice(selectedCouponDetail.discountValue) }}
-            </div>
-          </div>
-          <v-btn 
-            icon="mdi-close" 
-            variant="text" 
-            color="white"
-            class="position-absolute"
-            style="top: 12px; right: 12px;"
-            @click="showDetailsDialog = false" 
-          />
-        </div>
-
-        <v-card-text class="pa-6">
-          <div class="mb-6">
-            <div class="text-caption text-grey">Mã giảm giá</div>
-            <div class="text-h4 font-weight-bold" style="font-family: 'Courier New', monospace;">{{ selectedCouponDetail.couponCode }}</div>
-          </div>
-
-          <div class="mb-6 info-card">
-            <div class="info-label">Giảm giá</div>
-            <div class="info-amount">
-              {{
-                selectedCouponDetail.discountType === 'percent'
-                  ? selectedCouponDetail.discountValue + '%'
-                  : formatPrice(selectedCouponDetail.discountValue) + 'đ'
-              }}
-            </div>
-            <div v-if="selectedCouponDetail.maxDiscountValue && selectedCouponDetail.discountType === 'percent'" class="text-caption text-grey mt-2">
-              ⚠️ Tối đa giảm: {{ formatPrice(selectedCouponDetail.maxDiscountValue) }}đ
-            </div>
-          </div>
-
-          <v-divider class="my-4" />
-
-          <div class="details-grid mb-6">
-            <div class="detail-item">
-              <div class="text-caption text-grey">📋 Đơn tối thiểu</div>
-              <div class="font-weight-bold text-body-2">{{ formatPrice(selectedCouponDetail.minOrderValue) }}đ</div>
-            </div>
-            <div class="detail-item">
-              <div class="text-caption text-grey">📦 Lượt còn lại</div>
-              <div class="font-weight-bold text-body-2">{{ selectedCouponDetail.quantity }} mã</div>
-            </div>
-            <div class="detail-item">
-              <div class="text-caption text-grey">📅 Ngày bắt đầu</div>
-              <div class="font-weight-bold text-body-2">{{ formatDate(selectedCouponDetail.startDate) }}</div>
-            </div>
-            <div class="detail-item">
-              <div class="text-caption text-grey">⏰ Ngày kết thúc</div>
-              <div class="font-weight-bold text-body-2">{{ formatDate(selectedCouponDetail.endDate) }}</div>
-            </div>
-          </div>
-
-          <div v-if="selectedCouponDetail.description" class="mb-6 description-box">
-            <div class="text-caption text-grey mb-2">📝 Mô tả</div>
-            <div class="text-body-2">{{ selectedCouponDetail.description }}</div>
-          </div>
-
-          <v-divider class="my-4" />
-
-          <div class="d-flex gap-2">
-            <v-btn
-              variant="outlined"
-              color="primary"
-              size="large"
-              icon="mdi-content-copy"
-              @click="copyCouponCode(selectedCouponDetail.couponCode)"
-              class="flex-grow-1"
-            >
-              Sao Chép Mã
-            </v-btn>
-            <v-btn
-              color="primary"
-              size="large"
-              :disabled="isUserClaimedThisCoupon(selectedCouponDetail.id)"
-              :loading="claimingId === selectedCouponDetail.id"
-              @click="claimCoupon(selectedCouponDetail)"
-              class="flex-grow-1"
-            >
-              {{ isUserClaimedThisCoupon(selectedCouponDetail.id) ? '✓ Đã nhận' : 'Nhận Mã' }}
-            </v-btn>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import userDiscountCouponApi from '@/api/userDiscountCouponApi'
 
@@ -402,134 +297,136 @@ const userStore = useUserStore()
 
 const activeTab = ref('available')
 const isLoading = ref(false)
+
 const availableCoupons = ref([])
 const claimedCoupons = ref([])
+
 const claimingId = ref(null)
+
 const showSnackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
-const showDeleteDialog = ref(false)
-const isDeleting = ref(false)
-const couponToDelete = ref(null)
+
+/* DIALOG */
 const showDetailsDialog = ref(false)
 const selectedCouponDetail = ref(null)
-
-const getCouponBgColor = (type) => {
-  return type === 'percent' ? '#FEF3E2' : '#E8F5E9'
-}
-
-const getGradientBg = (type) => {
-  return type === 'percent' 
-    ? 'linear-gradient(135deg, #FF6B6B 0%, #FF8E72 100%)'
-    : 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)'
-}
-
-const getButtonColor = (coupon) => {
-  return coupon.discountType === 'percent' ? '#FF6B6B' : '#4CAF50'
-}
-
-const isExpired = (endDate) => {
-  if (!endDate) return false
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const end = new Date(endDate)
-  end.setHours(0, 0, 0, 0)
-  return end < today
-}
-
-const daysUntilExpiry = (endDate) => {
-  if (!endDate) return 0
-  const today = new Date()
-  const end = new Date(endDate)
-  const diffTime = end - today
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  return Math.max(0, diffDays)
-}
 
 const showCouponDetails = (coupon) => {
   selectedCouponDetail.value = coupon
   showDetailsDialog.value = true
 }
 
-const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
+const formatPrice = (price) => {
+  return new Intl.NumberFormat('vi-VN').format(price || 0)
+}
 
 const formatDate = (date) => {
   if (!date) return '-'
   return new Date(date).toLocaleDateString('vi-VN')
 }
 
-const formatDateTime = (datetime) => {
-  if (!datetime) return '-'
-  return new Date(datetime).toLocaleString('vi-VN')
+const isExpired = (endDate) => {
+  if (!endDate) return false
+
+  const today = new Date()
+  const end = new Date(endDate)
+
+  today.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+
+  return end < today
 }
+
+const daysUntilExpiry = (endDate) => {
+  if (!endDate) return 0
+
+  const today = new Date()
+  const end = new Date(endDate)
+
+  const diffTime = end - today
+
+  return Math.max(
+    0,
+    Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  )
+}
+
+const validAvailableCoupons = computed(() => {
+  return availableCoupons.value.filter(
+    coupon => !isExpired(coupon.endDate)
+  )
+})
+
+const validClaimedCoupons = computed(() => {
+  return claimedCoupons.value.filter(
+    coupon => !isExpired(coupon.discountCoupon?.endDate)
+  )
+})
 
 const getStatusLabel = (status) => {
   const labels = {
-    claimed: 'Đã Nhận',
-    used: 'Đã Sử Dụng',
-    expired: 'Hết Hạn',
+    claimed: 'Đã nhận',
+    used: 'Đã dùng',
+    expired: 'Hết hạn'
   }
+
   return labels[status] || status
 }
 
 const isUserClaimedThisCoupon = (couponId) => {
-  return claimedCoupons.value.some((uc) => uc.discountCoupon?.id === couponId)
+  return claimedCoupons.value.some(
+    item => item.discountCoupon?.id === couponId
+  )
 }
-
-const validAvailableCoupons = computed(() => {
-  return availableCoupons.value.filter(coupon => !isExpired(coupon.endDate))
-})
-
-const validClaimedCoupons = computed(() => {
-  return claimedCoupons.value.filter(userCoupon => !isExpired(userCoupon.discountCoupon?.endDate))
-})
 
 const loadAvailableCoupons = async () => {
   try {
     const res = await userDiscountCouponApi.getAvailableDiscountCoupons()
     availableCoupons.value = res.data || []
   } catch (error) {
-    console.error('Lỗi tải mã giảm giá khả dụng:', error)
-    snackbarMessage.value = 'Lỗi tải mã giảm giá'
+    snackbarMessage.value = 'Không thể tải mã giảm giá'
     snackbarColor.value = 'error'
     showSnackbar.value = true
   }
 }
 
 const loadClaimedCoupons = async () => {
-  const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    return
-  }
+  const accountId = Number.parseInt(userStore.accountId)
+
+  if (!accountId) return
 
   try {
-    const res = await userDiscountCouponApi.getUserDiscountCoupons(accountId)
+    const res =
+      await userDiscountCouponApi.getUserDiscountCoupons(accountId)
+
     claimedCoupons.value = res.data || []
   } catch (error) {
-    console.error('Lỗi tải mã đã nhận:', error)
+    console.error(error)
   }
 }
 
 const claimCoupon = async (coupon) => {
-  const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    snackbarMessage.value = 'Bạn cần đăng nhập để nhận mã giảm giá'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
+  const accountId = Number.parseInt(userStore.accountId)
+
+  if (!accountId) return
 
   claimingId.value = coupon.id
 
   try {
-    await userDiscountCouponApi.claimDiscountCoupon(accountId, coupon.id)
-    snackbarMessage.value = `Nhận mã "${coupon.couponCode}" thành công!`
+    await userDiscountCouponApi.claimDiscountCoupon(
+      accountId,
+      coupon.id
+    )
+
+    snackbarMessage.value = 'Nhận mã thành công'
     snackbarColor.value = 'success'
     showSnackbar.value = true
 
     await loadClaimedCoupons()
   } catch (error) {
-    snackbarMessage.value = error.response?.data || 'Không thể nhận mã giảm giá'
+    snackbarMessage.value =
+      error.response?.data || 'Không thể nhận mã'
+
     snackbarColor.value = 'error'
     showSnackbar.value = true
   } finally {
@@ -537,495 +434,271 @@ const claimCoupon = async (coupon) => {
   }
 }
 
-const copyCouponCode = (code) => {
-  navigator.clipboard.writeText(code).then(() => {
-    snackbarMessage.value = `Đã sao chép mã "${code}"`
-    snackbarColor.value = 'info'
-    showSnackbar.value = true
-  })
+const copyCouponCode = async (code) => {
+  await navigator.clipboard.writeText(code)
+
+  snackbarMessage.value = 'Đã sao chép mã'
+  snackbarColor.value = 'success'
+  showSnackbar.value = true
 }
 
-const removeCoupon = (userCouponId) => {
-  couponToDelete.value = userCouponId
-  showDeleteDialog.value = true
-}
-
-const confirmDelete = async () => {
-  if (!couponToDelete.value) return
-
-  isDeleting.value = true
+const removeCoupon = async (id) => {
   try {
-    await userDiscountCouponApi.deleteUserDiscountCoupon(couponToDelete.value)
-    snackbarMessage.value = 'Xóa mã giảm giá thành công'
+    await userDiscountCouponApi.deleteUserDiscountCoupon(id)
+
+    snackbarMessage.value = 'Xóa mã thành công'
     snackbarColor.value = 'success'
     showSnackbar.value = true
 
     await loadClaimedCoupons()
-    showDeleteDialog.value = false
   } catch (error) {
-    snackbarMessage.value = 'Không thể xóa mã giảm giá'
+    snackbarMessage.value = 'Không thể xóa mã'
     snackbarColor.value = 'error'
     showSnackbar.value = true
-  } finally {
-    isDeleting.value = false
-    couponToDelete.value = null
   }
 }
 
 onMounted(async () => {
   isLoading.value = true
-  await Promise.all([loadAvailableCoupons(), loadClaimedCoupons()])
+
+  await Promise.all([
+    loadAvailableCoupons(),
+    loadClaimedCoupons()
+  ])
+
   isLoading.value = false
 })
 </script>
 
 <style scoped>
-/* Promotion Container */
 .promotion-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-  padding: 32px 0;
+  background: #f6f6f6;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 40px 48px 60px;
 }
 
-/* Enhanced Header Section */
+/* HEADER */
 .header-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 32px;
-  color: white;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25);
-  position: relative;
-  overflow: hidden;
+  padding-left: 60px;
+  padding-right: 60px;
+  margin-bottom: 32px;
 }
 
-.header-section::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -10%;
-  width: 300px;
-  height: 300px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 50%;
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #999;
+  margin-bottom: 14px;
 }
 
-.header-section::after {
-  content: '';
-  position: absolute;
-  bottom: -30%;
-  left: 10%;
-  width: 200px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 50%;
+.header-content h1 {
+  font-size: 42px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 14px;
+  letter-spacing: -1px;
 }
 
-.header-content {
-  position: relative;
-  z-index: 1;
+.header-content p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #666;
 }
 
-.header-icon {
-  width: 72px;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-}
-
-/* Tabs Section */
+/* TABS */
 .tabs-section {
-  background: white;
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 32px;
+  padding-left: 60px;
+  padding-right: 60px;
 }
 
 .custom-tabs {
-  border-radius: 8px;
+  background: white;
+  border: 1px solid #ececec;
+  border-radius: 18px;
+  padding: 6px;
 }
 
 .tab-item {
-  padding: 12px 24px;
   text-transform: none !important;
-  font-weight: 500;
-  letter-spacing: 0;
+  font-weight: 600;
 }
 
-/* Card Container */
-.coupon-card-wrapper {
-  position: relative;
-  height: 100%;
-  transition: all 0.3s ease;
-}
-
+/* CARD */
 .coupon-card {
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: white;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border-radius: 24px;
+  border: 1px solid #ebebeb;
+  overflow: hidden;
+  transition: 0.2s ease;
 }
 
 .coupon-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-4px);
+  border-color: #d7d7d7;
 }
 
-/* Discount Badge */
-.discount-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 120px;
-  height: 90px;
-  border-radius: 50%;
+.card-top {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  z-index: 10;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  padding: 28px 28px 0;
+}
+
+.coupon-code {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111;
+}
+
+.discount-badge,
+.claimed-status {
+  background: #111;
   color: white;
-  font-weight: bold;
-  border: 3px solid white;
-  padding: 8px;
-}
-
-.discount-badge.percent {
-  background: linear-gradient(135deg, #FF6B6B 0%, #FF8E72 100%);
-}
-
-.discount-badge.fixed {
-  background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
-}
-
-.badge-value {
-  font-size: 28px;
-  line-height: 1;
-  font-weight: 700;
-}
-
-.badge-label {
-  font-size: 10px;
-  opacity: 0.9;
-  margin-top: 4px;
-  font-weight: 500;
-}
-
-/* Card Header */
-.card-header {
-  height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-  position: relative;
-}
-
-.card-header::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-              radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.card-header > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* Info Box */
-.info-box {
-  background: linear-gradient(135deg, #F0F4FF 0%, #F5F3FF 100%);
-  padding: 14px;
-  border-radius: 12px;
-  border-left: 4px solid #6366F1;
-  transition: all 0.3s ease;
-}
-
-.info-box:hover {
-  background: linear-gradient(135deg, #E8ECFF 0%, #EDEBFF 100%);
-}
-
-.info-label {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 6px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.info-value {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-/* Line Clamp */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-clamp: 2;
-  overflow: hidden;
-}
-
-/* Claimed Card Styles */
-.claimed-coupon-card {
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: white;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-}
-
-.claimed-coupon-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15) !important;
-}
-
-.claimed-card-header {
-  height: 120px;
-  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.claimed-card-header::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-              radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.claimed-card-header > * {
-  position: relative;
-  z-index: 1;
-}
-
-.status-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
+  border-radius: 999px;
   padding: 8px 14px;
-  border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  z-index: 10;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
-.status-badge.used {
-  background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+.card-body {
+  padding: 22px 28px 28px !important;
 }
 
-.status-badge.claimed {
-  background: linear-gradient(135deg, #FF9800 0%, #FFA726 100%);
-}
-
-.status-badge.expired {
-  background: linear-gradient(135deg, #F44336 0%, #EF5350 100%);
-}
-
-.discount-info {
-  background: linear-gradient(135deg, #F0F4FF 0%, #F5F3FF 100%);
-  padding: 20px;
-  border-radius: 12px;
-  border-left: 4px solid #6366F1;
-  transition: all 0.3s ease;
-}
-
-.discount-info:hover {
-  background: linear-gradient(135deg, #E8ECFF 0%, #EDEBFF 100%);
-}
-
-.discount-label {
-  font-size: 12px;
+.coupon-name {
+  font-size: 15px;
   color: #666;
-  margin-bottom: 8px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  margin-bottom: 26px;
 }
 
-.discount-amount {
-  font-size: 32px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.dates-section {
+.coupon-meta {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  margin-bottom: 28px;
 }
 
-.date-item {
-  padding: 12px;
-  background: linear-gradient(135deg, #F5F5F5 0%, #FAFAFA 100%);
-  border-radius: 8px;
-  border-left: 3px solid #9C27B0;
-  transition: all 0.3s ease;
+.meta-item {
+  background: #fafafa;
+  border: 1px solid #efefef;
+  border-radius: 14px;
+  padding: 15px 16px;
 }
 
-.date-item:hover {
-  background: linear-gradient(135deg, #EEEEEE 0%, #F5F5F5 100%);
-}
-
-.date-item .text-caption {
+.meta-item span {
   display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-
-.position-relative {
-  position: relative;
-}
-
-/* Details Dialog */
-.details-dialog::v-deep(.v-dialog__content) {
-  align-items: flex-start;
-  padding-top: 40px;
-}
-
-.details-card {
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-}
-
-.details-header {
-  height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 20px;
-}
-
-.details-badge {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 3px solid white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(10px);
-}
-
-.details-badge .badge-value {
-  font-size: 32px;
-  color: white;
-  font-weight: 700;
-}
-
-.info-card {
-  background: linear-gradient(135deg, #F0F4FF 0%, #F5F3FF 100%);
-  padding: 20px;
-  border-radius: 12px;
-  border-left: 4px solid #6366F1;
-}
-
-.info-label {
   font-size: 12px;
-  color: #666;
-  margin-bottom: 8px;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.meta-item strong {
+  font-size: 15px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #111;
 }
 
-.info-amount {
-  font-size: 36px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+.coupon-actions {
+  display: flex;
   gap: 12px;
 }
 
-.detail-item {
-  padding: 12px;
-  background: #F5F5F5;
-  border-radius: 8px;
-  border-left: 3px solid #6366F1;
-  transition: all 0.3s ease;
+.v-btn {
+  text-transform: none !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  height: 46px !important;
+  font-weight: 600 !important;
 }
 
-.detail-item:hover {
-  background: #EEEEEE;
-  transform: translateY(-2px);
+/* DIALOG */
+.details-card {
+  border-radius: 28px;
 }
 
-.description-box {
-  background: linear-gradient(135deg, #FFF3E0 0%, #FFF9C4 100%);
-  padding: 16px;
-  border-radius: 12px;
-  border-left: 4px solid #FF9800;
-}
-
-/* Delete Dialog */
-.delete-dialog::v-deep(.v-dialog__content) {
-  align-items: center;
-}
-
-.delete-card {
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-}
-
-.delete-header {
-  padding: 32px 20px;
-  text-align: center;
-  background: linear-gradient(135deg, #F5F5F5 0%, #FAFAFA 100%);
+.dialog-top {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
 }
 
-/* Empty State */
-.empty-state {
-  padding: 40px 20px;
+.dialog-label {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 8px;
 }
 
-.empty-state::v-deep(.v-empty-state__image) {
-  opacity: 0.5;
+.dialog-code {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111;
 }
 
-/* Utility Classes */
-.rounded-lg {
-  border-radius: 12px;
+.dialog-price {
+  font-size: 52px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 28px;
+}
+
+.dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.dialog-item {
+  background: #fafafa;
+  border: 1px solid #efefef;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.dialog-item span {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.dialog-item strong {
+  font-size: 14px;
+  color: #111;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .promotion-container {
+    padding: 20px 16px 50px;
+  }
+
+  .header-section,
+  .tabs-section {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .header-content h1 {
+    font-size: 28px;
+  }
+
+  .coupon-code {
+    font-size: 24px;
+  }
+
+  .coupon-actions {
+    flex-direction: column;
+  }
+
+  .dialog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-price {
+    font-size: 38px;
+  }
 }
 </style>

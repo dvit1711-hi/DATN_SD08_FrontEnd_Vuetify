@@ -1,611 +1,476 @@
 <template>
-  <v-container class="checkout-container py-8" fluid style="max-width: 1400px">
-    <!-- Header Section -->
-    <div class="mb-8 d-flex align-center justify-space-between flex-wrap ga-3">
-      <div class="d-flex align-center gap-3">
-        <div class="header-icon checkout-icon">
-          <v-icon icon="mdi-credit-card" size="32" color="white"></v-icon>
-        </div>
-        <div>
-          <h1 class="text-h4 font-weight-bold mb-1">Thanh toán đơn hàng</h1>
-          <p class="text-body-2 text-grey">Xác nhận sản phẩm và hoàn tất đơn hàng của bạn</p>
+  <div class="checkout-page">
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <p class="page-eyebrow">Checkout</p>
+        <h1 class="page-title">Thanh toán đơn hàng</h1>
+      </div>
+      <div class="header-right">
+        <button class="btn-back" @click="goBackCart">
+          <v-icon icon="mdi-arrow-left" size="14" />
+          Quay lại giỏ hàng
+        </button>
+        <div class="checkout-steps">
+          <span class="step done">Giỏ hàng</span>
+          <span class="step-sep" />
+          <span class="step active">Thanh toán</span>
+          <span class="step-sep" />
+          <span class="step">Hoàn tất</span>
         </div>
       </div>
-      <v-btn 
-        variant="outlined" 
-        prepend-icon="mdi-arrow-left" 
-        color="primary"
-        @click="goBackCart"
-      >
-        Quay lại giỏ hàng
-      </v-btn>
     </div>
 
-    <v-row v-if="checkoutItems.length > 0" class="ga-6">
-      <!-- Items Section -->
-      <v-col cols="12" lg="8">
-        <!-- Order Items -->
-        <div class="mb-6">
-          <h3 class="text-h6 font-weight-bold mb-4 d-flex align-center gap-2">
-            <v-icon icon="mdi-package-variant" color="primary"></v-icon>
-            Danh sách sản phẩm ({{ checkoutItems.length }})
-          </h3>
+    <!-- Loading -->
+    <div v-if="isLoading" class="loading-state">
+      <v-progress-circular indeterminate color="black" size="36" width="2" />
+    </div>
 
-          <transition-group name="list" tag="div">
-            <v-card
-              v-for="item in checkoutItems"
-              :key="item.cartItemID"
-              class="checkout-item-card mb-4"
-              elevation="0"
-              border
-            >
-              <v-card-text class="pa-4">
-                <div class="d-flex gap-4 flex-wrap">
-                  <!-- Product Image -->
-                  <div>
-                    <v-img
-                      :src="item.mainImage || fallbackImage"
-                      width="120"
-                      height="120"
-                      class="rounded-lg"
-                      cover
-                    ></v-img>
-                  </div>
+    <!-- Empty -->
+    <div v-else-if="checkoutItems.length === 0" class="empty-state">
+      <p class="empty-title">Không có sản phẩm nào để thanh toán</p>
+      <button class="btn-outline" @click="goBackCart">Quay lại giỏ hàng</button>
+    </div>
 
-                  <!-- Product Info -->
-                  <div class="flex-grow-1">
-                    <div class="mb-3">
-                      <div class="text-h6 font-weight-bold mb-1">{{ item.productName }}</div>
-                      <div class="text-caption text-grey">Mã: #{{ item.productColorID }}</div>
-                    </div>
+    <!-- Checkout Layout -->
+    <div v-else class="checkout-layout">
+      <!-- Left Column -->
+      <div class="checkout-left">
 
-                    <!-- Variant Info -->
-                    <div class="variant-section">
-                      <div class="d-flex align-center gap-2 mb-2">
-                        <span class="text-caption text-grey" style="min-width: 60px;">🎨 Màu:</span>
-                        <div v-if="item.colorCode" class="color-swatch" :style="{ backgroundColor: item.colorCode }"></div>
-                        <span class="text-caption font-weight-medium">{{ item.colorName }}</span>
-                      </div>
-                      <div class="d-flex align-center gap-2 mb-2">
-                        <span class="text-caption text-grey" style="min-width: 60px;">📏 Size:</span>
-                        <v-chip size="small" variant="outlined" color="primary">{{ item.sizeName || '-' }}</v-chip>
-                      </div>
-                      <div class="d-flex align-center gap-2">
-                        <span class="text-caption text-grey" style="min-width: 60px;">📦 Số lượng:</span>
-                        <v-chip size="small" color="primary" variant="tonal">{{ item.quantity }}</v-chip>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Price Info -->
-                  <div class="d-flex flex-column gap-3 align-end" style="min-width: 160px;">
-                    <div class="text-center">
-                      <div class="text-caption text-grey mb-1">Đơn giá</div>
-                      <div class="text-subtitle-1 font-weight-bold">{{ formatPrice(item.price) }}đ</div>
-                    </div>
-
-                    <v-divider />
-
-                    <div class="text-center">
-                      <div class="text-caption text-grey mb-1">Thành tiền</div>
-                      <div class="text-h6 font-weight-bold text-primary">
-                        {{ formatPrice(item.price * item.quantity) }}đ
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </v-card-text>
-            </v-card>
-          </transition-group>
-        </div>
-
-        <!-- Shipping Address Section -->
-        <v-card class="mb-6 address-card" elevation="0" border>
+        <!-- Section 1: Address -->
+        <div class="section-card">
           <div class="section-header">
-            <h3 class="text-h6 font-weight-bold d-flex align-center gap-2">
-              <v-icon icon="mdi-map-marker-radius" color="white" size="24"></v-icon>
-              Địa chỉ nhận hàng
-            </h3>
+            <div class="section-num">1</div>
+            <h2 class="section-title">Địa chỉ nhận hàng</h2>
           </div>
-
-          <v-card-text class="pa-6">
-            <!-- Address Mode Selection -->
-            <div class="address-mode-selector mb-6 pb-4" style="border-bottom: 1px solid #e0e0e0;">
-              <div class="text-caption text-grey font-weight-medium mb-3">Chọn loại địa chỉ</div>
-              <v-radio-group
-                v-model="addressMode"
-                inline
-                density="compact"
-                hide-details
+          <div class="section-body">
+            <!-- Mode Toggle -->
+            <div class="mode-toggle">
+              <button
+                class="toggle-btn"
+                :class="{ active: addressMode === 'saved' }"
+                @click="addressMode = 'saved'"
               >
-                <v-radio label="Địa chỉ đã lưu" value="saved" />
-                <v-radio label="Thêm địa chỉ mới" value="new" />
-              </v-radio-group>
+                Địa chỉ đã lưu
+              </button>
+              <button
+                class="toggle-btn"
+                :class="{ active: addressMode === 'new' }"
+                @click="addressMode = 'new'"
+              >
+                Thêm địa chỉ mới
+              </button>
             </div>
 
-            <!-- Saved Address Selection -->
+            <!-- Saved Address -->
             <template v-if="addressMode === 'saved'">
-              <div class="mb-4">
-                <v-select
+              <div class="field">
+                <label class="field-label">Chọn địa chỉ</label>
+                <select
                   v-model="selectedAddressId"
-                  :items="savedAddressOptions"
-                  item-title="label"
-                  item-value="id"
-                  label="Chọn một địa chỉ đã lưu"
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  :loading="isLoadingSavedAddresses"
+                  class="field-select"
                   :disabled="isLoadingSavedAddresses || savedAddressOptions.length === 0"
-                  @update:model-value="onSavedAddressChange"
-                />
+                  @change="onSavedAddressChange"
+                >
+                  <option v-if="savedAddressOptions.length === 0" value="">Chưa có địa chỉ nào</option>
+                  <option
+                    v-for="addr in savedAddressOptions"
+                    :key="addr.id"
+                    :value="addr.id"
+                  >
+                    {{ addr.label }}
+                  </option>
+                </select>
               </div>
-              <v-alert
-                v-if="selectedSavedAddress"
-                type="info"
-                variant="tonal"
-                icon="mdi-check-circle"
-                class="mt-3"
-                :text="selectedSavedAddressLabel"
-                dense
-              />
-              <div v-else class="text-caption text-grey mt-3">
-                <v-icon icon="mdi-information-outline" size="16" class="mr-1" />
-                Chọn địa chỉ từ danh sách trên
+              <div v-if="selectedSavedAddress" class="address-preview">
+                <v-icon icon="mdi-map-marker-outline" size="14" style="margin-right:6px;opacity:0.5" />
+                {{ selectedSavedAddressLabel }}
               </div>
             </template>
 
-            <!-- New Address Form -->
+            <!-- New Address -->
             <template v-else>
-              <!-- Address Details -->
-              <div class="mb-5 pb-4" style="border-bottom: 1px solid #f0f0f0;">
-                <div class="text-caption text-grey font-weight-medium mb-4">Chi tiết địa chỉ</div>
-                <v-row dense>
-                  <v-col cols="12" sm="6" md="4">
-                    <v-text-field
-                      v-model="newAddressForm.unitNumber"
-                      label="Số nhà"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                      placeholder="e.g., 123"
-                    />
-                  </v-col>
-                  <v-col cols="12" sm="6" md="4">
-                    <v-text-field
-                      v-model="newAddressForm.streetNumber"
-                      label="Số đường"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                      placeholder="e.g., 456"
-                    />
-                  </v-col>
-                  <v-col cols="12" sm="12" md="4">
-                    <v-text-field
-                      v-model="newAddressForm.addressLine1"
-                      label="Tên đường"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                      placeholder="e.g., Phố Huế"
-                    />
-                  </v-col>
-                  <v-col cols="12">
-                    <v-text-field
-                      v-model="newAddressForm.postalCode"
-                      label="Mã bưu chính (không bắt buộc)"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                      placeholder="e.g., 100000"
-                    />
-                  </v-col>
-                </v-row>
+              <div class="field-grid two">
+                <div class="field">
+                  <label class="field-label">Số nhà</label>
+                  <input v-model="newAddressForm.unitNumber" class="field-input" placeholder="VD: 123A" />
+                </div>
+                <div class="field">
+                  <label class="field-label">Số đường</label>
+                  <input v-model="newAddressForm.streetNumber" class="field-input" placeholder="VD: 456" />
+                </div>
               </div>
-
-              <!-- Location Selection -->
-              <div class="mb-4">
-                <div class="text-caption text-grey font-weight-medium mb-4">Khu vực giao hàng</div>
-                <v-row dense>
-                  <v-col cols="12">
-                    <v-select
-                      v-model="shippingInput.provinceId"
-                      :items="ghnProvinces"
-                      item-title="provinceName"
-                      item-value="provinceId"
-                      label="Tỉnh/Thành phố *"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                      :loading="isLoadingProvinces"
-                      @update:model-value="onProvinceChange"
-                    />
-                  </v-col>
-                  <v-col cols="12" sm="6">
-                    <v-select
-                      v-model="shippingInput.toDistrictId"
-                      :items="ghnDistricts"
-                      item-title="districtName"
-                      item-value="districtId"
-                      label="Quận/Huyện *"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                      :loading="isLoadingDistricts"
-                      :disabled="!shippingInput.provinceId"
-                      @update:model-value="onDistrictChange"
-                    />
-                  </v-col>
-                  <v-col cols="12" sm="6">
-                    <v-select
-                      v-model="shippingInput.toWardCode"
-                      :items="ghnWards"
-                      item-title="wardName"
-                      item-value="wardCode"
-                      label="Phường/Xã *"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                      :loading="isLoadingWards"
-                      :disabled="!shippingInput.toDistrictId"
-                    />
-                  </v-col>
-                </v-row>
+              <div class="field">
+                <label class="field-label">Tên đường</label>
+                <input v-model="newAddressForm.addressLine1" class="field-input" placeholder="VD: Phố Huế" />
               </div>
-
-              <v-btn
-                color="primary"
-                size="large"
-                block
-                class="mt-6 save-address-btn"
-                :loading="isSavingNewAddress"
+              <div class="field-grid three">
+                <div class="field">
+                  <label class="field-label">Tỉnh / Thành phố *</label>
+                  <select
+                    v-model="shippingInput.provinceId"
+                    class="field-select"
+                    :disabled="isLoadingProvinces"
+                    @change="onProvinceChange"
+                  >
+                    <option value="">Chọn tỉnh...</option>
+                    <option
+                      v-for="p in ghnProvinces"
+                      :key="p.provinceId"
+                      :value="p.provinceId"
+                    >
+                      {{ p.provinceName }}
+                    </option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="field-label">Quận / Huyện *</label>
+                  <select
+                    v-model="shippingInput.toDistrictId"
+                    class="field-select"
+                    :disabled="!shippingInput.provinceId || isLoadingDistricts"
+                    @change="onDistrictChange"
+                  >
+                    <option value="">Chọn quận...</option>
+                    <option
+                      v-for="d in ghnDistricts"
+                      :key="d.districtId"
+                      :value="d.districtId"
+                    >
+                      {{ d.districtName }}
+                    </option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="field-label">Phường / Xã *</label>
+                  <select
+                    v-model="shippingInput.toWardCode"
+                    class="field-select"
+                    :disabled="!shippingInput.toDistrictId || isLoadingWards"
+                  >
+                    <option value="">Chọn phường...</option>
+                    <option
+                      v-for="w in ghnWards"
+                      :key="w.wardCode"
+                      :value="w.wardCode"
+                    >
+                      {{ w.wardName }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Mã bưu chính</label>
+                <input v-model="newAddressForm.postalCode" class="field-input" placeholder="Không bắt buộc" />
+              </div>
+              <button
+                class="btn-save-address"
                 :disabled="isSavingNewAddress"
                 @click="saveNewAddress"
               >
-                <v-icon start>mdi-check</v-icon>
-                Lưu địa chỉ mới và sử dụng
-              </v-btn>
+                <v-progress-circular v-if="isSavingNewAddress" indeterminate size="14" width="2" color="white" />
+                <v-icon v-else icon="mdi-check" size="14" />
+                Lưu & sử dụng địa chỉ này
+              </button>
             </template>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <!-- Summary Section -->
-      <v-col cols="12" lg="4">
-        <v-card class="summary-card" elevation="0" border style="position: sticky; top: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px;">
-            <h3 class="text-h6 font-weight-bold text-white mb-0">Thông tin thanh toán</h3>
           </div>
+        </div>
 
-          <v-card-text class="pa-6">
-            <!-- Summary Items -->
-            <div class="mb-4">
-              <div class="d-flex justify-space-between mb-3">
-                <span class="text-body-2 text-grey">Sản phẩm</span>
-                <span class="font-weight-bold">{{ totalQuantity }}</span>
-              </div>
-              <div class="d-flex justify-space-between mb-4">
-                <span class="text-body-2 text-grey">Tạm tính</span>
-                <span class="font-weight-bold">{{ formatPrice(totalPrice) }}đ</span>
-              </div>
-              <div v-if="discountAmount > 0" class="d-flex justify-space-between mb-4">
-                <span class="text-body-2 text-grey">Giảm giá</span>
-                <span class="font-weight-bold text-success">-{{ formatPrice(discountAmount) }}đ</span>
-              </div>
-              <div class="d-flex justify-space-between mb-4">
-                <span class="text-body-2 text-grey">Phí vận chuyển</span>
-                <span class="font-weight-bold">{{ formatPrice(shippingFee) }}đ</span>
-              </div>
-              <v-divider class="mb-4" />
-            </div>
-
-            <!-- Total -->
-            <div class="d-flex justify-space-between align-center mb-6">
-              <span class="text-body-1 font-weight-bold">Tổng cộng</span>
-              <span class="text-h5 font-weight-bold text-primary">{{ formatPrice(finalTotal) }}đ</span>
-            </div>
-
-            <!-- Place Order Button -->
-            <v-btn
-              block
-              color="primary"
-              class="mb-3"
-              size="large"
-              style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;"
-              :loading="isCheckingOut"
-              :disabled="checkoutItems.length === 0 || isCheckingOut"
-              @click="placeOrder"
-            >
-              Đặt hàng
-            </v-btn>
-
-            <!-- Security Info -->
-            <div class="pt-4 text-center border-t">
-              <div class="text-caption text-grey">
-                <v-icon icon="mdi-shield-check" size="16" class="mr-1"></v-icon>
-                Thanh toán an toàn & bảo mật
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Payment Method Section -->
-    <v-row class="ga-6">
-      <v-col cols="12" lg="8">
-        <v-card class="mb-6 payment-card" elevation="0" border>
+        <!-- Section 2: Payment Method -->
+        <div class="section-card">
           <div class="section-header">
-            <h3 class="text-h6 font-weight-bold d-flex align-center gap-2">
-              <v-icon icon="mdi-credit-card" color="white" size="24"></v-icon>
-              Phương thức thanh toán
-            </h3>
+            <div class="section-num">2</div>
+            <h2 class="section-title">Phương thức thanh toán</h2>
           </div>
-
-          <v-card-text class="pa-6">
-            <v-radio-group
-              v-model="selectedPaymentMethod"
-              density="comfortable"
-              hide-details
+          <div class="section-body">
+            <div
+              v-for="method in paymentMethods"
+              :key="method.value"
+              class="pay-option"
+              :class="{ selected: selectedPaymentMethod === method.value }"
+              @click="selectedPaymentMethod = method.value"
             >
-              <div v-for="method in paymentMethods" :key="method.value" class="payment-method-item mb-4 pb-4" :style="{ borderBottom: method === paymentMethods[paymentMethods.length - 1] ? 'none' : '1px solid #f0f0f0' }">
-                <div class="d-flex align-center mb-2">
-                  <v-radio :value="method.value" />
-                  <div class="ml-3">
-                    <div class="text-body-2 font-weight-bold">{{ method.label }}</div>
-                    <div class="text-caption text-grey">{{ method.description }}</div>
-                  </div>
-                </div>
+              <div class="radio-circle" :class="{ on: selectedPaymentMethod === method.value }">
+                <div v-if="selectedPaymentMethod === method.value" class="radio-dot" />
               </div>
-            </v-radio-group>
-          </v-card-text>
-        </v-card>
-
-        <!-- Discount Section -->
-        <v-card class="mb-6 discount-card" elevation="0" border>
-          <div class="section-header">
-            <h3 class="text-h6 font-weight-bold d-flex align-center gap-2">
-              <v-icon icon="mdi-tag-multiple" color="white" size="24"></v-icon>
-              Mã giảm giá &amp; Khuyến mãi
-            </h3>
+              <v-icon :icon="method.icon" size="20" style="opacity:0.5;flex-shrink:0" />
+              <div class="pay-info">
+                <p class="pay-name">{{ method.label }}</p>
+                <p class="pay-desc">{{ method.description }}</p>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <v-card-text class="pa-6">
-            <!-- Current Discount Status -->
-            <v-card v-if="discountAmount > 0" class="discount-applied-card mb-6" variant="flat">
-              <v-card-text class="pa-4">
-                <div class="d-flex align-center justify-space-between flex-wrap gap-2">
-                  <div class="d-flex align-center ga-3">
-                    <v-icon size="32" color="success">mdi-check-circle</v-icon>
-                    <div>
-                      <div class="text-caption text-grey">Mã giảm giá đã áp dụng</div>
-                      <div class="text-subtitle-1 font-weight-bold">{{ couponCode }}</div>
-                    </div>
-                  </div>
-                  <div class="text-center">
-                    <div class="text-caption text-grey">Tiết kiệm</div>
-                    <div class="text-h5 font-weight-bold text-success">-{{ formatPrice(discountAmount) }}đ</div>
-                  </div>
-                  <v-btn
-                    variant="text"
-                    color="error"
-                    size="small"
-                    icon="mdi-close"
-                    @click="() => { selectedCoupon = null; couponCode = ''; discountAmount = 0 }"
-                  />
-                </div>
-              </v-card-text>
-            </v-card>
-
-            <!-- User's Claimed Coupons Section -->
-            <div v-if="qualifiedUserClaimedCoupons.length > 0" class="mb-6">
-              <div class="discount-section-label mb-3">
-                <v-icon size="20" color="amber">mdi-gift</v-icon>
-                <span class="font-weight-bold">Mã Của Bạn</span>
-                <v-chip size="small" variant="tonal" label>{{ qualifiedUserClaimedCoupons.length }}</v-chip>
+        <!-- Section 3: Discount -->
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-num">3</div>
+            <h2 class="section-title">Mã giảm giá</h2>
+          </div>
+          <div class="section-body">
+            <!-- Applied Coupon -->
+            <div v-if="discountAmount > 0" class="coupon-applied">
+              <div class="coupon-applied-inner">
+                <v-icon icon="mdi-tag-outline" size="16" />
+                <span class="coupon-code-text">{{ couponCode }}</span>
+                <span class="coupon-save">Tiết kiệm {{ formatPrice(discountAmount) }}đ</span>
               </div>
-              <div class="coupons-grid">
+              <button
+                class="coupon-remove"
+                @click="() => { selectedCoupon = null; couponCode = ''; discountAmount = 0 }"
+              >
+                <v-icon icon="mdi-close" size="14" />
+              </button>
+            </div>
+
+            <!-- My Coupons -->
+            <template v-if="qualifiedUserClaimedCoupons.length > 0">
+              <p class="coupon-section-label">
+                <v-icon icon="mdi-gift-outline" size="13" style="margin-right:4px" />
+                Mã của bạn
+              </p>
+              <div class="coupon-grid">
                 <div
                   v-for="coupon in qualifiedUserClaimedCoupons"
                   :key="coupon.id"
-                  class="coupon-card-modern"
-                  :class="{ 'card-selected': selectedCoupon?.id === coupon.id }"
+                  class="coupon-card"
+                  :class="{ selected: selectedCoupon?.id === coupon.id }"
                   @click="selectCouponForCheckout(coupon)"
                 >
-                  <div class="coupon-card-inner">
-                    <div class="coupon-badge">
-                      <div v-if="coupon.discountCoupon.discountType === 'percent'" class="badge-value">
-                        {{ coupon.discountCoupon.discountValue }}%
-                      </div>
-                      <div v-else class="badge-value">
-                        {{ formatPrice(coupon.discountCoupon.discountValue) }}đ
-                      </div>
-                    </div>
-                    <div class="coupon-info flex-grow-1">
-                      <div class="coupon-code">{{ coupon.discountCoupon.couponCode }}</div>
-                      <div class="coupon-desc text-caption">
-                        Giảm {{ coupon.discountCoupon.discountType === 'percent' ? coupon.discountCoupon.discountValue + '%' : formatPrice(coupon.discountCoupon.discountValue) + 'đ' }}
-                      </div>
-                      <div v-if="coupon.discountCoupon.minOrderValue > 0" class="coupon-min text-caption">
-                        Tối thiểu: {{ formatPrice(coupon.discountCoupon.minOrderValue) }}đ
-                      </div>
-                    </div>
-                    <v-icon
-                      class="coupon-check"
-                      :color="selectedCoupon?.id === coupon.id ? 'primary' : 'grey'"
-                    >
-                      {{ selectedCoupon?.id === coupon.id ? 'mdi-check-circle-outline' : 'mdi-circle-outline' }}
-                    </v-icon>
+                  <div class="coupon-badge">
+                    <span v-if="coupon.discountCoupon.discountType === 'percent'">
+                      {{ coupon.discountCoupon.discountValue }}%
+                    </span>
+                    <span v-else>{{ formatPrice(coupon.discountCoupon.discountValue) }}đ</span>
                   </div>
+                  <div class="coupon-info">
+                    <p class="coupon-code-label">{{ coupon.discountCoupon.couponCode }}</p>
+                    <p class="coupon-desc">
+                      Giảm {{ coupon.discountCoupon.discountType === 'percent'
+                        ? coupon.discountCoupon.discountValue + '%'
+                        : formatPrice(coupon.discountCoupon.discountValue) + 'đ' }}
+                    </p>
+                    <p v-if="coupon.discountCoupon.minOrderValue > 0" class="coupon-min">
+                      Tối thiểu {{ formatPrice(coupon.discountCoupon.minOrderValue) }}đ
+                    </p>
+                  </div>
+                  <v-icon
+                    :icon="selectedCoupon?.id === coupon.id ? 'mdi-check-circle' : 'mdi-circle-outline'"
+                    size="18"
+                    class="coupon-check"
+                  />
                 </div>
               </div>
+              <button
+                v-if="selectedCoupon"
+                class="btn-apply-coupon"
+                :disabled="isApplyingCoupon"
+                @click="applySelectedCoupon"
+              >
+                Áp dụng mã đã chọn
+              </button>
+            </template>
 
-              <div v-if="selectedCoupon" class="d-flex ga-2 mt-4">
-                <v-btn
-                  color="primary"
-                  size="large"
-                  block
-                  :loading="isApplyingCoupon"
-                  @click="applySelectedCoupon"
-                >
-                  <v-icon start>mdi-check</v-icon>
-                  Áp dụng mã này
-                </v-btn>
-              </div>
-            </div>
-
-            <!-- Manual Coupon Input -->
-            <div class="mb-6">
-              <div class="discount-section-label mb-3">
-                <v-icon size="20" color="blue">mdi-keyboard</v-icon>
-                <span class="font-weight-bold">Nhập Mã Khác</span>
-              </div>
-              <div class="d-flex ga-2">
-                <v-text-field
-                  v-model="manualCouponCode"
-                  placeholder="Nhập mã giảm giá tại đây..."
-                  variant="outlined"
-                  density="comfortable"
-                  clearable
-                  class="flex-grow-1"
-                  hide-details
-                />
-                <v-btn
-                  color="primary"
-                  size="large"
-                  :disabled="!manualCouponCode || isApplyingCoupon"
-                  :loading="isApplyingCoupon"
-                  icon="mdi-send"
-                  @click="applyManualCoupon"
-                />
-              </div>
-            </div>
-
-            <!-- All Available Coupons -->
-            <div v-if="couponsDisplay.length > 0" class="mb-4">
-              <div class="discount-section-label mb-3">
-                <v-icon size="20" color="success">mdi-tag-multiple</v-icon>
-                <span class="font-weight-bold">Khám Phá Mã Khác</span>
-                <v-chip size="small" variant="tonal" color="success" label>{{ couponsDisplay.length }}</v-chip>
-              </div>
-              <v-select
-                v-model="selectedAvailableCoupon"
-                :items="couponsDisplay"
-                item-title="displayText"
-                return-object
-                placeholder="Chọn mã giảm giá từ danh sách..."
-                variant="outlined"
-                density="comfortable"
-                clearable
-                :loading="isLoadingAvailableCoupons"
-                @update:model-value="(coupon) => {
-                  if (coupon) {
-                    applyAvailableCoupon(coupon)
-                  }
-                }"
+            <!-- Manual Input -->
+            <p class="coupon-section-label" style="margin-top:16px">
+              <v-icon icon="mdi-keyboard-outline" size="13" style="margin-right:4px" />
+              Nhập mã khác
+            </p>
+            <div class="coupon-input-row">
+              <input
+                v-model="manualCouponCode"
+                class="coupon-input"
+                placeholder="Nhập mã giảm giá..."
+                @keyup.enter="applyManualCoupon"
               />
+              <button
+                class="btn-coupon-apply"
+                :disabled="!manualCouponCode || isApplyingCoupon"
+                @click="applyManualCoupon"
+              >
+                Áp dụng
+              </button>
             </div>
 
-            <!-- No Discount Alert -->
-            <v-alert
-              v-if="discountAmount === 0"
-              type="info"
-              variant="tonal"
-              icon="mdi-lightbulb-outline"
-              class="discount-info-alert"
-            >
-              <div class="font-weight-bold mb-1">Tiết kiệm thêm tiền!</div>
-              {{ qualifiedUserClaimedCoupons.length > 0 || couponsDisplay.length > 0 
-                ? 'Chọn một mã giảm giá để giảm tổng tiền thanh toán của bạn.'
-                : 'Hiện không có mã giảm giá nào khả dụng cho đơn hàng này.' }}
-            </v-alert>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+            <!-- Available Coupons List -->
+            <template v-if="couponsDisplay.length > 0">
+              <p class="coupon-section-label" style="margin-top:16px">
+                <v-icon icon="mdi-tag-multiple-outline" size="13" style="margin-right:4px" />
+                Mã khả dụng
+              </p>
+              <select
+                v-model="selectedAvailableCoupon"
+                class="field-select"
+                :disabled="isLoadingAvailableCoupons"
+                @change="(e) => { if (e.target.value) applyAvailableCoupon(JSON.parse(e.target.value)) }"
+              >
+                <option value="">Chọn mã từ danh sách...</option>
+                <option
+                  v-for="c in couponsDisplay"
+                  :key="c.couponCode"
+                  :value="JSON.stringify(c)"
+                >
+                  {{ c.displayText }}
+                </option>
+              </select>
+            </template>
+          </div>
+        </div>
+      </div>
 
-    <div v-if="isLoading" class="d-flex justify-center py-16">
-      <v-progress-circular indeterminate color="primary" size="48" />
+      <!-- Right Column: Summary -->
+      <div class="checkout-right">
+        <div class="summary-card">
+          <p class="summary-eyebrow">Order Summary</p>
+          <h2 class="summary-heading">Thông tin đơn hàng</h2>
+
+          <!-- Items -->
+          <div class="order-items">
+            <div
+              v-for="item in checkoutItems"
+              :key="item.cartItemID"
+              class="order-item"
+            >
+              <div class="order-item-img">
+                <v-img
+                  :src="item.mainImage || fallbackImage"
+                  width="52"
+                  height="52"
+                  cover
+                  style="border-radius:6px"
+                />
+              </div>
+              <div class="order-item-info">
+                <p class="order-item-name">{{ item.productName }}</p>
+                <p class="order-item-meta">{{ item.colorName }} · {{ item.sizeName || '-' }}</p>
+              </div>
+              <div class="order-item-price">
+                <p class="order-item-amount">{{ formatPrice(item.price * item.quantity) }}đ</p>
+                <p class="order-item-qty">×{{ item.quantity }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-divider" />
+
+          <!-- Totals -->
+          <div class="summary-rows">
+            <div class="sum-row">
+              <span>Tạm tính</span>
+              <span>{{ formatPrice(totalPrice) }}đ</span>
+            </div>
+            <div v-if="discountAmount > 0" class="sum-row discount">
+              <span>Giảm giá</span>
+              <span>−{{ formatPrice(discountAmount) }}đ</span>
+            </div>
+            <div class="sum-row">
+              <span>Phí vận chuyển</span>
+              <span>{{ shippingFee > 0 ? formatPrice(shippingFee) + 'đ' : 'Đang tính...' }}</span>
+            </div>
+          </div>
+
+          <div class="summary-divider" />
+
+          <div class="summary-total">
+            <span>Tổng cộng</span>
+            <span class="total-amount">{{ formatPrice(finalTotal) }}đ</span>
+          </div>
+
+          <button
+            class="btn-checkout"
+            :disabled="checkoutItems.length === 0 || isCheckingOut"
+            @click="placeOrder"
+          >
+            <v-progress-circular v-if="isCheckingOut" indeterminate size="14" width="2" color="white" style="margin-right:8px" />
+            Đặt hàng ngay
+          </button>
+
+          <div class="security-note">
+            <v-icon icon="mdi-shield-check-outline" size="13" />
+            Thanh toán an toàn & bảo mật
+          </div>
+        </div>
+      </div>
     </div>
 
-    <v-dialog v-model="showMBBankDialog" max-width="860" persistent>
-      <v-card>
-        <v-card-title class="d-flex align-center ga-2">
-          <v-icon color="primary">mdi-bank</v-icon>
-          Thanh toán ngân hàng
-        </v-card-title>
+    <!-- MB Bank QR Dialog -->
+    <v-dialog v-model="showMBBankDialog" max-width="780" persistent>
+      <v-card rounded="lg" elevation="0">
+        <div class="dialog-header">
+          <div>
+            <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:4px">Bank Transfer</p>
+            <h3 style="font-size:18px;font-weight:500">Thanh toán ngân hàng</h3>
+          </div>
+          <v-btn icon="mdi-close" variant="text" @click="closeOnlinePaymentDialog" />
+        </div>
+
         <v-divider />
 
-        <v-card-text v-if="mbBankPaymentInfo">
-          <p class="text-body-2 mb-3 text-grey">
-            Vui lòng chuyển khoản đúng số tiền và nội dung bên dưới để admin xác nhận nhanh hơn.
+        <div v-if="mbBankPaymentInfo" class="dialog-body">
+          <p style="font-size:13px;color:rgba(0,0,0,0.5);margin-bottom:20px">
+            Chuyển khoản đúng số tiền và nội dung bên dưới để được xác nhận nhanh hơn.
           </p>
-
-          <v-row class="payment-popup-layout" dense>
-            <v-col cols="12" md="5">
-              <div class="qr-preview">
-                <v-img
-                  :src="mbBankPaymentInfo.qrUrl"
-                  alt="MB Bank QR"
-                  class="qr-image"
-                  contain
-                />
+          <div class="qr-layout">
+            <div class="qr-box">
+              <v-img :src="mbBankPaymentInfo.qrUrl" alt="QR Code" contain width="240" height="240" />
+            </div>
+            <div class="qr-info">
+              <div class="info-row">
+                <span class="info-label">Ngân hàng</span>
+                <span class="info-value">{{ mbBankPaymentInfo.bankName }} ({{ mbBankPaymentInfo.bankCode }})</span>
               </div>
-            </v-col>
-
-            <v-col cols="12" md="7">
-              <v-list density="compact" class="mb-4">
-                <v-list-item>
-                  <v-list-item-title class="text-caption text-grey">Ngân hàng</v-list-item-title>
-                  <v-list-item-subtitle class="text-body-1 font-weight-medium">{{ mbBankPaymentInfo.bankName }} ({{ mbBankPaymentInfo.bankCode }})</v-list-item-subtitle>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title class="text-caption text-grey">Số tài khoản</v-list-item-title>
-                  <v-list-item-subtitle class="text-body-1 font-weight-medium">{{ mbBankPaymentInfo.accountNumber }}</v-list-item-subtitle>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title class="text-caption text-grey">Chủ tài khoản</v-list-item-title>
-                  <v-list-item-subtitle class="text-body-1 font-weight-medium">{{ mbBankPaymentInfo.accountName }}</v-list-item-subtitle>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title class="text-caption text-grey">Số tiền</v-list-item-title>
-                  <v-list-item-subtitle class="text-body-1 font-weight-bold text-black">{{ formatPrice(mbBankPaymentInfo.amount) }}đ</v-list-item-subtitle>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title class="text-caption text-grey">Nội dung chuyển khoản</v-list-item-title>
-                  <v-list-item-subtitle class="text-body-1 font-weight-bold">{{ mbBankPaymentInfo.transferContent }}</v-list-item-subtitle>
-                </v-list-item>
-              </v-list>
-
-              <div class="d-flex ga-2 flex-wrap">
-                <v-btn variant="outlined" prepend-icon="mdi-content-copy" @click="copyToClipboard(mbBankPaymentInfo.accountNumber, 'Số tài khoản')">
-                  Sao chép số tài khoản
-                </v-btn>
-                <v-btn variant="outlined" prepend-icon="mdi-content-copy" @click="copyToClipboard(mbBankPaymentInfo.transferContent, 'Nội dung chuyển khoản')">
-                  Sao chép nội dung
-                </v-btn>
+              <div class="info-row">
+                <span class="info-label">Số tài khoản</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="info-value">{{ mbBankPaymentInfo.accountNumber }}</span>
+                  <button class="copy-btn" @click="copyToClipboard(mbBankPaymentInfo.accountNumber, 'Số tài khoản')">
+                    <v-icon icon="mdi-content-copy" size="13" />
+                  </button>
+                </div>
               </div>
-            </v-col>
-          </v-row>
-        </v-card-text>
+              <div class="info-row">
+                <span class="info-label">Chủ tài khoản</span>
+                <span class="info-value">{{ mbBankPaymentInfo.accountName }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Số tiền</span>
+                <span class="info-value" style="font-weight:500;font-size:16px">{{ formatPrice(mbBankPaymentInfo.amount) }}đ</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Nội dung</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="info-value" style="font-weight:500">{{ mbBankPaymentInfo.transferContent }}</span>
+                  <button class="copy-btn" @click="copyToClipboard(mbBankPaymentInfo.transferContent, 'Nội dung')">
+                    <v-icon icon="mdi-content-copy" size="13" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <v-card-text v-else class="d-flex align-center justify-center py-8">
-          <v-progress-circular indeterminate color="primary" size="36" />
-        </v-card-text>
+        <div v-else class="dialog-loading">
+          <v-progress-circular indeterminate color="black" size="32" width="2" />
+        </div>
 
         <v-divider />
-        <v-card-actions class="justify-end">
-          <v-btn variant="text" :loading="isClosingOnlineDialog" @click="closeOnlinePaymentDialog">Đóng</v-btn>
-          <v-btn color="primary" :loading="isConfirmingTransfer" @click="confirmOnlineTransfer">Xác Nhận Thanh Toán</v-btn>
-        </v-card-actions>
+        <div class="dialog-actions">
+          <button class="btn-outline" :disabled="isClosingOnlineDialog" @click="closeOnlinePaymentDialog">
+            Hủy đơn & đóng
+          </button>
+          <button class="btn-primary" :disabled="isConfirmingTransfer" @click="confirmOnlineTransfer">
+            Đã chuyển khoản xong
+          </button>
+        </div>
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="showSnackbar" :color="snackbarColor" timeout="3000" top>
+    <!-- Snackbar -->
+    <v-snackbar v-model="showSnackbar" :color="snackbarColor" timeout="3000" location="top" rounded="lg">
       {{ snackbarMessage }}
     </v-snackbar>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -631,12 +496,7 @@ const userAddress = ref(null)
 const savedAddresses = ref([])
 const selectedAddressId = ref(null)
 const addressMode = ref('saved')
-const newAddressForm = ref({
-  unitNumber: '',
-  streetNumber: '',
-  addressLine1: '',
-  postalCode: '',
-})
+const newAddressForm = ref({ unitNumber: '', streetNumber: '', addressLine1: '', postalCode: '' })
 const isLoadingSavedAddresses = ref(false)
 const isSavingNewAddress = ref(false)
 const couponCode = ref('')
@@ -647,7 +507,7 @@ const selectedCoupon = ref(null)
 const isApplyingCoupon = ref(false)
 const availableCoupons = ref([])
 const isLoadingAvailableCoupons = ref(false)
-const selectedAvailableCoupon = ref(null)
+const selectedAvailableCoupon = ref('')
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
 const showMBBankDialog = ref(false)
 const mbBankPaymentInfo = ref(null)
@@ -678,615 +538,220 @@ const shippingInput = ref({
   width: 20,
   height: 20,
 })
+
 const ONLINE_CONFIRMED_ORDERS_KEY = 'onlineTransferConfirmedOrderIds'
 const HIDDEN_CANCELLED_ONLINE_ORDERS_KEY = 'hiddenCancelledOnlineOrderIds'
 const SELECTED_CART_ITEM_IDS_KEY = 'selectedCartItemIds'
 const QUICK_BUY_CONTEXT_KEY = 'quickBuyContext'
 
 const paymentMethods = [
-  { label: 'Thanh toán khi nhận hàng (COD)', value: 'COD', description: 'Admin sẽ xác nhận thanh toán sau khi giao hàng.' },
-  { label: 'Thanh toán ngân hàng (QR)', value: 'BANK_TRANSFER', description: 'Hệ thống tạo mã QR chuyển khoản theo đơn hàng để bạn thanh toán nhanh.' },
+  {
+    label: 'Thanh toán khi nhận hàng (COD)',
+    value: 'COD',
+    icon: 'mdi-truck-delivery-outline',
+    description: 'Trả tiền mặt khi nhận hàng tại nhà',
+  },
+  {
+    label: 'Chuyển khoản ngân hàng (QR)',
+    value: 'BANK_TRANSFER',
+    icon: 'mdi-qrcode',
+    description: 'Quét mã QR MB Bank — xác nhận nhanh qua admin',
+  },
 ]
 const selectedPaymentMethod = ref('COD')
 
-const selectedPaymentMethodDescription = computed(() => {
-  return paymentMethods.find((m) => m.value === selectedPaymentMethod.value)?.description || ''
-})
-const savedAddressOptions = computed(() => savedAddresses.value.map((address) => ({
-  ...address,
-  label: formatAddress(address),
-})))
-const selectedSavedAddress = computed(() => savedAddresses.value.find((address) => Number(address.id) === Number(selectedAddressId.value)) || null)
-const selectedSavedAddressLabel = computed(() => formatAddress(selectedSavedAddress.value) || 'Chưa chọn địa chỉ')
-const totalQuantity = computed(() => checkoutItems.value.reduce((sum, item) => sum + item.quantity, 0))
-const totalPrice = computed(() => checkoutItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
-const finalTotal = computed(() => Math.max(0, totalPrice.value - discountAmount.value) + Math.max(0, Number(shippingFee.value) || 0))
-const qualifiedUserClaimedCoupons = computed(() => {
-  return userClaimedCoupons.value.filter(coupon => {
-    const minOrderValue = Number(coupon.discountCoupon?.minOrderValue) || 0
-    const isNotExpired = !isExpired(coupon.discountCoupon?.endDate)
-    return totalPrice.value >= minOrderValue && isNotExpired
-  })
-})
-
-const couponsDisplay = computed(() => {
-  return availableCoupons.value
-    .filter(coupon => {
-      const minOrderValue = Number(coupon.minOrderValue) || 0
-      const isNotExpired = !isExpired(coupon.endDate)
-      return totalPrice.value >= minOrderValue && isNotExpired
+// ── Computed ──
+const savedAddressOptions = computed(() =>
+  savedAddresses.value.map((a) => ({ ...a, label: formatAddress(a) })),
+)
+const selectedSavedAddress = computed(() =>
+  savedAddresses.value.find((a) => Number(a.id) === Number(selectedAddressId.value)) || null,
+)
+const selectedSavedAddressLabel = computed(() => formatAddress(selectedSavedAddress.value))
+const totalQuantity = computed(() => checkoutItems.value.reduce((s, i) => s + i.quantity, 0))
+const totalPrice = computed(() => checkoutItems.value.reduce((s, i) => s + i.price * i.quantity, 0))
+const finalTotal = computed(() =>
+  Math.max(0, totalPrice.value - discountAmount.value) + Math.max(0, Number(shippingFee.value) || 0),
+)
+const qualifiedUserClaimedCoupons = computed(() =>
+  userClaimedCoupons.value.filter((c) => {
+    const min = Number(c.discountCoupon?.minOrderValue) || 0
+    return totalPrice.value >= min && !isExpired(c.discountCoupon?.endDate)
+  }),
+)
+const couponsDisplay = computed(() =>
+  availableCoupons.value
+    .filter((c) => {
+      const min = Number(c.minOrderValue) || 0
+      return totalPrice.value >= min && !isExpired(c.endDate)
     })
-    .map(coupon => {
-      let displayText = coupon.couponCode
-      if (coupon.discountType === 'percent') {
-        displayText += ` - Giảm ${coupon.discountValue}%`
-      } else {
-        displayText += ` - Giảm ${formatPrice(coupon.discountValue)} đ`
-      }
-      return { ...coupon, displayText }
-    })
-})
+    .map((c) => ({
+      ...c,
+      displayText:
+        c.couponCode +
+        (c.discountType === 'percent'
+          ? ` — Giảm ${c.discountValue}%`
+          : ` — Giảm ${formatPrice(c.discountValue)}đ`),
+    })),
+)
 
-const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
-
+// ── Helpers ──
+const formatPrice = (p) => new Intl.NumberFormat('vi-VN').format(p || 0)
 const todayText = () => new Date().toISOString().slice(0, 10)
-
-const isExpired = (endDate) => {
-  if (!endDate) return false
-  const today = todayText()
-  return endDate < today
+const isExpired = (d) => (d ? d < todayText() : false)
+const notify = (msg, color = 'success') => {
+  snackbarMessage.value = msg
+  snackbarColor.value = color
+  showSnackbar.value = true
 }
 
-// Check if coupon is valid and applicable
-const isCouponValid = (coupon) => {
-  if (!coupon) return false
-  
-  if (coupon.active === false) return false
-  
+const isCouponValid = (c) => {
+  if (!c || c.active === false) return false
   const now = todayText()
-  if (coupon.startDate && coupon.startDate > now) return false
-  if (coupon.endDate && coupon.endDate < now) return false
-  
-  const quantity = Number.parseInt(coupon.quantity, 10) || 0
-  if (quantity <= 0) return false
-  
-  const value = Number(coupon.discountValue) || 0
-  if (value <= 0) return false
-  
+  if (c.startDate && c.startDate > now) return false
+  if (c.endDate && c.endDate < now) return false
+  if ((Number.parseInt(c.quantity, 10) || 0) <= 0) return false
+  if ((Number(c.discountValue) || 0) <= 0) return false
   return true
 }
 
-// Check if coupon meets minimum order value requirement
-const meetsMinOrderValue = (coupon) => {
-  const minOrderValue = Number(coupon.minOrderValue) || 0
-  return totalPrice.value >= minOrderValue
-}
+const meetsMinOrderValue = (c) => totalPrice.value >= (Number(c.minOrderValue) || 0)
 
-// Calculate discount amount for a valid coupon
-const calculateDiscount = (coupon) => {
-  const value = Number(coupon.discountValue) || 0
-  let discount = 0
-  const type = String(coupon.discountType || '').toLowerCase()
-  
-  if (type === 'percent') {
-    discount = (totalPrice.value * value) / 100
-    const maxDiscountValue = Number(coupon.maxDiscountValue) || 0
-    if (maxDiscountValue > 0) {
-      discount = Math.min(discount, maxDiscountValue)
-    }
-  } else if (type === 'fixed') {
-    discount = value
+const calculateDiscount = (c) => {
+  const value = Number(c.discountValue) || 0
+  const type = String(c.discountType || '').toLowerCase()
+  let discount = type === 'percent' ? (totalPrice.value * value) / 100 : value
+  if (type === 'percent' && Number(c.maxDiscountValue) > 0) {
+    discount = Math.min(discount, Number(c.maxDiscountValue))
   }
-  
   return Math.min(Math.max(discount, 0), totalPrice.value)
 }
 
-// Find alternative coupon when current one fails
-const findAlternativeCoupon = async () => {
-  try {
-    const res = await getAllDiscountCoupons()
-    const coupons = res.data || []
-    
-    // Filter valid coupons sorted by discount percentage (highest first)
-    const validCoupons = coupons
-      .filter(c => isCouponValid(c))
-      .sort((a, b) => {
-        const aDiscount = Number(a.discountValue) || 0
-        const bDiscount = Number(b.discountValue) || 0
-        const aIsPercent = (a.discountType || '').toLowerCase() === 'percent'
-        const bIsPercent = (b.discountType || '').toLowerCase() === 'percent'
-        
-        // Prefer percent discounts, then sort by value
-        if (aIsPercent && !bIsPercent) return -1
-        if (!aIsPercent && bIsPercent) return 1
-        return bDiscount - aDiscount
-      })
-    
-    // Find first coupon that meets minimum order value
-    for (const coupon of validCoupons) {
-      if (meetsMinOrderValue(coupon)) {
-        return coupon
-      }
-    }
-    
-    return null
-  } catch (error) {
-    console.error('Lỗi tìm mã giảm giá thay thế:', error)
-    return null
-  }
+const formatAddress = (a) => {
+  if (!a) return 'Bạn chưa cập nhật địa chỉ nhận hàng'
+  const parts = [a.unitNumber, a.streetNumber, a.addressLine1, a.addressLine2, a.region, a.city]
+    .map((x) => String(x || '').trim())
+    .filter(Boolean)
+  return parts.length ? parts.join(', ') : 'Bạn chưa cập nhật địa chỉ nhận hàng'
 }
 
-const previewCoupon = async () => {
-  const code = String(couponCode.value || '').trim()
-  if (!code) {
-    discountAmount.value = 0
-    return
-  }
+const normalizeText = (v) => String(v || '').trim().toLowerCase()
+const findProvinceByName = (n) =>
+  ghnProvinces.value.find((x) => normalizeText(x.provinceName) === normalizeText(n)) || null
+const findDistrictByName = (n) =>
+  ghnDistricts.value.find((x) => normalizeText(x.districtName) === normalizeText(n)) || null
 
-  try {
-    const res = await getAllDiscountCoupons()
-    const coupons = res.data || []
-    const coupon = coupons.find((x) => String(x.couponCode || '').toLowerCase() === code.toLowerCase())
-
-    if (!coupon) {
-      throw new Error('Mã giảm giá không tồn tại')
-    }
-
-    if (!isCouponValid(coupon)) {
-      throw new Error('Mã giảm giá không hợp lệ hoặc đã hết hạn')
-    }
-
-    // Check if meets minimum order value
-    if (!meetsMinOrderValue(coupon)) {
-      // Try to find alternative coupon
-      const alternativeCoupon = await findAlternativeCoupon()
-      
-      if (alternativeCoupon) {
-        couponCode.value = alternativeCoupon.couponCode
-        discountAmount.value = calculateDiscount(alternativeCoupon)
-        snackbarMessage.value = `Mã "${code}" không đủ điều kiện. Tự động sử dụng mã "${alternativeCoupon.couponCode}" thay thế`
-        snackbarColor.value = 'info'
-        showSnackbar.value = true
-        return
-      } else {
-        // No alternative found, clear discount and show info
-        discountAmount.value = 0
-        couponCode.value = ''
-        snackbarMessage.value = `Mã "${code}" không đủ giá trị tối thiểu (${formatPrice(coupon.minOrderValue)}đ). Không tìm thấy mã thay thế phù hợp.`
-        snackbarColor.value = 'info'
-        showSnackbar.value = true
-        return
-      }
-    }
-
-    const value = Number(coupon.discountValue) || 0
-    if (value <= 0) {
-      throw new Error('Giá trị giảm giá không hợp lệ')
-    }
-
-    discountAmount.value = calculateDiscount(coupon)
-    snackbarMessage.value = 'Áp dụng mã giảm giá thành công'
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
-  } catch (error) {
-    discountAmount.value = 0
-    couponCode.value = ''
-    snackbarMessage.value = error?.message || 'Mã giảm giá không hợp lệ'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-  }
-}
-
-const formatAddress = (address) => {
-  if (!address) return 'Bạn chưa cập nhật địa chỉ nhận hàng'
-
-  const parts = [
-    address.unitNumber,
-    address.streetNumber,
-    address.addressLine1,
-    address.addressLine2,
-    address.region,
-    address.city,
-  ]
-    .map((x) => (x == null ? '' : String(x).trim()))
-    .filter((x) => x.length > 0)
-
-  return parts.length > 0 ? parts.join(', ') : 'Bạn chưa cập nhật địa chỉ nhận hàng'
-}
-
-const normalizeText = (value) => String(value || '').trim().toLowerCase()
-
-const findProvinceByName = (provinceName) => ghnProvinces.value.find((item) => normalizeText(item.provinceName) === normalizeText(provinceName)) || null
-
-const findDistrictByName = (districtName) => ghnDistricts.value.find((item) => normalizeText(item.districtName) === normalizeText(districtName)) || null
-
+// ── GHN ──
 const applySavedAddressToGhn = async (address) => {
   if (!address) return
-
   const province = findProvinceByName(address.city)
   if (!province) return
-
   shippingInput.value.provinceId = province.provinceId
   await onProvinceChange()
-
   const district = findDistrictByName(address.region)
   if (!district) return
-
   shippingInput.value.toDistrictId = district.districtId
   await onDistrictChange()
+  const ward = ghnWards.value.find((x) => normalizeText(x.wardName) === normalizeText(address.addressLine2))
+  if (ward) shippingInput.value.toWardCode = ward.wardCode
+}
 
-  const ward = ghnWards.value.find((item) => normalizeText(item.wardName) === normalizeText(address.addressLine2)) || null
-  if (ward) {
-    shippingInput.value.toWardCode = ward.wardCode
+const loadGhnProvinces = async () => {
+  isLoadingProvinces.value = true
+  try {
+    const res = await paymentApi.getGhnProvinces(userStore.token)
+    ghnProvinces.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    notify('Không thể tải danh sách tỉnh/thành', 'warning')
+  } finally {
+    isLoadingProvinces.value = false
   }
 }
 
-const loadAvailableCoupons = async () => {
-  isLoadingAvailableCoupons.value = true
+const onProvinceChange = async () => {
+  shippingInput.value.toDistrictId = ''
+  shippingInput.value.toWardCode = ''
+  ghnDistricts.value = []
+  ghnWards.value = []
+  const id = Number.parseInt(shippingInput.value.provinceId, 10)
+  if (!Number.isFinite(id) || id <= 0) return
+  isLoadingDistricts.value = true
   try {
-    const res = await getAllDiscountCoupons()
-    const coupons = res.data || []
-    // Filter only valid, active coupons
-    availableCoupons.value = coupons.filter(coupon => isCouponValid(coupon))
+    const res = await paymentApi.getGhnDistricts(id, userStore.token)
+    ghnDistricts.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    notify('Không thể tải danh sách quận/huyện', 'warning')
+  } finally {
+    isLoadingDistricts.value = false
+  }
+}
+
+const onDistrictChange = async () => {
+  shippingInput.value.toWardCode = ''
+  ghnWards.value = []
+  const id = Number.parseInt(shippingInput.value.toDistrictId, 10)
+  if (!Number.isFinite(id) || id <= 0) return
+  isLoadingWards.value = true
+  try {
+    const res = await paymentApi.getGhnWards(id, userStore.token)
+    ghnWards.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    notify('Không thể tải danh sách phường/xã', 'warning')
+  } finally {
+    isLoadingWards.value = false
+  }
+}
+
+const calculateGhnShippingFee = async (silent = false) => {
+  const toDistrictId = Number.parseInt(shippingInput.value.toDistrictId, 10)
+  const toWardCode = String(shippingInput.value.toWardCode || '').trim()
+  if (!Number.isFinite(toDistrictId) || toDistrictId <= 0 || !toWardCode) return
+  isCalculatingShipping.value = true
+  try {
+    const res = await paymentApi.getGhnShippingFee(
+      {
+        toDistrictId,
+        toWardCode,
+        weight: Number.parseInt(shippingInput.value.weight, 10) || 1000,
+        length: Number.parseInt(shippingInput.value.length, 10) || 20,
+        width: Number.parseInt(shippingInput.value.width, 10) || 20,
+        height: Number.parseInt(shippingInput.value.height, 10) || 20,
+        insuranceValue: Number(totalPrice.value) || 0,
+      },
+      userStore.token,
+    )
+    shippingFee.value = Number(res.data?.shippingFee) || 0
+    if (!silent) notify('Đã cập nhật phí vận chuyển')
   } catch (error) {
-    console.error('Lỗi tải danh sách mã giảm giá có sẵn:', error)
-    availableCoupons.value = []
+    shippingFee.value = 0
+    if (!silent) notify(error?.response?.data?.message || 'Không thể tính phí vận chuyển', 'error')
   } finally {
-    isLoadingAvailableCoupons.value = false
+    isCalculatingShipping.value = false
   }
 }
 
-const loadUserClaimedCoupons = async () => {
-  const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    userClaimedCoupons.value = []
-    return
-  }
+watch(
+  () => [shippingInput.value.toDistrictId, shippingInput.value.toWardCode],
+  async ([d, w]) => {
+    if (!d || !w || isCalculatingShipping.value) return
+    await calculateGhnShippingFee(true)
+  },
+)
 
-  try {
-    const res = await userDiscountCouponApi.getClaimedDiscountCoupons(accountId)
-    const claimed = (res.data || []).filter(uc => uc.status === 'claimed')
-    userClaimedCoupons.value = claimed
-    
-    // Auto-select coupon with highest discount percentage and try to apply it
-    if (claimed.length > 0) {
-      // Sort by discount percentage (percent coupons first, then by value)
-      const sorted = [...claimed].sort((a, b) => {
-        const aValue = Number(a.discountCoupon?.discountValue) || 0
-        const bValue = Number(b.discountCoupon?.discountValue) || 0
-        const aIsPercent = (a.discountCoupon?.discountType || '').toLowerCase() === 'percent'
-        const bIsPercent = (b.discountCoupon?.discountType || '').toLowerCase() === 'percent'
-        
-        if (aIsPercent && !bIsPercent) return -1
-        if (!aIsPercent && bIsPercent) return 1
-        return bValue - aValue
-      })
-      
-      // Try to apply coupons in order, use first one that meets conditions
-      let appliedCoupon = null
-      for (const coupon of sorted) {
-        const dc = coupon.discountCoupon
-        if (isCouponValid(dc) && meetsMinOrderValue(dc)) {
-          appliedCoupon = coupon
-          break
-        }
-      }
-      
-      if (appliedCoupon) {
-        selectedCoupon.value = appliedCoupon
-        couponCode.value = appliedCoupon.discountCoupon.couponCode
-        await previewCoupon()
-      } else {
-        // No applies coupon that meets conditions, select first but don't apply
-        selectedCoupon.value = sorted[0]
-        discountAmount.value = 0
-        couponCode.value = ''
-      }
-    }
-  } catch (error) {
-    console.error('Lỗi tải mã giảm giá đã nhận:', error)
-    userClaimedCoupons.value = []
-  }
-}
-
-const selectCouponForCheckout = (coupon) => {
-  selectedCoupon.value = selectedCoupon.value?.id === coupon.id ? null : coupon
-}
-
-const applySelectedCoupon = async () => {
-  if (!selectedCoupon.value) return
-  isApplyingCoupon.value = true
-  try {
-    couponCode.value = selectedCoupon.value.discountCoupon.couponCode
-    await previewCoupon()
-  } finally {
-    isApplyingCoupon.value = false
-  }
-}
-
-const applyManualCoupon = async () => {
-  const code = String(manualCouponCode.value || '').trim()
-  if (!code) {
-    snackbarMessage.value = 'Vui lòng nhập mã giảm giá'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
-  
-  isApplyingCoupon.value = true
-  try {
-    couponCode.value = code
-    // Clear manual input after attempt
-    manualCouponCode.value = ''
-    await previewCoupon()
-  } finally {
-    isApplyingCoupon.value = false
-  }
-}
-
-const applyAvailableCoupon = async (coupon) => {
-  if (!coupon) return
-  isApplyingCoupon.value = true
-  try {
-    couponCode.value = coupon.couponCode
-    manualCouponCode.value = ''
-    await previewCoupon()
-  } finally {
-    isApplyingCoupon.value = false
-  }
-}
-
-const normalizeCheckoutItem = (item) => {
-  const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
-  return {
-    cartItemID: item.cartItemID,
-    cartID: item.cartID,
-    productColorID: colorId,
-    sizeID: Number.parseInt(item.sizeID, 10) || null,
-    sizeName: item.sizeName || '',
-    quantity: Number.parseInt(item.quantity, 10) || 1,
-    productName: item.productName || '',
-    price: Number(item.price) || 0,
-    colorName: item.colorName || '',
-    colorCode: item.colorCode || '',
-    mainImage: item.mainImage || '',
-    stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
-  }
-}
-
-const cleanupUnpaidQuickBuyItem = async () => {
-  if (isCleaningUpQuickBuy.value || !isQuickBuyMode.value || isQuickBuyOrderPlaced.value) {
-    return
-  }
-
-  const cartItemId = Number.parseInt(quickBuyCartItemId.value, 10)
-  const originalQty = Number.parseInt(quickBuyOriginalQuantity.value, 10) || 0
-  const productColorId = Number.parseInt(quickBuyProductColorId.value, 10)
-  const cartId = Number.parseInt(quickBuyCartId.value, 10)
-
-  sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
-  sessionStorage.removeItem(SELECTED_CART_ITEM_IDS_KEY)
-  isQuickBuyMode.value = false
-  quickBuyCartItemId.value = null
-  quickBuyOriginalQuantity.value = 0
-  quickBuyProductColorId.value = null
-  quickBuyCartId.value = null
-
-  if (!Number.isFinite(cartItemId) || cartItemId <= 0) {
-    return
-  }
-
-  isCleaningUpQuickBuy.value = true
-  try {
-    if (originalQty > 0 && Number.isFinite(productColorId) && productColorId > 0) {
-      await cartApi.update(
-        cartItemId,
-        {
-          cartID: Number.isFinite(cartId) && cartId > 0 ? cartId : Number.parseInt(userStore.cartId, 10),
-          productColorID: productColorId,
-          quantity: originalQty,
-        },
-        userStore.token,
-      )
-    } else {
-      await cartApi.remove(cartItemId, userStore.token)
-    }
-    window.dispatchEvent(new Event('cart-changed'))
-  } catch (error) {
-    console.error('Lỗi dọn sản phẩm mua ngay chưa thanh toán:', error)
-  } finally {
-    isCleaningUpQuickBuy.value = false
-  }
-}
-
-const restoreOriginalCartAfterQuickBuyOrder = async () => {
-  const originalQty = Number.parseInt(quickBuyOriginalQuantity.value, 10) || 0
-  const productColorId = Number.parseInt(quickBuyProductColorId.value, 10)
-
-  if (originalQty <= 0 || !Number.isFinite(productColorId) || productColorId <= 0) {
-    return
-  }
-
-  try {
-    let currentCartId = Number.parseInt(userStore.cartId, 10)
-    if (!Number.isFinite(currentCartId) || currentCartId <= 0) {
-      currentCartId = await userStore.getOrCreateCart()
-    }
-
-    const itemRes = await cartApi.getByCart(currentCartId)
-    const exists = (itemRes.data || []).some((item) => {
-      const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
-      return colorId === productColorId
-    })
-
-    if (!exists) {
-      await userStore.addToCartAPI(productColorId, originalQty)
-      window.dispatchEvent(new Event('cart-changed'))
-    }
-  } catch (error) {
-    console.error('Lỗi khôi phục sản phẩm cũ trong giỏ sau mua ngay:', error)
-  }
-}
-
-const loadCheckoutItems = async () => {
-  const rawSelectedIds = sessionStorage.getItem(SELECTED_CART_ITEM_IDS_KEY)
-  const rawQuickBuyContext = sessionStorage.getItem(QUICK_BUY_CONTEXT_KEY)
-
-  let selectedIds = []
-  if (rawSelectedIds) {
-    try {
-      const parsed = JSON.parse(rawSelectedIds)
-      if (Array.isArray(parsed)) {
-        selectedIds = parsed
-      }
-    } catch {
-      selectedIds = []
-    }
-  }
-
-  let quickBuyContext = null
-  if (rawQuickBuyContext) {
-    try {
-      quickBuyContext = JSON.parse(rawQuickBuyContext)
-      if (quickBuyContext?.source !== 'buy-now') {
-        quickBuyContext = null
-      }
-    } catch {
-      quickBuyContext = null
-    }
-  }
-
-  if ((!Array.isArray(selectedIds) || selectedIds.length === 0) && !quickBuyContext) {
-    checkoutItems.value = []
-    return
-  }
-
-  isLoading.value = true
-  try {
-    let currentCartId = Number.parseInt(userStore.cartId, 10)
-    if (!Number.isFinite(currentCartId) || currentCartId <= 0) {
-      currentCartId = await userStore.getOrCreateCart()
-    }
-
-    const itemRes = await cartApi.getByCart(currentCartId)
-
-    const cartItems = itemRes.data || []
-
-    if (quickBuyContext) {
-      const targetCartItemId = Number.parseInt(quickBuyContext.cartItemID, 10)
-      const targetProductColorId = Number.parseInt(quickBuyContext.productColorID, 10)
-      const buyNowQuantity = Number.parseInt(quickBuyContext.buyNowQuantity ?? quickBuyContext.quantity, 10) || 1
-      const originalQty = Number.parseInt(quickBuyContext.originalQuantity, 10) || 0
-      let matchedByColor = []
-
-      if (Number.isFinite(targetCartItemId) && targetCartItemId > 0) {
-        const matchedById = cartItems.find((item) => Number.parseInt(item.cartItemID, 10) === targetCartItemId)
-        if (matchedById) {
-          matchedByColor = [matchedById]
-        }
-      }
-
-      if (matchedByColor.length === 0) {
-        matchedByColor = cartItems.filter((item) => {
-          const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
-          return Number.isFinite(targetProductColorId) && colorId === targetProductColorId
-        })
-      }
-
-      if (matchedByColor.length > 0) {
-        const latestMatchedItem = [...matchedByColor].sort((a, b) => {
-          const bId = Number.parseInt(b.cartItemID ?? b.id, 10) || 0
-          const aId = Number.parseInt(a.cartItemID ?? a.id, 10) || 0
-          return bId - aId
-        })[0]
-
-        const normalized = normalizeCheckoutItem(latestMatchedItem)
-
-        // If quick-buy merged into existing cart line, temporarily force order quantity to buy-now quantity.
-        if (originalQty > 0 && normalized.quantity !== buyNowQuantity) {
-          await cartApi.update(
-            normalized.cartItemID,
-            {
-              cartID: normalized.cartID,
-              productColorID: normalized.productColorID,
-              quantity: buyNowQuantity,
-            },
-            userStore.token,
-          )
-          normalized.quantity = buyNowQuantity
-        }
-
-        checkoutItems.value = [normalized]
-        isQuickBuyMode.value = true
-        quickBuyCartItemId.value = normalized.cartItemID
-        quickBuyOriginalQuantity.value = originalQty
-        quickBuyProductColorId.value = normalized.productColorID
-        quickBuyCartId.value = normalized.cartID
-        sessionStorage.setItem(SELECTED_CART_ITEM_IDS_KEY, JSON.stringify([normalized.cartItemID]))
-        sessionStorage.setItem(QUICK_BUY_CONTEXT_KEY, JSON.stringify({
-          ...quickBuyContext,
-          source: 'buy-now',
-          cartItemID: normalized.cartItemID,
-          buyNowQuantity,
-          originalQuantity: originalQty,
-          productColorID: normalized.productColorID,
-        }))
-        return
-      }
-
-      isQuickBuyMode.value = false
-      quickBuyCartItemId.value = null
-      quickBuyOriginalQuantity.value = 0
-      quickBuyProductColorId.value = null
-      quickBuyCartId.value = null
-      sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
-    }
-
-    isQuickBuyMode.value = false
-    quickBuyCartItemId.value = null
-    quickBuyOriginalQuantity.value = 0
-    quickBuyProductColorId.value = null
-    quickBuyCartId.value = null
-    const selectedSet = new Set(selectedIds)
-    checkoutItems.value = cartItems
-      .filter((item) => selectedSet.has(item.cartItemID))
-      .map((item) => normalizeCheckoutItem(item))
-  } catch (error) {
-    console.error('Lỗi tải dữ liệu checkout:', error)
-    snackbarMessage.value = 'Không thể tải dữ liệu thanh toán'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
-  } finally {
-    isLoading.value = false
-  }
-}
-
+// ── Addresses ──
 const loadSavedAddresses = async () => {
   const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    savedAddresses.value = []
-    selectedAddressId.value = null
-    userAddress.value = null
-    return
-  }
-
+  if (!Number.isFinite(accountId) || accountId <= 0) return
   isLoadingSavedAddresses.value = true
   try {
     const res = await addressApi.getByAccountId(accountId, userStore.token)
     savedAddresses.value = Array.isArray(res.data) ? res.data : []
-
     if (savedAddresses.value.length > 0) {
       selectedAddressId.value = savedAddresses.value[0].id
       userAddress.value = savedAddresses.value[0]
-    } else {
-      selectedAddressId.value = null
-      userAddress.value = null
     }
-  } catch (error) {
-    console.error('Lỗi tải danh sách địa chỉ đã lưu:', error)
+  } catch {
     savedAddresses.value = []
-    selectedAddressId.value = null
-    userAddress.value = null
   } finally {
     isLoadingSavedAddresses.value = false
   }
@@ -1296,31 +761,29 @@ const onSavedAddressChange = async () => {
   const selected = selectedSavedAddress.value
   userAddress.value = selected
   shippingFee.value = 0
-
   if (!selected) return
   await applySavedAddressToGhn(selected)
 }
 
 const saveNewAddress = async () => {
   const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    snackbarMessage.value = 'Không xác định được tài khoản để lưu địa chỉ'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
-    return
-  }
-
-  const provinceName = ghnProvinces.value.find((x) => Number(x.provinceId) === Number(shippingInput.value.provinceId))?.provinceName || ''
-  const districtName = ghnDistricts.value.find((x) => Number(x.districtId) === Number(shippingInput.value.toDistrictId))?.districtName || ''
-  const wardName = ghnWards.value.find((x) => String(x.wardCode) === String(shippingInput.value.toWardCode))?.wardName || ''
-
-  if (!newAddressForm.value.unitNumber || !newAddressForm.value.streetNumber || !newAddressForm.value.addressLine1 || !provinceName || !districtName || !wardName) {
-    snackbarMessage.value = 'Vui lòng nhập đủ số nhà, số đường, tên đường và chọn đầy đủ tỉnh/huyện/xã'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
-
+  if (!Number.isFinite(accountId) || accountId <= 0)
+    return notify('Không xác định được tài khoản', 'error')
+  const provinceName =
+    ghnProvinces.value.find((x) => Number(x.provinceId) === Number(shippingInput.value.provinceId))?.provinceName || ''
+  const districtName =
+    ghnDistricts.value.find((x) => Number(x.districtId) === Number(shippingInput.value.toDistrictId))?.districtName || ''
+  const wardName =
+    ghnWards.value.find((x) => String(x.wardCode) === String(shippingInput.value.toWardCode))?.wardName || ''
+  if (
+    !newAddressForm.value.unitNumber ||
+    !newAddressForm.value.streetNumber ||
+    !newAddressForm.value.addressLine1 ||
+    !provinceName ||
+    !districtName ||
+    !wardName
+  )
+    return notify('Vui lòng nhập đủ thông tin địa chỉ', 'warning')
   isSavingNewAddress.value = true
   try {
     await addressApi.create(
@@ -1336,310 +799,278 @@ const saveNewAddress = async () => {
       },
       userStore.token,
     )
-
     await loadSavedAddresses()
     addressMode.value = 'saved'
     await onSavedAddressChange()
-    snackbarMessage.value = 'Đã lưu địa chỉ mới'
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
+    notify('Đã lưu địa chỉ mới')
   } catch (error) {
-    console.error('Lỗi lưu địa chỉ mới:', error)
-    snackbarMessage.value = error?.response?.data?.message || 'Không thể lưu địa chỉ mới'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
+    notify(error?.response?.data?.message || 'Không thể lưu địa chỉ mới', 'error')
   } finally {
     isSavingNewAddress.value = false
   }
 }
 
-watch(
-  () => [shippingInput.value.toDistrictId, shippingInput.value.toWardCode],
-  async ([districtId, wardCode]) => {
-    if (!districtId || !wardCode || isCalculatingShipping.value) return
-    await calculateGhnShippingFee(true)
-  },
-)
+// ── Coupons ──
+const previewCoupon = async () => {
+  const code = String(couponCode.value || '').trim()
+  if (!code) { discountAmount.value = 0; return }
+  try {
+    const res = await getAllDiscountCoupons()
+    const coupon = (res.data || []).find(
+      (x) => String(x.couponCode || '').toLowerCase() === code.toLowerCase(),
+    )
+    if (!coupon) throw new Error('Mã giảm giá không tồn tại')
+    if (!isCouponValid(coupon)) throw new Error('Mã giảm giá không hợp lệ hoặc đã hết hạn')
+    if (!meetsMinOrderValue(coupon)) throw new Error(`Đơn tối thiểu ${formatPrice(coupon.minOrderValue)}đ`)
+    discountAmount.value = calculateDiscount(coupon)
+    notify('Áp dụng mã giảm giá thành công')
+  } catch (error) {
+    discountAmount.value = 0
+    couponCode.value = ''
+    notify(error?.message || 'Mã giảm giá không hợp lệ', 'warning')
+  }
+}
 
-watch(
-  () => addressMode.value,
-  (mode) => {
-    if (mode === 'saved') {
-      newAddressForm.value = {
-        unitNumber: '',
-        streetNumber: '',
-        addressLine1: '',
-        postalCode: '',
+const loadAvailableCoupons = async () => {
+  isLoadingAvailableCoupons.value = true
+  try {
+    const res = await getAllDiscountCoupons()
+    availableCoupons.value = (res.data || []).filter((c) => isCouponValid(c))
+  } catch {
+    availableCoupons.value = []
+  } finally {
+    isLoadingAvailableCoupons.value = false
+  }
+}
+
+const loadUserClaimedCoupons = async () => {
+  const accountId = Number.parseInt(userStore.accountId, 10)
+  if (!Number.isFinite(accountId) || accountId <= 0) return
+  try {
+    const res = await userDiscountCouponApi.getClaimedDiscountCoupons(accountId)
+    const claimed = (res.data || []).filter((c) => c.status === 'claimed')
+    userClaimedCoupons.value = claimed
+    const sorted = [...claimed].sort((a, b) => {
+      const aVal = Number(a.discountCoupon?.discountValue) || 0
+      const bVal = Number(b.discountCoupon?.discountValue) || 0
+      const aP = (a.discountCoupon?.discountType || '').toLowerCase() === 'percent'
+      const bP = (b.discountCoupon?.discountType || '').toLowerCase() === 'percent'
+      if (aP && !bP) return -1
+      if (!aP && bP) return 1
+      return bVal - aVal
+    })
+    const best = sorted.find((c) => isCouponValid(c.discountCoupon) && meetsMinOrderValue(c.discountCoupon))
+    if (best) {
+      selectedCoupon.value = best
+      couponCode.value = best.discountCoupon.couponCode
+      await previewCoupon()
+    }
+  } catch {
+    userClaimedCoupons.value = []
+  }
+}
+
+const selectCouponForCheckout = (coupon) => {
+  selectedCoupon.value = selectedCoupon.value?.id === coupon.id ? null : coupon
+}
+const applySelectedCoupon = async () => {
+  if (!selectedCoupon.value) return
+  isApplyingCoupon.value = true
+  try {
+    couponCode.value = selectedCoupon.value.discountCoupon.couponCode
+    await previewCoupon()
+  } finally {
+    isApplyingCoupon.value = false
+  }
+}
+const applyManualCoupon = async () => {
+  const code = String(manualCouponCode.value || '').trim()
+  if (!code) return notify('Vui lòng nhập mã giảm giá', 'warning')
+  isApplyingCoupon.value = true
+  try {
+    couponCode.value = code
+    manualCouponCode.value = ''
+    await previewCoupon()
+  } finally {
+    isApplyingCoupon.value = false
+  }
+}
+const applyAvailableCoupon = async (coupon) => {
+  if (!coupon) return
+  isApplyingCoupon.value = true
+  try {
+    couponCode.value = coupon.couponCode
+    await previewCoupon()
+  } finally {
+    isApplyingCoupon.value = false
+  }
+}
+
+// ── Checkout Items ──
+const normalizeCheckoutItem = (item) => ({
+  cartItemID: item.cartItemID,
+  cartID: item.cartID,
+  productColorID: Number.parseInt(item.productColorID ?? item.productID, 10),
+  sizeID: Number.parseInt(item.sizeID, 10) || null,
+  sizeName: item.sizeName || '',
+  quantity: Number.parseInt(item.quantity, 10) || 1,
+  productName: item.productName || '',
+  price: Number(item.price) || 0,
+  colorName: item.colorName || '',
+  colorCode: item.colorCode || '',
+  mainImage: item.mainImage || '',
+  stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
+})
+
+const loadCheckoutItems = async () => {
+  const rawSelectedIds = sessionStorage.getItem(SELECTED_CART_ITEM_IDS_KEY)
+  const rawQuickBuy = sessionStorage.getItem(QUICK_BUY_CONTEXT_KEY)
+  let selectedIds = []
+  try {
+    const parsed = JSON.parse(rawSelectedIds)
+    if (Array.isArray(parsed)) selectedIds = parsed
+  } catch { /* empty */ }
+  let quickBuyContext = null
+  try {
+    const p = JSON.parse(rawQuickBuy)
+    if (p?.source === 'buy-now') quickBuyContext = p
+  } catch { /* empty */ }
+  if ((!selectedIds.length) && !quickBuyContext) { checkoutItems.value = []; return }
+  isLoading.value = true
+  try {
+    let currentCartId = Number.parseInt(userStore.cartId, 10)
+    if (!Number.isFinite(currentCartId) || currentCartId <= 0) currentCartId = await userStore.getOrCreateCart()
+    const itemRes = await cartApi.getByCart(currentCartId)
+    const cartItems = itemRes.data || []
+    if (quickBuyContext) {
+      const targetId = Number.parseInt(quickBuyContext.cartItemID, 10)
+      const targetColorId = Number.parseInt(quickBuyContext.productColorID, 10)
+      const buyNowQty = Number.parseInt(quickBuyContext.buyNowQuantity ?? quickBuyContext.quantity, 10) || 1
+      const originalQty = Number.parseInt(quickBuyContext.originalQuantity, 10) || 0
+      let matched = cartItems.filter((i) => Number.parseInt(i.cartItemID, 10) === targetId)
+      if (!matched.length) matched = cartItems.filter((i) => Number.parseInt(i.productColorID ?? i.productID, 10) === targetColorId)
+      if (matched.length) {
+        const item = [...matched].sort((a, b) => (Number.parseInt(b.cartItemID, 10) || 0) - (Number.parseInt(a.cartItemID, 10) || 0))[0]
+        const normalized = normalizeCheckoutItem(item)
+        if (originalQty > 0 && normalized.quantity !== buyNowQty) {
+          await cartApi.update(normalized.cartItemID, { cartID: normalized.cartID, productColorID: normalized.productColorID, quantity: buyNowQty }, userStore.token)
+          normalized.quantity = buyNowQty
+        }
+        checkoutItems.value = [normalized]
+        isQuickBuyMode.value = true
+        quickBuyCartItemId.value = normalized.cartItemID
+        quickBuyOriginalQuantity.value = originalQty
+        quickBuyProductColorId.value = normalized.productColorID
+        quickBuyCartId.value = normalized.cartID
+        return
       }
     }
-  },
-)
-
-
-const loadGhnProvinces = async () => {
-  isLoadingProvinces.value = true
-  try {
-    const res = await paymentApi.getGhnProvinces(userStore.token)
-    ghnProvinces.value = Array.isArray(res.data) ? res.data : []
-  } catch (error) {
-    console.error('Lỗi tải danh sách tỉnh GHN:', error)
-    ghnProvinces.value = []
-    snackbarMessage.value = 'Không thể tải danh sách tỉnh/thành GHN'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
+    const set = new Set(selectedIds)
+    checkoutItems.value = cartItems.filter((i) => set.has(i.cartItemID)).map(normalizeCheckoutItem)
+  } catch {
+    notify('Không thể tải dữ liệu thanh toán', 'error')
   } finally {
-    isLoadingProvinces.value = false
+    isLoading.value = false
   }
 }
 
-const onProvinceChange = async () => {
-  shippingInput.value.toDistrictId = ''
-  shippingInput.value.toWardCode = ''
-  ghnDistricts.value = []
-  ghnWards.value = []
-
-  const provinceId = Number.parseInt(shippingInput.value.provinceId, 10)
-  if (!Number.isFinite(provinceId) || provinceId <= 0) {
-    return
-  }
-
-  isLoadingDistricts.value = true
+// ── Quick Buy Cleanup ──
+const cleanupUnpaidQuickBuyItem = async () => {
+  if (isCleaningUpQuickBuy.value || !isQuickBuyMode.value || isQuickBuyOrderPlaced.value) return
+  const cartItemId = Number.parseInt(quickBuyCartItemId.value, 10)
+  const originalQty = Number.parseInt(quickBuyOriginalQuantity.value, 10) || 0
+  const productColorId = Number.parseInt(quickBuyProductColorId.value, 10)
+  const cartId = Number.parseInt(quickBuyCartId.value, 10)
+  sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
+  sessionStorage.removeItem(SELECTED_CART_ITEM_IDS_KEY)
+  isQuickBuyMode.value = false
+  if (!Number.isFinite(cartItemId) || cartItemId <= 0) return
+  isCleaningUpQuickBuy.value = true
   try {
-    const res = await paymentApi.getGhnDistricts(provinceId, userStore.token)
-    ghnDistricts.value = Array.isArray(res.data) ? res.data : []
-  } catch (error) {
-    console.error('Lỗi tải danh sách quận GHN:', error)
-    ghnDistricts.value = []
-    snackbarMessage.value = 'Không thể tải danh sách quận/huyện GHN'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-  } finally {
-    isLoadingDistricts.value = false
+    if (originalQty > 0 && Number.isFinite(productColorId) && productColorId > 0) {
+      await cartApi.update(cartItemId, { cartID: Number.isFinite(cartId) && cartId > 0 ? cartId : Number.parseInt(userStore.cartId, 10), productColorID: productColorId, quantity: originalQty }, userStore.token)
+    } else {
+      await cartApi.remove(cartItemId, userStore.token)
+    }
+    window.dispatchEvent(new Event('cart-changed'))
+  } catch { /* silent */ } finally {
+    isCleaningUpQuickBuy.value = false
   }
 }
 
-const onDistrictChange = async () => {
-  shippingInput.value.toWardCode = ''
-  ghnWards.value = []
-
-  const districtId = Number.parseInt(shippingInput.value.toDistrictId, 10)
-  if (!Number.isFinite(districtId) || districtId <= 0) {
-    return
-  }
-
-  isLoadingWards.value = true
+const restoreOriginalCartAfterQuickBuyOrder = async () => {
+  const originalQty = Number.parseInt(quickBuyOriginalQuantity.value, 10) || 0
+  const productColorId = Number.parseInt(quickBuyProductColorId.value, 10)
+  if (originalQty <= 0 || !Number.isFinite(productColorId) || productColorId <= 0) return
   try {
-    const res = await paymentApi.getGhnWards(districtId, userStore.token)
-    ghnWards.value = Array.isArray(res.data) ? res.data : []
-  } catch (error) {
-    console.error('Lỗi tải danh sách phường GHN:', error)
-    ghnWards.value = []
-    snackbarMessage.value = 'Không thể tải danh sách phường/xã GHN'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-  } finally {
-    isLoadingWards.value = false
-  }
+    let currentCartId = Number.parseInt(userStore.cartId, 10)
+    if (!Number.isFinite(currentCartId) || currentCartId <= 0) currentCartId = await userStore.getOrCreateCart()
+    const itemRes = await cartApi.getByCart(currentCartId)
+    const exists = (itemRes.data || []).some((i) => Number.parseInt(i.productColorID ?? i.productID, 10) === productColorId)
+    if (!exists) { await userStore.addToCartAPI(productColorId, originalQty); window.dispatchEvent(new Event('cart-changed')) }
+  } catch { /* silent */ }
 }
 
-const calculateGhnShippingFee = async (silent = false) => {
-  const toDistrictId = Number.parseInt(shippingInput.value.toDistrictId, 10)
-  const toWardCode = String(shippingInput.value.toWardCode || '').trim()
-
-  if (!Number.isFinite(toDistrictId) || toDistrictId <= 0) {
-    if (!silent) {
-      snackbarMessage.value = 'Vui lòng nhập mã quận/huyện GHN hợp lệ'
-      snackbarColor.value = 'warning'
-      showSnackbar.value = true
-    }
-    return
-  }
-
-  if (!toWardCode) {
-    if (!silent) {
-      snackbarMessage.value = 'Vui lòng nhập mã phường/xã GHN'
-      snackbarColor.value = 'warning'
-      showSnackbar.value = true
-    }
-    return
-  }
-
-  isCalculatingShipping.value = true
-  try {
-    const payload = {
-      toDistrictId,
-      toWardCode,
-      weight: Number.parseInt(shippingInput.value.weight, 10) || 1000,
-      length: Number.parseInt(shippingInput.value.length, 10) || 20,
-      width: Number.parseInt(shippingInput.value.width, 10) || 20,
-      height: Number.parseInt(shippingInput.value.height, 10) || 20,
-      insuranceValue: Number(totalPrice.value) || 0,
-    }
-
-    const res = await paymentApi.getGhnShippingFee(payload, userStore.token)
-    shippingFee.value = Number(res.data?.shippingFee) || 0
-    if (!silent) {
-      snackbarMessage.value = 'Đã cập nhật phí ship từ GHN'
-      snackbarColor.value = 'success'
-      showSnackbar.value = true
-    }
-  } catch (error) {
-    console.error('Lỗi tính phí GHN:', error)
-    shippingFee.value = 0
-    snackbarMessage.value = error?.response?.data?.message || 'Không thể tính phí ship GHN. Vui lòng kiểm tra mã khu vực'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
-  } finally {
-    isCalculatingShipping.value = false
-  }
-}
-
+// ── Place Order ──
 const placeOrder = async () => {
-  if (checkoutItems.value.length === 0 || isCheckingOut.value) return
-
+  if (!checkoutItems.value.length || isCheckingOut.value) return
   const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    snackbarMessage.value = 'Không xác định được tài khoản thanh toán'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
-    return
-  }
-
-  const invalidItem = checkoutItems.value.find((item) => {
-    const stock = Number.parseInt(item.stockQuantity, 10) || 0
-    const qty = Number.parseInt(item.quantity, 10) || 0
+  if (!Number.isFinite(accountId) || accountId <= 0) return notify('Không xác định được tài khoản', 'error')
+  const invalid = checkoutItems.value.find((i) => {
+    const stock = Number.parseInt(i.stockQuantity, 10) || 0
+    const qty = Number.parseInt(i.quantity, 10) || 0
     return qty <= 0 || qty > stock
   })
-
-  if (invalidItem) {
-    snackbarMessage.value = `${invalidItem.productName || 'Sản phẩm'} không đủ tồn kho để thanh toán`
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
-
-  // Validate coupon if provided
-  const finalCouponCode = String(couponCode.value || '').trim()
-  if (finalCouponCode) {
-    // Check if coupon is still valid and meets minimum order value
+  if (invalid) return notify(`${invalid.productName} không đủ tồn kho`, 'warning')
+  const finalCoupon = String(couponCode.value || '').trim()
+  if (finalCoupon) {
     const res = await getAllDiscountCoupons().catch(() => ({ data: [] }))
-    const coupons = res.data || []
-    const coupon = coupons.find((x) => String(x.couponCode || '').toLowerCase() === finalCouponCode.toLowerCase())
-    
-    if (!coupon) {
-      snackbarMessage.value = 'Mã giảm giá không còn tồn tại'
-      snackbarColor.value = 'warning'
-      showSnackbar.value = true
-      return
-    }
-    
-    if (!isCouponValid(coupon)) {
-      snackbarMessage.value = 'Mã giảm giá không hợp lệ hoặc đã hết hạn'
-      snackbarColor.value = 'warning'
-      showSnackbar.value = true
-      return
-    }
-    
-    if (!meetsMinOrderValue(coupon)) {
-      snackbarMessage.value = `Mã giảm giá yêu cầu đơn tối thiểu ${formatPrice(coupon.minOrderValue)}đ. Đơn của bạn chỉ có ${formatPrice(totalPrice.value)}đ`
-      snackbarColor.value = 'warning'
-      showSnackbar.value = true
-      return
-    }
+    const coupon = (res.data || []).find((x) => String(x.couponCode || '').toLowerCase() === finalCoupon.toLowerCase())
+    if (!coupon) return notify('Mã giảm giá không còn tồn tại', 'warning')
+    if (!isCouponValid(coupon)) return notify('Mã giảm giá không hợp lệ hoặc đã hết hạn', 'warning')
+    if (!meetsMinOrderValue(coupon)) return notify(`Đơn tối thiểu ${formatPrice(coupon.minOrderValue)}đ`, 'warning')
   }
-
   const cartItemIds = checkoutItems.value.map((x) => x.cartItemID)
-  const paymentMethodForCheckout = selectedPaymentMethod.value
-  const shouldShowBankQr = selectedPaymentMethod.value === 'BANK_TRANSFER'
-
+  const isBankTransfer = selectedPaymentMethod.value === 'BANK_TRANSFER'
   isCheckingOut.value = true
   try {
-    const res = await paymentApi.checkoutSelected(
-      accountId,
-      paymentMethodForCheckout,
-      cartItemIds,
-      userStore.token,
-      finalCouponCode, // Can be empty string
-      shippingFee.value,
-    )
-    const orderId =
-      res.data?.id ||
-      res.data?.orderID ||
-      res.data?.orderId ||
-      res.data?.data?.id ||
-      res.data?.data?.orderId
-
+    const res = await paymentApi.checkoutSelected(accountId, selectedPaymentMethod.value, cartItemIds, userStore.token, finalCoupon, shippingFee.value)
+    const orderId = res.data?.id || res.data?.orderID || res.data?.orderId || res.data?.data?.id || res.data?.data?.orderId
     if (isQuickBuyMode.value) {
       isQuickBuyOrderPlaced.value = true
       await restoreOriginalCartAfterQuickBuyOrder()
     }
-
     sessionStorage.removeItem(SELECTED_CART_ITEM_IDS_KEY)
     sessionStorage.removeItem(QUICK_BUY_CONTEXT_KEY)
     window.dispatchEvent(new Event('cart-changed'))
-
-    if (shouldShowBankQr) {
-      if (!orderId) {
-        snackbarMessage.value = 'Đặt đơn thành công nhưng chưa đọc được mã đơn để tạo QR. Vui lòng thử lại.'
-        snackbarColor.value = 'warning'
-        showSnackbar.value = true
-        return
-      }
-
+    if (isBankTransfer) {
+      if (!orderId) return notify('Đặt đơn thành công nhưng chưa đọc được mã đơn để tạo QR', 'warning')
       try {
         const mbRes = await paymentApi.getMBBankInfo(orderId, userStore.token)
         mbBankPaymentInfo.value = mbRes.data || null
         pendingOnlineOrderId.value = orderId
         showMBBankDialog.value = true
         return
-      } catch (qrError) {
-        console.error('Lỗi tải QR MB Bank:', qrError)
-        snackbarMessage.value = `Đơn #${orderId} đã tạo nhưng chưa tải được QR. Vui lòng bấm đặt hàng lại hoặc liên hệ admin.`
-        snackbarColor.value = 'warning'
-        showSnackbar.value = true
+      } catch {
+        notify(`Đơn #${orderId} đã tạo nhưng chưa tải được QR. Liên hệ admin.`, 'warning')
         return
       }
     }
-
-    snackbarMessage.value = `Đặt hàng thành công. Mã đơn #${orderId || ''}`.trim()
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
-
-    setTimeout(() => {
-      router.push({ name: 'PurchaseHistory' })
-    }, 600)
+    notify(`Đặt hàng thành công. Mã đơn #${orderId || ''}`.trim())
+    setTimeout(() => router.push({ name: 'PurchaseHistory' }), 600)
   } catch (error) {
-    console.error('Lỗi đặt hàng:', error)
-    snackbarMessage.value = error?.response?.data?.message || 'Thanh toán thất bại. Vui lòng thử lại'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
+    notify(error?.response?.data?.message || 'Thanh toán thất bại. Vui lòng thử lại', 'error')
   } finally {
     isCheckingOut.value = false
   }
 }
 
-const goBackCart = async () => {
-  await cleanupUnpaidQuickBuyItem()
-  router.push({ name: 'Cart' })
-}
-
-const goToPurchaseHistory = () => {
-  showMBBankDialog.value = false
-  router.push({ name: 'PurchaseHistory' })
-}
+// ── Dialog Actions ──
+const goToPurchaseHistory = () => { showMBBankDialog.value = false; router.push({ name: 'PurchaseHistory' }) }
 
 const closeOnlinePaymentDialog = async () => {
-  if (!pendingOnlineOrderId.value || isClosingOnlineDialog.value) {
-    showMBBankDialog.value = false
-    return
-  }
-
   const accountId = Number.parseInt(userStore.accountId, 10)
-  if (!Number.isFinite(accountId) || accountId <= 0) {
-    showMBBankDialog.value = false
-    return
-  }
-
+  if (!pendingOnlineOrderId.value || !Number.isFinite(accountId) || accountId <= 0) { showMBBankDialog.value = false; return }
   isClosingOnlineDialog.value = true
   try {
     await paymentApi.cancelOrderByUser(accountId, pendingOnlineOrderId.value, userStore.token)
@@ -1650,36 +1081,23 @@ const closeOnlinePaymentDialog = async () => {
     showMBBankDialog.value = false
     router.push({ name: 'Cart' })
   } catch (error) {
-    console.error('Lỗi hủy đơn online khi đóng popup:', error)
-    snackbarMessage.value = error?.response?.data?.message || 'Không thể đóng thanh toán online lúc này. Vui lòng thử lại.'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
+    notify(error?.response?.data?.message || 'Không thể đóng thanh toán online lúc này', 'error')
   } finally {
     isClosingOnlineDialog.value = false
   }
 }
 
 const confirmOnlineTransfer = async () => {
-  if (!pendingOnlineOrderId.value || isConfirmingTransfer.value) {
-    goToPurchaseHistory()
-    return
-  }
-
-  const confirmedOrderId = pendingOnlineOrderId.value
+  if (!pendingOnlineOrderId.value || isConfirmingTransfer.value) { goToPurchaseHistory(); return }
   isConfirmingTransfer.value = true
   try {
-    markOnlineOrderConfirmed(confirmedOrderId)
-    snackbarMessage.value = `Đơn #${confirmedOrderId} đang chờ admin xác nhận thanh toán`
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
+    markOnlineOrderConfirmed(pendingOnlineOrderId.value)
+    notify(`Đơn #${pendingOnlineOrderId.value} đang chờ admin xác nhận`)
     pendingOnlineOrderId.value = null
     mbBankPaymentInfo.value = null
     goToPurchaseHistory()
   } catch (error) {
-    console.error('Lỗi xác nhận chuyển khoản:', error)
-    snackbarMessage.value = error?.response?.data?.message || 'Chưa thể xác nhận chuyển khoản, vui lòng thử lại'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
+    notify(error?.response?.data?.message || 'Chưa thể xác nhận chuyển khoản, vui lòng thử lại', 'error')
   } finally {
     isConfirmingTransfer.value = false
   }
@@ -1688,427 +1106,574 @@ const confirmOnlineTransfer = async () => {
 const copyToClipboard = async (value, label) => {
   try {
     await navigator.clipboard.writeText(String(value || ''))
-    snackbarMessage.value = `${label} đã được sao chép`
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
-  } catch (error) {
-    snackbarMessage.value = `Không thể sao chép ${label.toLowerCase()}`
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-  }
-}
-
-const getOnlineConfirmedOrderIds = () => {
-  try {
-    const raw = localStorage.getItem(ONLINE_CONFIRMED_ORDERS_KEY)
-    const parsed = JSON.parse(raw || '[]')
-    return Array.isArray(parsed) ? parsed.map((x) => Number.parseInt(x, 10)).filter(Number.isFinite) : []
+    notify(`${label} đã được sao chép`)
   } catch {
-    return []
+    notify(`Không thể sao chép ${label.toLowerCase()}`, 'warning')
   }
 }
 
-const saveOnlineConfirmedOrderIds = (ids) => {
-  localStorage.setItem(ONLINE_CONFIRMED_ORDERS_KEY, JSON.stringify(ids))
-}
-
-const getHiddenCancelledOnlineOrderIds = () => {
+// ── Local Storage Helpers ──
+const getIds = (key) => {
   try {
-    const raw = localStorage.getItem(HIDDEN_CANCELLED_ONLINE_ORDERS_KEY)
-    const parsed = JSON.parse(raw || '[]')
+    const parsed = JSON.parse(localStorage.getItem(key) || '[]')
     return Array.isArray(parsed) ? parsed.map((x) => Number.parseInt(x, 10)).filter(Number.isFinite) : []
-  } catch {
-    return []
-  }
+  } catch { return [] }
+}
+const saveIds = (key, ids) => localStorage.setItem(key, JSON.stringify(ids))
+const markOnlineOrderConfirmed = (id) => {
+  const n = Number.parseInt(id, 10)
+  if (!Number.isFinite(n)) return
+  const ids = getIds(ONLINE_CONFIRMED_ORDERS_KEY)
+  if (!ids.includes(n)) saveIds(ONLINE_CONFIRMED_ORDERS_KEY, [...ids, n])
+}
+const removeOnlineConfirmedOrderId = (id) => {
+  const n = Number.parseInt(id, 10)
+  if (!Number.isFinite(n)) return
+  saveIds(ONLINE_CONFIRMED_ORDERS_KEY, getIds(ONLINE_CONFIRMED_ORDERS_KEY).filter((x) => x !== n))
+}
+const markCancelledOnlineOrderHidden = (id) => {
+  const n = Number.parseInt(id, 10)
+  if (!Number.isFinite(n)) return
+  const ids = getIds(HIDDEN_CANCELLED_ONLINE_ORDERS_KEY)
+  if (!ids.includes(n)) saveIds(HIDDEN_CANCELLED_ONLINE_ORDERS_KEY, [...ids, n])
 }
 
-const saveHiddenCancelledOnlineOrderIds = (ids) => {
-  localStorage.setItem(HIDDEN_CANCELLED_ONLINE_ORDERS_KEY, JSON.stringify(ids))
-}
-
-const markOnlineOrderConfirmed = (orderId) => {
-  const numericOrderId = Number.parseInt(orderId, 10)
-  if (!Number.isFinite(numericOrderId)) return
-  const ids = getOnlineConfirmedOrderIds()
-  if (!ids.includes(numericOrderId)) {
-    ids.push(numericOrderId)
-    saveOnlineConfirmedOrderIds(ids)
-  }
-}
-
-const removeOnlineConfirmedOrderId = (orderId) => {
-  const numericOrderId = Number.parseInt(orderId, 10)
-  if (!Number.isFinite(numericOrderId)) return
-  const ids = getOnlineConfirmedOrderIds().filter((id) => id !== numericOrderId)
-  saveOnlineConfirmedOrderIds(ids)
-}
-
-const markCancelledOnlineOrderHidden = (orderId) => {
-  const numericOrderId = Number.parseInt(orderId, 10)
-  if (!Number.isFinite(numericOrderId)) return
-  const ids = getHiddenCancelledOnlineOrderIds()
-  if (!ids.includes(numericOrderId)) {
-    ids.push(numericOrderId)
-    saveHiddenCancelledOnlineOrderIds(ids)
-  }
-}
+const goBackCart = async () => { await cleanupUnpaidQuickBuyItem(); router.push({ name: 'Cart' }) }
 
 onMounted(async () => {
   await Promise.all([loadCheckoutItems(), loadUserClaimedCoupons(), loadAvailableCoupons(), loadGhnProvinces(), loadSavedAddresses()])
   await onSavedAddressChange()
 })
-
-onBeforeUnmount(() => {
-  cleanupUnpaidQuickBuyItem()
-})
+onBeforeUnmount(() => cleanupUnpaidQuickBuyItem())
 </script>
 
 <style scoped>
-/* Checkout Container */
-.checkout-container {
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-  min-height: 100vh;
+/* ── Base ── */
+.checkout-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+  font-family: inherit;
 }
 
-/* Header Icon */
-.header-icon {
-  width: 56px;
-  height: 56px;
+/* ── Header ── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 2.5rem;
+}
+.page-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.35);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.page-title {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.6);
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.15);
+  border-radius: 6px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.btn-back:hover { border-color: rgba(0,0,0,0.3); }
+
+/* ── Steps ── */
+.checkout-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.step {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.3);
+}
+.step.done, .step.active { color: rgba(0,0,0,0.7); }
+.step.active { font-weight: 500; color: #000; }
+.step-sep {
+  display: inline-block;
+  width: 20px;
+  height: 0.5px;
+  background: rgba(0,0,0,0.15);
+  margin: 0 8px;
+}
+@media (max-width: 580px) { .checkout-steps { display: none; } }
+
+/* ── Loading / Empty ── */
+.loading-state { display: flex; justify-content: center; padding: 5rem 0; }
+.empty-state { text-align: center; padding: 3rem; }
+.empty-title { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+
+/* ── Layout ── */
+.checkout-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .checkout-layout { grid-template-columns: 1fr; }
+  .checkout-right { order: -1; }
+}
+
+/* ── Section Card ── */
+.section-card {
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.08);
+}
+.section-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #000;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
+.section-title { font-size: 14px; font-weight: 500; }
+.section-body { padding: 18px; }
 
-.header-icon.checkout-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-/* Card Styles */
-.address-card,
-.payment-card,
-.discount-card {
-  border-radius: 12px !important;
+/* ── Mode Toggle ── */
+.mode-toggle {
+  display: flex;
+  border: 0.5px solid rgba(0,0,0,0.15);
+  border-radius: 7px;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  background: white;
+  margin-bottom: 16px;
 }
-
-.address-card:hover,
-.payment-card:hover,
-.discount-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-/* Checkout Item Card */
-.checkout-item-card {
-  border-radius: 12px !important;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  background: white;
-}
-
-.checkout-item-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.color-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 2px solid #ddd;
-  display: inline-block;
-}
-
-.variant-section {
-  padding: 12px;
-  background: rgba(102, 126, 234, 0.05);
-  border-radius: 8px;
-  border-left: 3px solid #667eea;
-}
-
-/* Section Header */
-.section-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 16px;
-  border-radius: 12px 12px 0 0;
-}
-
-.section-header h3 {
-  color: white;
-  margin: 0;
-}
-
-/* Address Mode Selector */
-.address-mode-selector {
-  padding-bottom: 12px;
-}
-
-.address-mode-selector .v-radio {
-  margin-right: 16px;
-}
-
-/* Save Address Button */
-.save-address-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
-}
-
-.save-address-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3) !important;
-}
-
-/* Payment Method Item */
-.payment-method-item {
-  transition: all 0.3s ease;
-  padding: 12px;
-  border-radius: 8px;
+.toggle-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  border: none;
+  background: transparent;
   cursor: pointer;
+  color: rgba(0,0,0,0.5);
+  transition: all 0.15s;
+}
+.toggle-btn.active { background: #000; color: #fff; font-weight: 500; }
+
+/* ── Fields ── */
+.field-grid { display: grid; gap: 10px; margin-bottom: 10px; }
+.field-grid.two { grid-template-columns: 1fr 1fr; }
+.field-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 560px) {
+  .field-grid.two, .field-grid.three { grid-template-columns: 1fr; }
+}
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.field:last-child { margin-bottom: 0; }
+.field-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.4);
+  font-weight: 500;
+}
+.field-input,
+.field-select {
+  padding: 9px 11px;
+  border: 0.5px solid rgba(0,0,0,0.2);
+  border-radius: 7px;
+  font-size: 13px;
+  background: #fff;
+  color: #000;
+  outline: none;
+  transition: border-color 0.15s;
+  appearance: none;
+  font-family: inherit;
+}
+.field-input:focus, .field-select:focus { border-color: #000; }
+.field-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 28px;
 }
 
-.payment-method-item:hover {
-  background: rgba(102, 126, 234, 0.05);
+/* ── Address Preview ── */
+.address-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.03);
+  border-left: 2px solid rgba(0,0,0,0.12);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: rgba(0,0,0,0.6);
+  line-height: 1.5;
 }
 
-/* Summary Card */
-.summary-card {
-  position: sticky;
-  top: 24px;
-  border-radius: 16px !important;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  background: white;
+/* ── Save Address Btn ── */
+.btn-save-address {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 9px 16px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
 }
+.btn-save-address:hover:not(:disabled) { opacity: 0.8; }
+.btn-save-address:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* Discount Section Label */
-.discount-section-label {
+/* ── Payment Options ── */
+.pay-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 0.5px solid rgba(0,0,0,0.12);
+  border-radius: 9px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: border-color 0.15s;
+}
+.pay-option:hover { border-color: rgba(0,0,0,0.25); }
+.pay-option.selected { border-color: #000; border-width: 1px; }
+.radio-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.radio-circle.on { border-color: #000; }
+.radio-dot { width: 9px; height: 9px; border-radius: 50%; background: #000; }
+.pay-info { flex: 1; }
+.pay-name { font-size: 13px; font-weight: 500; }
+.pay-desc { font-size: 11px; color: rgba(0,0,0,0.45); margin-top: 2px; }
+
+/* ── Coupon Section ── */
+.coupon-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.coupon-applied-inner {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid rgba(102, 126, 234, 0.15);
-  color: #1976d2;
-  font-size: 14px;
+  font-size: 13px;
 }
-
-.discount-section-label .v-chip {
-  margin-left: auto;
-}
-
-/* Applied Discount Card */
-.discount-applied-card {
-  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
-  border: 2px solid #28a745;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
-}
-
-.discount-applied-card .pa-4 {
-  padding: 16px !important;
-}
-
-/* Modern Coupon Cards Grid */
-.coupons-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.coupon-card-modern {
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 16px;
+.coupon-code-text { font-weight: 500; }
+.coupon-save { font-size: 12px; color: rgba(0,0,0,0.5); }
+.coupon-remove {
+  background: none;
+  border: none;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  padding: 4px;
+  color: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+.coupon-remove:hover { color: #000; }
+.coupon-section-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(0,0,0,0.5);
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
 }
 
-.coupon-card-modern::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+/* ── Coupon Grid ── */
+.coupon-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
 }
-
-.coupon-card-modern:hover {
-  border-color: #1976d2;
-  background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
-  box-shadow: 0 6px 20px rgba(25, 118, 210, 0.2);
-  transform: translateY(-4px);
-}
-
-.coupon-card-modern:hover::before {
-  opacity: 1;
-}
-
-.coupon-card-modern.card-selected {
-  border-color: #1976d2;
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-  box-shadow: 0 8px 24px rgba(25, 118, 210, 0.3);
-  color: white;
-}
-
-.coupon-card-inner {
+.coupon-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  position: relative;
-  z-index: 1;
+  padding: 12px 14px;
+  border: 0.5px solid rgba(0,0,0,0.12);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.15s;
 }
-
+.coupon-card:hover { border-color: rgba(0,0,0,0.3); }
+.coupon-card.selected { border-color: #000; border-width: 1px; background: rgba(0,0,0,0.02); }
 .coupon-badge {
-  flex-shrink: 0;
-  width: 70px;
-  height: 70px;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-  border-radius: 10px;
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  background: #000;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-weight: bold;
-  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
-}
-
-.coupon-card-modern.card-selected .coupon-badge {
-  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
-  color: #1976d2;
-  font-size: 18px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.badge-value {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
   text-align: center;
   line-height: 1.2;
 }
+.coupon-info { flex: 1; min-width: 0; }
+.coupon-code-label { font-size: 13px; font-weight: 500; }
+.coupon-desc { font-size: 11px; color: rgba(0,0,0,0.5); margin-top: 2px; }
+.coupon-min { font-size: 11px; color: rgba(0,0,0,0.35); margin-top: 1px; }
+.coupon-check { flex-shrink: 0; opacity: 0.5; }
+.coupon-card.selected .coupon-check { opacity: 1; }
 
-.coupon-info {
-  flex-grow: 1;
-  min-width: 0;
-}
-
-.coupon-code {
-  font-weight: 700;
-  font-size: 16px;
-  color: inherit;
-  margin-bottom: 4px;
-  word-break: break-word;
-}
-
-.coupon-card-modern.card-selected .coupon-code {
-  color: white;
-}
-
-.coupon-desc {
-  color: rgba(0, 0, 0, 0.6);
-  margin-bottom: 4px;
-}
-
-.coupon-card-modern.card-selected .coupon-desc {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.coupon-min {
-  color: rgba(0, 0, 0, 0.5);
-}
-
-.coupon-card-modern.card-selected .coupon-min {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.coupon-check {
-  flex-shrink: 0;
-  transition: all 0.3s ease;
-}
-
-.coupon-card-modern:hover .coupon-check {
-  color: #1976d2 !important;
-}
-
-.rounded-lg {
-  border-radius: 8px;
-}
-
-/* Discount Info Alert */
-.discount-info-alert {
-  border-radius: 12px !important;
-  border: 1px solid rgba(25, 118, 210, 0.2) !important;
-  background: rgba(25, 118, 210, 0.05) !important;
-  color: #1976d2;
-}
-
-.payment-popup-layout {
-  align-items: flex-start;
-}
-
-.qr-preview {
-  width: min(100%, 320px);
-  aspect-ratio: 1 / 1;
-  padding: 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.qr-image {
+.btn-apply-coupon {
   width: 100%;
-  height: 100%;
-}
-
-.h-100 {
-  height: 100%;
-}
-
-.gap-3 {
-  gap: 12px;
-}
-
-.ga-3 {
-  gap: 12px;
-}
-
-.ga-2 {
-  gap: 8px;
-}
-
-/* Variant Information Section Styles */
-.variant-info-section {
-  padding: 12px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-  border-radius: 8px;
-  border-left: 4px solid #1976d2;
-}
-
-.variant-info-section .color-dot {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid #999;
-  vertical-align: middle;
-}
-
-.variant-info-section .v-chip {
-  height: 24px;
+  padding: 9px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
   font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-bottom: 4px;
 }
+.btn-apply-coupon:hover:not(:disabled) { opacity: 0.8; }
+.btn-apply-coupon:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.coupon-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.coupon-input {
+  flex: 1;
+  padding: 9px 11px;
+  border: 0.5px solid rgba(0,0,0,0.2);
+  border-radius: 7px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+  background: #fff;
+  color: #000;
+}
+.coupon-input:focus { border-color: #000; }
+.btn-coupon-apply {
+  padding: 9px 16px;
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.2);
+  border-radius: 7px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #000;
+  white-space: nowrap;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+.btn-coupon-apply:hover:not(:disabled) { background: rgba(0,0,0,0.05); }
+.btn-coupon-apply:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Right: Summary ── */
+.checkout-right { position: sticky; top: 1.5rem; }
+.summary-card {
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 12px;
+  padding: 22px;
+}
+.summary-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.35);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.summary-heading { font-size: 15px; font-weight: 500; margin-bottom: 16px; }
+
+/* ── Order Items ── */
+.order-items { margin-bottom: 4px; }
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 0.5px solid rgba(0,0,0,0.07);
+}
+.order-item:last-child { border-bottom: none; }
+.order-item-info { flex: 1; min-width: 0; }
+.order-item-name { font-size: 12px; font-weight: 500; line-height: 1.4; margin-bottom: 2px; }
+.order-item-meta { font-size: 11px; color: rgba(0,0,0,0.45); }
+.order-item-price { text-align: right; flex-shrink: 0; }
+.order-item-amount { font-size: 13px; font-weight: 500; }
+.order-item-qty { font-size: 11px; color: rgba(0,0,0,0.4); margin-top: 2px; }
+
+.summary-divider { border: none; border-top: 0.5px solid rgba(0,0,0,0.08); margin: 14px 0; }
+
+.summary-rows { display: flex; flex-direction: column; gap: 2px; }
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(0,0,0,0.5);
+  padding: 5px 0;
+}
+.sum-row.discount { color: #2d7a3a; }
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.total-amount { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+
+.btn-checkout {
+  width: 100%;
+  padding: 13px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s;
+  margin-bottom: 4px;
+}
+.btn-checkout:hover:not(:disabled) { opacity: 0.8; }
+.btn-checkout:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.security-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.35);
+  margin-top: 12px;
+}
+
+/* ── Buttons (shared) ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.8; }
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background: transparent;
+  color: #000;
+  border: 0.5px solid rgba(0,0,0,0.25);
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-outline:hover { background: rgba(0,0,0,0.04); }
+
+/* ── Dialog ── */
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+}
+.dialog-body { padding: 20px 24px; }
+.dialog-loading { display: flex; justify-content: center; padding: 48px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; }
+
+/* ── QR Layout ── */
+.qr-layout { display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
+@media (max-width: 580px) { .qr-layout { grid-template-columns: 1fr; } }
+.qr-box {
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+}
+.qr-info { display: flex; flex-direction: column; gap: 14px; }
+.info-row { display: flex; flex-direction: column; gap: 3px; }
+.info-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(0,0,0,0.35); }
+.info-value { font-size: 13px; }
+.copy-btn {
+  background: none;
+  border: 0.5px solid rgba(0,0,0,0.15);
+  border-radius: 5px;
+  padding: 3px 7px;
+  cursor: pointer;
+  color: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+.copy-btn:hover { border-color: rgba(0,0,0,0.35); color: #000; }
 </style>

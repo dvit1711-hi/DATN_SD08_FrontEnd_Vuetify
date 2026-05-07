@@ -1,246 +1,211 @@
 ﻿<template>
-  <v-container class="cart-container py-8" fluid style="max-width: 1400px">
-    <!-- Header Section -->
-    <div class="mb-8">
-      <div class="d-flex align-center gap-3 mb-3">
-        <div class="header-icon">
-          <v-icon icon="mdi-cart"></v-icon>
-        </div>
-        <div>
-          <h1 class="text-h4 font-weight-bold mb-1">Giỏ hàng của bạn</h1>
-          <p class="text-body-2 text-grey">Kiểm tra lại sản phẩm, chọn những gì bạn muốn mua</p>
-        </div>
+  <div class="cart-page">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div>
+        <p class="page-eyebrow">Shopping Bag</p>
+        <h1 class="page-title">Giỏ hàng của bạn</h1>
       </div>
     </div>
 
-    <v-alert
-      v-if="!isLoggedIn"
-      type="warning"
-      variant="tonal"
-      class="mb-6"
-      title="Bạn chưa đăng nhập"
-      text="Vui lòng đăng nhập để xem giỏ hàng"
-      closable
-    >
-      <template #append>
-        <v-btn color="warning" variant="flat" @click="goLogin">Đăng nhập</v-btn>
-      </template>
-    </v-alert>
+    <!-- Not Logged In -->
+    <div v-if="!isLoggedIn" class="auth-notice">
+      <i class="notice-icon">⚠</i>
+      <div>
+        <p class="notice-title">Bạn chưa đăng nhập</p>
+        <p class="notice-sub">Vui lòng đăng nhập để xem giỏ hàng</p>
+      </div>
+      <button class="btn-outline" @click="goLogin">Đăng nhập</button>
+    </div>
 
     <template v-else>
-      <v-row v-if="cartItems.length > 0" class="ga-6">
-        <!-- Items Section -->
-        <v-col cols="12" lg="8">
-          <!-- Select All Card -->
-          <v-card class="select-all-card mb-6" elevation="0" border>
-            <v-card-text class="pa-4 d-flex align-center justify-space-between">
-              <div class="d-flex align-center ga-3">
-                <v-checkbox
-                  :model-value="isAllSelected"
-                  label="Chọn tất cả sản phẩm"
-                  hide-details
-                  density="compact"
-                  @update:model-value="toggleSelectAll"
-                />
-              </div>
-              <span class="text-caption text-grey font-weight-medium">
-                {{ selectedItemIds.length }}/{{ cartItems.length }} sản phẩm được chọn
-              </span>
-            </v-card-text>
-          </v-card>
+      <!-- Loading -->
+      <div v-if="isLoading" class="loading-state">
+        <v-progress-circular indeterminate color="black" size="36" width="2" />
+      </div>
 
-          <!-- Cart Items -->
-          <transition-group name="list" tag="div">
-            <v-card
+      <!-- Empty Cart -->
+      <div v-else-if="cartItems.length === 0" class="empty-state">
+        <div class="empty-icon">
+          <v-icon icon="mdi-shopping-outline" size="40" />
+        </div>
+        <p class="empty-title">Giỏ hàng trống</p>
+        <p class="empty-sub">Thêm sản phẩm vào giỏ để tiếp tục mua sắm</p>
+        <button class="btn-primary" @click="goProducts">Khám phá sản phẩm</button>
+      </div>
+
+      <!-- Cart Content -->
+      <div v-else class="cart-layout">
+        <!-- Left: Items -->
+        <div class="cart-left">
+          <!-- Select All Bar -->
+          <div class="select-bar">
+            <label class="select-all-label">
+              <div
+                class="custom-checkbox"
+                :class="{ checked: isAllSelected, partial: selectedItemIds.length > 0 && !isAllSelected }"
+                @click="toggleSelectAll(!isAllSelected)"
+              >
+                <v-icon v-if="isAllSelected" icon="mdi-check" size="12" />
+                <v-icon v-else-if="selectedItemIds.length > 0" icon="mdi-minus" size="12" />
+              </div>
+              <span>Chọn tất cả</span>
+            </label>
+            <span class="select-count">{{ selectedItemIds.length }}/{{ cartItems.length }} sản phẩm</span>
+          </div>
+
+          <!-- Items List -->
+          <transition-group name="item-list" tag="div">
+            <div
               v-for="item in cartItems"
               :key="item.cartItemID"
-              class="cart-item-card mb-4"
-              elevation="0"
-              border
+              class="cart-item"
+              :class="{ 'is-selected': selectedItemIds.includes(item.cartItemID) }"
             >
-              <div class="product-header" :style="{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }">
-                <v-checkbox
-                  :model-value="selectedItemIds.includes(item.cartItemID)"
-                  color="white"
-                  hide-details
-                  density="compact"
-                  @update:model-value="toggleItemSelection(item.cartItemID, $event)"
+              <!-- Checkbox -->
+              <div
+                class="custom-checkbox"
+                :class="{ checked: selectedItemIds.includes(item.cartItemID) }"
+                @click="toggleItemSelection(item.cartItemID, !selectedItemIds.includes(item.cartItemID))"
+              >
+                <v-icon v-if="selectedItemIds.includes(item.cartItemID)" icon="mdi-check" size="12" />
+              </div>
+
+              <!-- Product Image -->
+              <div class="item-image">
+                <v-img
+                  :src="item.mainImage || fallbackImage"
+                  width="96"
+                  height="96"
+                  cover
+                  class="product-img"
                 />
               </div>
 
-              <v-card-text class="pa-4">
-                <div class="d-flex gap-4 flex-wrap">
-                  <!-- Product Image -->
-                  <div class="product-image">
-                    <v-img
-                      :src="item.mainImage || fallbackImage"
-                      width="120"
-                      height="120"
-                      class="rounded-lg"
-                      cover
-                    ></v-img>
-                  </div>
-
-                  <!-- Product Info -->
-                  <div class="flex-grow-1">
-                    <div class="mb-2">
-                      <div class="text-h6 font-weight-bold mb-1">{{ item.productName }}</div>
-                      <div class="text-caption text-grey">Mã: #{{ item.productColorID }}</div>
-                    </div>
-
-                    <!-- Variant Info -->
-                    <div class="variant-section mb-3">
-                      <div class="d-flex align-center gap-2 mb-2">
-                        <span class="text-caption text-grey" style="min-width: 60px;">🎨 Màu:</span>
-                        <div v-if="item.colorCode" class="color-swatch" :style="{ backgroundColor: item.colorCode }"></div>
-                        <span class="text-caption font-weight-medium">{{ item.colorName }}</span>
-                      </div>
-                      <div class="d-flex align-center gap-2">
-                        <span class="text-caption text-grey" style="min-width: 60px;">📏 Size:</span>
-                        <v-chip size="small" variant="outlined" color="primary">{{ item.sizeName || '-' }}</v-chip>
-                      </div>
-                    </div>
-
-                    <!-- Price -->
-                    <div class="d-flex align-center gap-4">
-                      <div>
-                        <div class="text-caption text-grey">Đơn giá</div>
-                        <div class="text-subtitle-1 font-weight-bold">{{ formatPrice(item.price) }}đ</div>
-                      </div>
-                      <v-divider vertical />
-                      <div>
-                        <div class="text-caption text-grey">Thành tiền</div>
-                        <div class="text-h6 font-weight-bold text-primary">{{ formatPrice(item.price * item.quantity) }}đ</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Quantity & Actions -->
-                  <div class="d-flex flex-column gap-3 align-end">
-                    <div class="quantity-control">
-                      <div class="text-caption text-grey mb-2">Số lượng</div>
-                      <div class="d-flex align-center gap-1">
-                        <v-btn
-                          icon="mdi-minus"
-                          size="small"
-                          variant="outlined"
-                          density="compact"
-                          :disabled="item.quantity <= 1 || item.isUpdating"
-                          @click="changeQuantity(item, item.quantity - 1)"
-                        />
-                        <v-text-field
-                          :model-value="item.quantity"
-                          type="number"
-                          min="1"
-                          density="compact"
-                          variant="outlined"
-                          hide-details
-                          style="max-width: 60px; text-align: center"
-                          @update:model-value="onQuantityInput(item, $event)"
-                        />
-                        <v-btn
-                          icon="mdi-plus"
-                          size="small"
-                          variant="outlined"
-                          density="compact"
-                          :disabled="item.isUpdating || item.quantity >= (item.stockQuantity ?? 0)"
-                          @click="changeQuantity(item, item.quantity + 1)"
-                        />
-                      </div>
-                    </div>
-
-                    <v-btn
-                      size="small"
-                      variant="text"
-                      color="error"
-                      icon="mdi-trash-can-outline"
-                      :loading="item.isRemoving"
-                      @click="removeItem(item)"
-                    >
-                      Xóa
-                    </v-btn>
-                  </div>
+              <!-- Product Info -->
+              <div class="item-info">
+                <p class="item-brand">MLB</p>
+                <p class="item-name">{{ item.productName }}</p>
+                <div class="item-meta">
+                  <span class="meta-tag">
+                    <span
+                      v-if="item.colorCode"
+                      class="color-dot"
+                      :style="{ background: item.colorCode }"
+                    />
+                    {{ item.colorName }}
+                  </span>
+                  <span class="meta-tag">{{ item.sizeName || 'Free size' }}</span>
                 </div>
-              </v-card-text>
-            </v-card>
-          </transition-group>
-        </v-col>
+              </div>
 
-        <!-- Summary Section -->
-        <v-col cols="12" lg="4">
-          <v-card class="summary-card" elevation="0" border style="position: sticky; top: 20px;">
-            <div class="summary-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-              <v-icon icon="mdi-receipt" size="28" color="white" class="mb-2"></v-icon>
-              <h3 class="text-h6 font-weight-bold text-white mb-0">Tóm tắt đơn hàng</h3>
+              <!-- Price + Actions -->
+              <div class="item-actions">
+                <div class="price-block">
+                  <p class="price-label">Thành tiền</p>
+                  <p class="price-total">{{ formatPrice(item.price * item.quantity) }}đ</p>
+                  <p class="price-unit">{{ formatPrice(item.price) }}đ / sản phẩm</p>
+                </div>
+
+                <!-- Quantity Control -->
+                <div class="qty-control">
+                  <button
+                    class="qty-btn"
+                    :disabled="item.quantity <= 1 || item.isUpdating"
+                    @click="changeQuantity(item, item.quantity - 1)"
+                  >
+                    <v-icon icon="mdi-minus" size="14" />
+                  </button>
+                  <input
+                    :value="item.quantity"
+                    type="number"
+                    class="qty-input"
+                    min="1"
+                    @change="onQuantityInput(item, $event.target.value)"
+                  />
+                  <button
+                    class="qty-btn"
+                    :disabled="item.isUpdating || item.quantity >= (item.stockQuantity ?? 0)"
+                    @click="changeQuantity(item, item.quantity + 1)"
+                  >
+                    <v-icon icon="mdi-plus" size="14" />
+                  </button>
+                </div>
+
+                <!-- Delete -->
+                <button
+                  class="delete-btn"
+                  :disabled="item.isRemoving"
+                  @click="removeItem(item)"
+                >
+                  <v-progress-circular v-if="item.isRemoving" indeterminate size="14" width="2" color="black" />
+                  <v-icon v-else icon="mdi-trash-can-outline" size="16" />
+                  <span>Xóa</span>
+                </button>
+              </div>
+            </div>
+          </transition-group>
+        </div>
+
+        <!-- Right: Summary -->
+        <div class="cart-right">
+          <div class="summary-card">
+            <p class="summary-eyebrow">Order Summary</p>
+            <h2 class="summary-title">Tóm tắt đơn hàng</h2>
+
+            <div class="summary-rows">
+              <div class="summary-row">
+                <span>Sản phẩm đã chọn</span>
+                <span>{{ selectedItemIds.length }}</span>
+              </div>
+              <div class="summary-row">
+                <span>Tổng số lượng</span>
+                <span>{{ selectedTotalQuantity }}</span>
+              </div>
+              <div class="summary-row">
+                <span>Tạm tính</span>
+                <span>{{ formatPrice(selectedTotalPrice) }}đ</span>
+              </div>
             </div>
 
-            <v-card-text class="pa-6">
-              <!-- Summary Items -->
-              <div class="mb-4">
-                <div class="summary-row mb-3">
-                  <span class="text-body-2 text-grey">Số lượng sản phẩm</span>
-                  <span class="font-weight-bold">{{ selectedTotalQuantity }}</span>
-                </div>
-                <div class="summary-row mb-4">
-                  <span class="text-body-2 text-grey">Tạm tính</span>
-                  <span class="font-weight-bold">{{ formatPrice(selectedTotalPrice) }}đ</span>
-                </div>
-                <v-divider />
-              </div>
+            <div class="summary-divider" />
 
-              <!-- Total -->
-              <div class="total-section mb-6">
-                <div class="d-flex justify-space-between align-center">
-                  <span class="text-body-1 font-weight-bold">Tổng cộng</span>
-                  <span class="text-h5 font-weight-bold text-primary">{{ formatPrice(selectedTotalPrice) }}đ</span>
-                </div>
-              </div>
+            <div class="summary-total">
+              <span>Tổng cộng</span>
+              <span class="total-amount">{{ formatPrice(selectedTotalPrice) }}đ</span>
+            </div>
 
-              <!-- Action Button -->
-              <v-btn
-                block
-                color="primary"
-                size="large"
-                class="checkout-btn mb-3"
-                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;"
-                :disabled="selectedItemIds.length === 0"
-                @click="goCheckout"
-              >
-                <v-icon icon="mdi-credit-card" class="mr-2"></v-icon>
-                Tiếp tục thanh toán
-              </v-btn>
+            <button
+              class="btn-primary full"
+              :disabled="selectedItemIds.length === 0"
+              @click="goCheckout"
+            >
+              Tiến hành thanh toán
+            </button>
+            <button class="btn-outline full" @click="goProducts">
+              Tiếp tục mua sắm
+            </button>
 
-              <v-btn
-                block
-                variant="outlined"
-                color="primary"
-                size="small"
-                @click="goProducts"
-              >
-                Tiếp tục mua sắm
-              </v-btn>
-
-              <!-- Info Text -->
-              <div class="mt-6 pt-4 text-center border-t">
-                <div class="text-caption text-grey">
-                  <v-icon icon="mdi-shield-check" size="16" class="mr-1"></v-icon>
-                  Thanh toán an toàn & bảo mật
-                </div>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <div v-if="isLoading" class="d-flex justify-center py-16">
-        <v-progress-circular indeterminate color="primary" size="48" />
+            <div class="security-note">
+              <v-icon icon="mdi-shield-check-outline" size="14" />
+              Thanh toán an toàn & bảo mật
+            </div>
+          </div>
+        </div>
       </div>
     </template>
 
-    <v-snackbar v-model="showSnackbar" :color="snackbarColor" timeout="3000" top>
+    <!-- Snackbar -->
+    <v-snackbar
+      v-model="showSnackbar"
+      :color="snackbarColor"
+      timeout="3000"
+      location="top"
+      rounded="lg"
+    >
       {{ snackbarMessage }}
     </v-snackbar>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -261,15 +226,31 @@ const snackbarColor = ref('success')
 const fallbackImage = 'https://via.placeholder.com/96x96?text=No+Image'
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+
 const selectedItems = computed(() => {
-  const selectedSet = new Set(selectedItemIds.value)
-  return cartItems.value.filter((item) => selectedSet.has(item.cartItemID))
+  const set = new Set(selectedItemIds.value)
+  return cartItems.value.filter((item) => set.has(item.cartItemID))
 })
-const selectedTotalQuantity = computed(() => selectedItems.value.reduce((sum, item) => sum + item.quantity, 0))
-const selectedTotalPrice = computed(() => selectedItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
-const isAllSelected = computed(() => cartItems.value.length > 0 && selectedItemIds.value.length === cartItems.value.length)
+
+const selectedTotalQuantity = computed(() =>
+  selectedItems.value.reduce((sum, item) => sum + item.quantity, 0),
+)
+
+const selectedTotalPrice = computed(() =>
+  selectedItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0),
+)
+
+const isAllSelected = computed(
+  () => cartItems.value.length > 0 && selectedItemIds.value.length === cartItems.value.length,
+)
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN').format(price || 0)
+
+const notify = (message, color = 'success') => {
+  snackbarMessage.value = message
+  snackbarColor.value = color
+  showSnackbar.value = true
+}
 
 const loadCart = async () => {
   if (!isLoggedIn.value) {
@@ -277,45 +258,34 @@ const loadCart = async () => {
     selectedItemIds.value = []
     return
   }
-
   isLoading.value = true
   try {
     let currentCartId = Number.parseInt(userStore.cartId, 10)
     if (!Number.isFinite(currentCartId) || currentCartId <= 0) {
       currentCartId = await userStore.getOrCreateCart()
     }
-
     const itemRes = await cartApi.getByCart(currentCartId)
-
-    const normalized = (itemRes.data || [])
-      .map((item) => {
-        const colorId = Number.parseInt(item.productColorID ?? item.productID, 10)
-        return {
-          cartItemID: item.cartItemID,
-          cartID: item.cartID,
-          productColorID: colorId,
-          sizeID: Number.parseInt(item.sizeID, 10) || null,
-          sizeName: item.sizeName || '',
-          quantity: Number.parseInt(item.quantity, 10) || 1,
-          productName: item.productName || '',
-          price: Number(item.price) || 0,
-          colorName: item.colorName || '',
-          colorCode: item.colorCode || '',
-          mainImage: item.mainImage || '',
-          stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
-          isUpdating: false,
-          isRemoving: false,
-        }
-      })
-
+    const normalized = (itemRes.data || []).map((item) => ({
+      cartItemID: item.cartItemID,
+      cartID: item.cartID,
+      productColorID: Number.parseInt(item.productColorID ?? item.productID, 10),
+      sizeID: Number.parseInt(item.sizeID, 10) || null,
+      sizeName: item.sizeName || '',
+      quantity: Number.parseInt(item.quantity, 10) || 1,
+      productName: item.productName || '',
+      price: Number(item.price) || 0,
+      colorName: item.colorName || '',
+      colorCode: item.colorCode || '',
+      mainImage: item.mainImage || '',
+      stockQuantity: Number.parseInt(item.stockQuantity, 10) || 0,
+      isUpdating: false,
+      isRemoving: false,
+    }))
     cartItems.value = normalized
     const validIds = new Set(normalized.map((x) => x.cartItemID))
     selectedItemIds.value = selectedItemIds.value.filter((id) => validIds.has(id))
-  } catch (error) {
-    console.error('Lỗi tải giỏ hàng:', error)
-    snackbarMessage.value = 'Không thể tải giỏ hàng'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
+  } catch {
+    notify('Không thể tải giỏ hàng', 'error')
   } finally {
     isLoading.value = false
   }
@@ -324,41 +294,20 @@ const loadCart = async () => {
 const changeQuantity = async (item, nextQuantity) => {
   const quantity = Math.max(1, Number.parseInt(nextQuantity, 10) || 1)
   const maxStock = Number.parseInt(item.stockQuantity, 10) || 0
-
-  if (maxStock <= 0) {
-    snackbarMessage.value = 'Sản phẩm đã hết hàng'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
-
-  if (quantity > maxStock) {
-    snackbarMessage.value = `Số lượng vượt tồn kho. Tối đa ${maxStock} sản phẩm`
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
-
+  if (maxStock <= 0) return notify('Sản phẩm đã hết hàng', 'warning')
+  if (quantity > maxStock) return notify(`Tối đa ${maxStock} sản phẩm`, 'warning')
   if (quantity === item.quantity) return
-
   item.isUpdating = true
   try {
     await cartApi.update(
       item.cartItemID,
-      {
-        cartID: item.cartID,
-        productColorID: item.productColorID,
-        quantity,
-      },
+      { cartID: item.cartID, productColorID: item.productColorID, quantity },
       userStore.token,
     )
     item.quantity = quantity
     window.dispatchEvent(new Event('cart-changed'))
-  } catch (error) {
-    console.error('Lỗi cập nhật số lượng:', error)
-    snackbarMessage.value = 'Không thể cập nhật số lượng'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
+  } catch {
+    notify('Không thể cập nhật số lượng', 'error')
   } finally {
     item.isUpdating = false
   }
@@ -377,14 +326,9 @@ const removeItem = async (item) => {
     cartItems.value = cartItems.value.filter((x) => x.cartItemID !== item.cartItemID)
     selectedItemIds.value = selectedItemIds.value.filter((id) => id !== item.cartItemID)
     window.dispatchEvent(new Event('cart-changed'))
-    snackbarMessage.value = 'Đã xóa sản phẩm khỏi giỏ hàng'
-    snackbarColor.value = 'success'
-    showSnackbar.value = true
-  } catch (error) {
-    console.error('Lỗi xóa sản phẩm:', error)
-    snackbarMessage.value = 'Không thể xóa sản phẩm'
-    snackbarColor.value = 'error'
-    showSnackbar.value = true
+    notify('Đã xóa sản phẩm khỏi giỏ hàng')
+  } catch {
+    notify('Không thể xóa sản phẩm', 'error')
   } finally {
     item.isRemoving = false
   }
@@ -392,226 +336,384 @@ const removeItem = async (item) => {
 
 const toggleItemSelection = (cartItemId, checked) => {
   if (checked) {
-    if (!selectedItemIds.value.includes(cartItemId)) {
-      selectedItemIds.value.push(cartItemId)
-    }
-    return
+    if (!selectedItemIds.value.includes(cartItemId)) selectedItemIds.value.push(cartItemId)
+  } else {
+    selectedItemIds.value = selectedItemIds.value.filter((id) => id !== cartItemId)
   }
-  selectedItemIds.value = selectedItemIds.value.filter((id) => id !== cartItemId)
 }
 
 const toggleSelectAll = (checked) => {
-  if (checked) {
-    selectedItemIds.value = cartItems.value.map((item) => item.cartItemID)
-    return
-  }
-  selectedItemIds.value = []
+  selectedItemIds.value = checked ? cartItems.value.map((item) => item.cartItemID) : []
 }
 
 const goCheckout = () => {
-  if (selectedItemIds.value.length === 0) {
-    snackbarMessage.value = 'Vui lòng chọn ít nhất 1 sản phẩm để thanh toán'
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
-
+  if (selectedItemIds.value.length === 0)
+    return notify('Vui lòng chọn ít nhất 1 sản phẩm', 'warning')
   const invalidItem = selectedItems.value.find((item) => {
     const stock = Number.parseInt(item.stockQuantity, 10) || 0
     const qty = Number.parseInt(item.quantity, 10) || 0
     return qty <= 0 || qty > stock
   })
-
-  if (invalidItem) {
-    snackbarMessage.value = `${invalidItem.productName || 'Sản phẩm'} không đủ tồn kho để thanh toán`
-    snackbarColor.value = 'warning'
-    showSnackbar.value = true
-    return
-  }
-
+  if (invalidItem) return notify(`${invalidItem.productName} không đủ tồn kho`, 'warning')
   sessionStorage.removeItem('quickBuyContext')
   sessionStorage.setItem('selectedCartItemIds', JSON.stringify(selectedItemIds.value))
   router.push({ name: 'Checkout' })
 }
 
-const goProducts = () => {
-  router.push({ name: 'ProductList' })
-}
+const goProducts = () => router.push({ name: 'ProductList' })
+const goLogin = () => router.push({ name: 'Login' })
 
-const goLogin = () => {
-  router.push({ name: 'Login' })
-}
-
-onMounted(() => {
-  loadCart()
-})
+onMounted(() => loadCart())
 </script>
 
 <style scoped>
-.summary-card {
-  position: sticky;
-  top: 24px;
+/* ── Base ── */
+.cart-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+  font-family: inherit;
 }
 
-/* Cart Container */
-.cart-container {
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-  min-height: 100vh;
+/* ── Header ── */
+.page-header {
+  margin-bottom: 2.5rem;
+}
+.page-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.page-title {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
-/* Header Styles */
-.header-icon {
-  width: 56px;
-  height: 56px;
+/* ── Auth Notice ── */
+.auth-notice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  background: #fff;
+}
+.notice-icon { font-size: 20px; }
+.notice-title { font-size: 14px; font-weight: 500; }
+.notice-sub { font-size: 12px; color: rgba(0,0,0,0.45); margin-top: 2px; }
+
+/* ── Empty / Loading ── */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 5rem 0;
+}
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  background: #fff;
+}
+.empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-  color: white;
+  margin: 0 auto 16px;
+}
+.empty-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+.empty-sub { font-size: 13px; color: rgba(0,0,0,0.45); margin-bottom: 20px; }
+
+/* ── Layout ── */
+.cart-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .cart-layout { grid-template-columns: 1fr; }
 }
 
-/* Select All Card */
-.select-all-card {
-  border-radius: 12px !important;
-  background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-/* Cart Item Card */
-.cart-item-card {
-  border-radius: 12px !important;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  background: white;
-}
-
-.cart-item-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.product-header {
-  padding: 8px 16px;
+/* ── Select Bar ── */
+.select-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 10px;
+}
+.select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+.select-count {
+  font-size: 11px;
+  color: rgba(0,0,0,0.4);
+  letter-spacing: 0.02em;
 }
 
-.product-image {
+/* ── Custom Checkbox ── */
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  background: #fff;
+}
+.custom-checkbox.checked {
+  background: #000;
+  border-color: #000;
+  color: #fff;
+}
+.custom-checkbox.partial {
+  background: rgba(0,0,0,0.1);
+  border-color: rgba(0,0,0,0.3);
+}
+
+/* ── Cart Item ── */
+.cart-item {
+  display: grid;
+  grid-template-columns: 18px 96px 1fr auto;
+  gap: 14px;
+  align-items: start;
+  padding: 18px 16px;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  background: #fff;
+  margin-bottom: 8px;
+  transition: border-color 0.15s;
+}
+.cart-item:hover { border-color: rgba(0, 0, 0, 0.25); }
+.cart-item.is-selected { border-color: rgba(0, 0, 0, 0.3); }
+@media (max-width: 600px) {
+  .cart-item { grid-template-columns: 18px 72px 1fr; }
+  .item-actions { grid-column: 1 / -1; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+}
+
+/* ── Product Image ── */
+.product-img { border-radius: 8px; }
+
+/* ── Product Info ── */
+.item-info { min-width: 0; padding-top: 2px; }
+.item-brand {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.35);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.item-name {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.item-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.meta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.04);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+.color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.15);
   flex-shrink: 0;
 }
 
-.color-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 2px solid #ddd;
-  display: inline-block;
-}
-
-.variant-section {
-  padding: 12px;
-  background: rgba(102, 126, 234, 0.05);
-  border-radius: 8px;
-  border-left: 3px solid #667eea;
-}
-
-.quantity-control {
-  text-align: right;
-}
-
-/* Summary Card */
-.summary-card {
-  border-radius: 16px !important;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  background: white;
-}
-
-.summary-header {
-  padding: 24px 16px;
+/* ── Item Actions ── */
+.item-actions {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 120px;
+}
+.price-block { text-align: right; }
+.price-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.35);
+  margin-bottom: 2px;
+}
+.price-total { font-size: 16px; font-weight: 500; }
+.price-unit { font-size: 11px; color: rgba(0,0,0,0.4); margin-top: 2px; }
+
+/* ── Qty Control ── */
+.qty-control {
+  display: flex;
+  align-items: center;
+  border: 0.5px solid rgba(0,0,0,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.qty-btn {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
   align-items: center;
   justify-content: center;
+  color: rgba(0,0,0,0.6);
+  transition: background 0.1s;
+}
+.qty-btn:hover:not(:disabled) { background: rgba(0,0,0,0.05); }
+.qty-btn:disabled { opacity: 0.3; cursor: default; }
+.qty-input {
+  width: 36px;
+  height: 30px;
+  text-align: center;
+  border: none;
+  border-left: 0.5px solid rgba(0,0,0,0.1);
+  border-right: 0.5px solid rgba(0,0,0,0.1);
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  outline: none;
 }
 
+/* ── Delete Button ── */
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.35);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.15s;
+}
+.delete-btn:hover { color: #000; }
+.delete-btn:disabled { opacity: 0.4; }
+
+/* ── Summary Card ── */
+.summary-card {
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 12px;
+  padding: 24px;
+  position: sticky;
+  top: 1.5rem;
+}
+.summary-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.35);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.summary-title { font-size: 16px; font-weight: 500; margin-bottom: 20px; }
+.summary-rows { display: flex; flex-direction: column; gap: 2px; }
 .summary-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
+  font-size: 13px;
+  color: rgba(0,0,0,0.55);
+  padding: 6px 0;
 }
-
-.total-section {
-  padding: 16px 0;
-  border-top: 2px solid #f0f0f0;
-  border-bottom: 2px solid #f0f0f0;
+.summary-divider {
+  border: none;
+  border-top: 0.5px solid rgba(0,0,0,0.1);
+  margin: 16px 0;
 }
-
-.checkout-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 13px;
+  font-weight: 500;
 }
+.total-amount { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
 
-.checkout-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3) !important;
-}
-
-.border-t {
-  border-top: 1px solid #e0e0e0;
-}
-
-/* Transition Effects */
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.3s ease;
-}
-
-.list-enter-from,
-.list-leave-to {
-  opacity: 0;
-  transform: translateX(-30px);
-}
-
-/* Color Dot */
-.color-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  display: inline-block;
-}
-
-.min-w-220 {
-  min-width: 220px;
-}
-
-/* Variant Information Section Styles */
-.variant-info-section {
-  padding: 12px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+/* ── Buttons ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background: #000;
+  color: #fff;
+  border: none;
   border-radius: 8px;
-  border-left: 4px solid #1976d2;
-}
-
-.variant-info-section .color-dot {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid #999;
-  vertical-align: middle;
-}
-
-.variant-info-section .v-chip {
-  height: 24px;
   font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.15s;
 }
+.btn-primary:hover:not(:disabled) { opacity: 0.8; }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-primary.full { width: 100%; margin-bottom: 8px; }
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 24px;
+  background: transparent;
+  color: #000;
+  border: 0.5px solid rgba(0,0,0,0.25);
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-outline:hover { background: rgba(0,0,0,0.04); }
+.btn-outline.full { width: 100%; }
+
+/* ── Security Note ── */
+.security-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.35);
+  margin-top: 16px;
+}
+
+/* ── Transitions ── */
+.item-list-enter-active,
+.item-list-leave-active { transition: all 0.25s ease; }
+.item-list-enter-from,
+.item-list-leave-to { opacity: 0; transform: translateX(-16px); }
 </style>
