@@ -709,28 +709,62 @@ const syncReturnStepFromBackend = (order) => {
     ].includes(stage);
   };
 
-  const canStartShipping = (order) => {
-    if (!order || !isOnlineOrder(order)) return false;
+  const startShipping = async (order) => {
+  if (!canStartShipping(order)) return;
 
-    const orderStatus = String(order?.orderStatus || "").toUpperCase();
-    const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
+  const orderStatus = String(order?.orderStatus || "").toUpperCase();
+  const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
+  const fromOrderStatus = order?.orderStatus;
+  const fromPaymentStatus = order?.paymentStatus;
 
-    if (paymentStatus === "CANCELLED") return false;
-    if (isUiShippingStartedOrder(order)) return false;
+  // COD - lần đầu bấm: "Xác nhận đơn" → gọi API confirmPayment
+  if (
+    isCodPaymentMethod(order) &&
+    paymentStatus === "UNPAID" &&
+    (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") &&
+    !isUiOrderConfirmed(order)
+  ) {
+    startingShippingOrderId.value = order.orderId;
+    try {
+      const token = localStorage.getItem("token");
+      // ✅ Gọi API để BE set CONFIRMED
+      await paymentApi.confirmPayment(order.orderId, token);
 
-    if (isOnlinePaymentMethod(order)) {
-      return paymentStatus === "PAID" && orderStatus === "SHIPPING";
+      markUiOrderConfirmed(order.orderId);
+      applyOrderPatch(order, {
+        orderStatus: "CONFIRMED", // ← patch UI đúng với BE
+        paymentStatus: "UNPAID",  // COD chưa thu tiền
+      });
+
+      appendManyTimelineSteps(order, ["CONFIRM_ORDER", "WAIT_SHIP"]);
+      appendOrderEditHistory({
+        order,
+        action: "Xác nhận đơn",
+        reason: "Nhân viên xác nhận đơn COD và chuyển sang chờ giao hàng",
+        fromOrderStatus,
+        fromPaymentStatus,
+        toOrderStatus: "CONFIRMED",
+        toPaymentStatus: "UNPAID",
+      });
+
+      startTimelineReveal();
+      snackbarMessage.value = `Đã xác nhận đơn ${getDisplayOrderCode(order)}`;
+      snackbarColor.value = "success";
+      showSnackbar.value = true;
+    } catch (error) {
+      snackbarMessage.value =
+        error?.response?.data?.message || "Xác nhận đơn thất bại";
+      snackbarColor.value = "error";
+      showSnackbar.value = true;
+    } finally {
+      startingShippingOrderId.value = null;
     }
+    return;
+  }
 
-    if (isCodPaymentMethod(order)) {
-      return (
-        paymentStatus === "UNPAID" &&
-        (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING")
-      );
-    }
-
-    return false;
-  };
+  // Lần 2: "Bắt đầu giao hàng" → gọi startShipping API bình thường
+  // ... giữ nguyên phần còn lại
+};
 
   const canCompleteDelivery = (order) => {
     if (!order || !isOnlineOrder(order)) return false;

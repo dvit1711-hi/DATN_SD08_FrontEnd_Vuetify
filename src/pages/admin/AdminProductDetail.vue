@@ -13,6 +13,99 @@
       </v-btn>
     </div>
 
+    <!-- Filter and Search Section -->
+    <v-card class="mb-5 filter-card" elevation="0" border>
+      <v-card-text class="pa-4">
+        <div class="filter-container">
+          <!-- Search Box -->
+          <div class="filter-section">
+            <label class="filter-label">Tìm kiếm</label>
+            <v-text-field
+              v-model="searchQuery"
+              placeholder="Tìm theo màu, size..."
+              prepend-inner-icon="mdi-magnify"
+              variant="outlined"
+              density="compact"
+              clearable
+            />
+          </div>
+
+          <!-- Status Filter -->
+          <div class="filter-section">
+            <label class="filter-label">Trạng thái</label>
+            <v-select
+              v-model="filterStatus"
+              :items="statusOptions"
+              multiple
+              chips
+              placeholder="Chọn trạng thái"
+              variant="outlined"
+              density="compact"
+              clearable
+            />
+          </div>
+
+          <!-- Stock Filter -->
+          <div class="filter-section">
+            <label class="filter-label">Tồn kho</label>
+            <v-select
+              v-model="filterStock"
+              :items="stockOptions"
+              placeholder="Chọn tồn kho"
+              variant="outlined"
+              density="compact"
+              clearable
+            />
+          </div>
+
+          <!-- Representative Filter -->
+          <div class="filter-section">
+            <label class="filter-label">Biến thể</label>
+            <v-select
+              v-model="filterRepresentative"
+              :items="representativeOptions"
+              placeholder="Chọn loại"
+              variant="outlined"
+              density="compact"
+              clearable
+            />
+          </div>
+
+          <!-- Color Filter -->
+          <div class="filter-section">
+            <label class="filter-label">Màu sắc</label>
+            <v-select
+              v-model="filterColors"
+              :items="colors"
+              item-title="colorName"
+              item-value="colorID"
+              multiple
+              chips
+              placeholder="Chọn màu"
+              variant="outlined"
+              density="compact"
+              clearable
+            />
+          </div>
+
+          <!-- Clear Filters Button -->
+          <div class="filter-section button-section">
+            <v-btn
+              color="secondary"
+              variant="tonal"
+              size="small"
+              @click="clearFilters"
+            >
+              Xóa bộ lọc
+            </v-btn>
+            <span class="filter-result-text">
+              Hiển thị {{ filteredGroupCount }} nhóm màu
+            </span>
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
+
 
     <!-- <v-card  -->
     <VariantColorTable
@@ -82,6 +175,24 @@ export default {
         isRepresentative: false,
         images: [],
       },
+      // Filter and Search Data
+      searchQuery: "",
+      filterStatus: [],
+      filterStock: null,
+      filterRepresentative: null,
+      filterColors: [],
+      statusOptions: [
+        { title: "Hoạt động", value: "ACTIVE" },
+        { title: "Không hoạt động", value: "INACTIVE" },
+      ],
+      stockOptions: [
+        { title: "Còn hàng", value: "inStock" },
+        { title: "Hết hàng", value: "outOfStock" },
+      ],
+      representativeOptions: [
+        { title: "Chỉ đại diện", value: "representative" },
+        { title: "Chỉ không đại diện", value: "notRepresentative" },
+      ],
     };
   },
 
@@ -89,9 +200,62 @@ export default {
     groupedByColor() {
       if (!this.product?.colors?.length) return [];
 
+      // Filter variants based on search and filter criteria
+      const filteredVariants = this.product.colors.filter((variant) => {
+        // Search filter
+        const searchLower = this.searchQuery.toLowerCase();
+        const matchesSearch =
+          !this.searchQuery ||
+          (variant.colorName?.toLowerCase().includes(searchLower) ?? false) ||
+          (variant.sizeName?.toLowerCase().includes(searchLower) ?? false);
+
+        if (!matchesSearch) return false;
+
+        // Status filter
+        if (
+          this.filterStatus.length > 0 &&
+          !this.filterStatus.includes(variant.status || "ACTIVE")
+        ) {
+          return false;
+        }
+
+        // Stock filter
+        if (this.filterStock === "inStock" && variant.stockQuantity === 0) {
+          return false;
+        }
+        if (this.filterStock === "outOfStock" && variant.stockQuantity > 0) {
+          return false;
+        }
+
+        // Representative filter
+        if (
+          this.filterRepresentative === "representative" &&
+          !variant.isRepresentative
+        ) {
+          return false;
+        }
+        if (
+          this.filterRepresentative === "notRepresentative" &&
+          variant.isRepresentative
+        ) {
+          return false;
+        }
+
+        // Color filter
+        if (
+          this.filterColors.length > 0 &&
+          !this.filterColors.includes(variant.colorID)
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+
+      // Group by color
       const groups = new Map();
 
-      for (const variant of this.product.colors) {
+      for (const variant of filteredVariants) {
         const colorId = variant.colorID;
 
         if (!groups.has(colorId)) {
@@ -112,7 +276,8 @@ export default {
         const sortedItems = [...group.items].sort((a, b) => {
           const aRepresentative = a?.isRepresentative ? 0 : 1;
           const bRepresentative = b?.isRepresentative ? 0 : 1;
-          if (aRepresentative !== bRepresentative) return aRepresentative - bRepresentative;
+          if (aRepresentative !== bRepresentative)
+            return aRepresentative - bRepresentative;
 
           const aActive = String(a?.status || "").toUpperCase() === "ACTIVE" ? 0 : 1;
           const bActive = String(b?.status || "").toUpperCase() === "ACTIVE" ? 0 : 1;
@@ -126,7 +291,9 @@ export default {
         const representativeVariant =
           sortedItems.find((item) => item.isRepresentative) || sortedItems[0];
 
-        const repMainImage = (representativeVariant?.images || []).find((img) => img.isMain);
+        const repMainImage = (representativeVariant?.images || []).find(
+          (img) => img.isMain
+        );
         if (repMainImage?.imageUrl) {
           group.mainImageUrl = repMainImage.imageUrl;
         } else if (representativeVariant?.images?.length) {
@@ -140,6 +307,10 @@ export default {
         String(a.colorName || "").localeCompare(String(b.colorName || ""), "vi")
       );
     },
+
+    filteredGroupCount() {
+      return this.groupedByColor.length;
+    },
   },
 
   mounted() {
@@ -149,6 +320,14 @@ export default {
   },
 
   methods: {
+    clearFilters() {
+      this.searchQuery = "";
+      this.filterStatus = [];
+      this.filterStock = null;
+      this.filterRepresentative = null;
+      this.filterColors = [];
+    },
+
     showSnackbar(message, color = "success") {
       this.snackbarMessage = message;
       this.snackbarColor = color;
@@ -516,5 +695,58 @@ export default {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+/* Filter Card Styles */
+.filter-card {
+  background: white;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.filter-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.button-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-result-text {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .filter-container {
+    grid-template-columns: 1fr;
+  }
+
+  .button-section {
+    grid-column: 1 / -1;
+  }
 }
 </style>
