@@ -378,56 +378,56 @@ export function usePaymentDetailManager() {
   };
 
   const appendTimelineStep = (order, stage, customTime = null) => {
-  const orderId = normalizeOrderId(order?.orderId);
-  if (!orderId) return;
+    const orderId = normalizeOrderId(order?.orderId);
+    if (!orderId) return;
 
-  const [code, label, icon] = getBaseStepByStage(stage);
+    const [code, label, icon] = getBaseStepByStage(stage);
 
-  const historyMap = { ...orderTimelineMap.value };
-  const currentList = Array.isArray(historyMap[orderId])
-    ? [...historyMap[orderId]]
-    : [];
+    const historyMap = { ...orderTimelineMap.value };
+    const currentList = Array.isArray(historyMap[orderId])
+      ? [...historyMap[orderId]]
+      : [];
 
-  const newStep = createTimelineStep(code, label, icon, customTime);
+    const newStep = createTimelineStep(code, label, icon, customTime);
 
-  historyMap[orderId] = [...currentList, newStep];
-  orderTimelineMap.value = historyMap;
-  persistTimelineMap();
-};
-const syncReturnStepFromBackend = (order) => {
-  const orderId = normalizeOrderId(order?.orderId);
-  if (!orderId) return;
+    historyMap[orderId] = [...currentList, newStep];
+    orderTimelineMap.value = historyMap;
+    persistTimelineMap();
+  };
+  const syncReturnStepFromBackend = (order) => {
+    const orderId = normalizeOrderId(order?.orderId);
+    if (!orderId) return;
 
-  const stage = getOrderVisualStage(order);
+    const stage = getOrderVisualStage(order);
 
-  if (!["PARTIAL_RETURNED", "RETURNED"].includes(stage)) return;
+    if (!["PARTIAL_RETURNED", "RETURNED"].includes(stage)) return;
 
-  const historyMap = { ...orderTimelineMap.value };
-  const currentList = Array.isArray(historyMap[orderId])
-    ? [...historyMap[orderId]]
-    : [];
+    const historyMap = { ...orderTimelineMap.value };
+    const currentList = Array.isArray(historyMap[orderId])
+      ? [...historyMap[orderId]]
+      : [];
 
-  const existed = currentList.some((step) =>
-    ["PARTIAL_RETURNED", "RETURNED"].includes(
-      String(step?.code || "").toUpperCase()
-    )
-  );
+    const existed = currentList.some((step) =>
+      ["PARTIAL_RETURNED", "RETURNED"].includes(
+        String(step?.code || "").toUpperCase(),
+      ),
+    );
 
-  if (existed) return;
+    if (existed) return;
 
-  const [code, label, icon] = getBaseStepByStage(stage);
+    const [code, label, icon] = getBaseStepByStage(stage);
 
-  const newStep = createTimelineStep(
-    code,
-    label,
-    icon,
-    formatDate(new Date())
-  );
+    const newStep = createTimelineStep(
+      code,
+      label,
+      icon,
+      formatDate(new Date()),
+    );
 
-  historyMap[orderId] = [...currentList, newStep];
-  orderTimelineMap.value = historyMap;
-  persistTimelineMap();
-};
+    historyMap[orderId] = [...currentList, newStep];
+    orderTimelineMap.value = historyMap;
+    persistTimelineMap();
+  };
 
   const appendManyTimelineSteps = (order, stages = []) => {
     stages.forEach((stage) => appendTimelineStep(order, stage));
@@ -710,62 +710,95 @@ const syncReturnStepFromBackend = (order) => {
     ].includes(stage);
   };
 
-  const startShipping = async (order) => {
-  if (!canStartShipping(order)) return;
+  const canStartShipping = (order) => {
+    if (!order || !isOnlineOrder(order)) return false;
 
-  const orderStatus = String(order?.orderStatus || "").toUpperCase();
-  const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
-  const fromOrderStatus = order?.orderStatus;
-  const fromPaymentStatus = order?.paymentStatus;
+    const orderStatus = String(order?.orderStatus || "").toUpperCase();
+    const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
 
-  // COD - lần đầu bấm: "Xác nhận đơn" → gọi API confirmPayment
-  if (
-    isCodPaymentMethod(order) &&
-    paymentStatus === "UNPAID" &&
-    (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") &&
-    !isUiOrderConfirmed(order)
-  ) {
-    startingShippingOrderId.value = order.orderId;
-    try {
-      const token = localStorage.getItem("token");
-      // ✅ Gọi API để BE set CONFIRMED
-      await paymentApi.confirmPayment(order.orderId, token);
+    if (paymentStatus === "CANCELLED") return false;
+    if (isUiShippingStartedOrder(order)) return false;
 
-      markUiOrderConfirmed(order.orderId);
-      applyOrderPatch(order, {
-        orderStatus: "CONFIRMED", // ← patch UI đúng với BE
-        paymentStatus: "UNPAID",  // COD chưa thu tiền
-      });
-
-      appendManyTimelineSteps(order, ["CONFIRM_ORDER", "WAIT_SHIP"]);
-      appendOrderEditHistory({
-        order,
-        action: "Xác nhận đơn",
-        reason: "Nhân viên xác nhận đơn COD và chuyển sang chờ giao hàng",
-        fromOrderStatus,
-        fromPaymentStatus,
-        toOrderStatus: "CONFIRMED",
-        toPaymentStatus: "UNPAID",
-      });
-
-      startTimelineReveal();
-      snackbarMessage.value = `Đã xác nhận đơn ${getDisplayOrderCode(order)}`;
-      snackbarColor.value = "success";
-      showSnackbar.value = true;
-    } catch (error) {
-      snackbarMessage.value =
-        error?.response?.data?.message || "Xác nhận đơn thất bại";
-      snackbarColor.value = "error";
-      showSnackbar.value = true;
-    } finally {
-      startingShippingOrderId.value = null;
+    if (isOnlinePaymentMethod(order)) {
+      // BANK/EWALLET: BE set CONFIRMED sau confirmPayment
+      // FE patch optimistic là SHIPPING nhưng nếu refresh thì sẽ là CONFIRMED
+      return (
+        paymentStatus === "PAID" &&
+        (orderStatus === "CONFIRMED" || orderStatus === "SHIPPING")
+      );
     }
-    return;
-  }
 
-  // Lần 2: "Bắt đầu giao hàng" → gọi startShipping API bình thường
-  // ... giữ nguyên phần còn lại
-};
+    if (isCodPaymentMethod(order)) {
+      // COD: BE chấp nhận cả PENDING_PAYMENT và CONFIRMED
+      // PENDING_PAYMENT: chưa qua confirmPayment
+      // CONFIRMED: nếu có gọi confirmPayment trước (hoặc refresh)
+      return (
+        paymentStatus === "UNPAID" &&
+        (orderStatus === "PENDING_PAYMENT" ||
+          orderStatus === "PENDING" ||
+          orderStatus === "CONFIRMED") // ← thêm CONFIRMED
+      );
+    }
+
+    return false;
+  };
+
+  const startShipping = async (order) => {
+    if (!canStartShipping(order)) return;
+
+    const orderStatus = String(order?.orderStatus || "").toUpperCase();
+    const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
+    const fromOrderStatus = order?.orderStatus;
+    const fromPaymentStatus = order?.paymentStatus;
+
+    // COD - lần đầu bấm: "Xác nhận đơn" → gọi API confirmPayment
+    if (
+      isCodPaymentMethod(order) &&
+      paymentStatus === "UNPAID" &&
+      (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") &&
+      !isUiOrderConfirmed(order)
+    ) {
+      startingShippingOrderId.value = order.orderId;
+      try {
+        const token = localStorage.getItem("token");
+        // ✅ Gọi API để BE set CONFIRMED
+        await paymentApi.confirmPayment(order.orderId, token);
+
+        markUiOrderConfirmed(order.orderId);
+        applyOrderPatch(order, {
+          orderStatus: "CONFIRMED", // ← patch UI đúng với BE
+          paymentStatus: "UNPAID", // COD chưa thu tiền
+        });
+
+        appendManyTimelineSteps(order, ["CONFIRM_ORDER", "WAIT_SHIP"]);
+        appendOrderEditHistory({
+          order,
+          action: "Xác nhận đơn",
+          reason: "Nhân viên xác nhận đơn COD và chuyển sang chờ giao hàng",
+          fromOrderStatus,
+          fromPaymentStatus,
+          toOrderStatus: "CONFIRMED",
+          toPaymentStatus: "UNPAID",
+        });
+
+        startTimelineReveal();
+        snackbarMessage.value = `Đã xác nhận đơn ${getDisplayOrderCode(order)}`;
+        snackbarColor.value = "success";
+        showSnackbar.value = true;
+      } catch (error) {
+        snackbarMessage.value =
+          error?.response?.data?.message || "Xác nhận đơn thất bại";
+        snackbarColor.value = "error";
+        showSnackbar.value = true;
+      } finally {
+        startingShippingOrderId.value = null;
+      }
+      return;
+    }
+
+    // Lần 2: "Bắt đầu giao hàng" → gọi startShipping API bình thường
+    // ... giữ nguyên phần còn lại
+  };
 
   const canCompleteDelivery = (order) => {
     if (!order || !isOnlineOrder(order)) return false;
@@ -1174,87 +1207,6 @@ const syncReturnStepFromBackend = (order) => {
     }
   };
 
-  const startShipping = async (order) => {
-    if (!canStartShipping(order)) return;
-
-    const orderStatus = String(order?.orderStatus || "").toUpperCase();
-    const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
-    const fromOrderStatus = order?.orderStatus;
-    const fromPaymentStatus = order?.paymentStatus;
-
-    if (
-      isCodPaymentMethod(order) &&
-      paymentStatus === "UNPAID" &&
-      (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") &&
-      !isUiOrderConfirmed(order)
-    ) {
-      markUiOrderConfirmed(order.orderId);
-      selectedOrder.value = { ...selectedOrder.value };
-
-      appendManyTimelineSteps(order, ["CONFIRM_ORDER", "WAIT_SHIP"]);
-
-      appendOrderEditHistory({
-        order,
-        action: "Xác nhận đơn",
-        reason: "Nhân viên xác nhận đơn COD và chuyển sang chờ giao hàng",
-        fromOrderStatus,
-        fromPaymentStatus,
-        toOrderStatus: order?.orderStatus,
-        toPaymentStatus: order?.paymentStatus,
-      });
-
-      startTimelineReveal();
-      snackbarMessage.value = `Đã xác nhận đơn ${getDisplayOrderCode(order)}`;
-      snackbarColor.value = "success";
-      showSnackbar.value = true;
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Bắt đầu giao hàng cho đơn ${getDisplayOrderCode(order)}?`,
-    );
-    if (!confirmed) return;
-
-    startingShippingOrderId.value = order.orderId;
-
-    try {
-      const token = localStorage.getItem("token");
-      await paymentApi.startShippingByAdmin(order.orderId, token);
-
-      applyOrderPatch(order, {
-        orderStatus: "SHIPPING",
-      });
-
-      markUiShippingStarted(order.orderId);
-      clearUiDelivered(order.orderId);
-
-      appendTimelineStep(order, "IN_TRANSIT");
-
-      appendOrderEditHistory({
-        order,
-        action: "Bắt đầu giao hàng",
-        reason: "Nhân viên xác nhận bàn giao đơn cho đơn vị vận chuyển",
-        fromOrderStatus,
-        fromPaymentStatus,
-        toOrderStatus: "SHIPPING",
-        toPaymentStatus: order?.paymentStatus,
-      });
-
-      startTimelineReveal();
-      snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đã chuyển sang Đang vận chuyển`;
-      snackbarColor.value = "success";
-      showSnackbar.value = true;
-    } catch (error) {
-      console.error("Lỗi bắt đầu giao hàng:", error);
-      snackbarMessage.value =
-        error?.response?.data?.message || "Không thể bắt đầu giao hàng";
-      snackbarColor.value = "error";
-      showSnackbar.value = true;
-    } finally {
-      startingShippingOrderId.value = null;
-    }
-  };
-
   const completeDelivery = async (order) => {
     if (!canCompleteDelivery(order)) return;
 
@@ -1461,105 +1413,133 @@ const syncReturnStepFromBackend = (order) => {
   };
 
   const buildInvoiceHtml = (order) => {
-  const formatCurrency = (n) => {
-    const value = Number(n || 0);
-    return value.toLocaleString("vi-VN") + " đ";
-  };
+    const formatCurrency = (n) => {
+      const value = Number(n || 0);
+      return value.toLocaleString("vi-VN") + " đ";
+    };
 
-  const orderCode = getDisplayOrderCode(order);
-  const storeLogoUrl = order.storeLogo || "/images/logo1.jpg";
-  const storeName = order.storeName || "DTVĐ";
-  const storePhone = order.storePhone || "0123456789";
-  const storeEmail = order.storeEmail || "fshoesweb@gmail.com";
-  const storeAddress = order.storeAddress || "Địa chỉ cửa hàng của bạn";
+    const orderCode = getDisplayOrderCode(order);
+    const storeLogoUrl = order.storeLogo || "/images/logo1.jpg";
+    const storeName = order.storeName || "DTVĐ";
+    const storePhone = order.storePhone || "0123456789";
+    const storeEmail = order.storeEmail || "fshoesweb@gmail.com";
+    const storeAddress = order.storeAddress || "Địa chỉ cửa hàng của bạn";
 
-  const customerName =
-    order?.customerName || order?.receiverName || order?.buyerName || order?.customer?.name || "Khách hàng";
-  const shippingAddress =
-    order?.shippingAddress || order?.address || order?.deliveryAddress || order?.customer?.address || "Tại cửa hàng";
-  const orderDate = order?.orderDate
-    ? new Date(order.orderDate).toLocaleString("vi-VN")
-    : new Date().toLocaleString("vi-VN");
-  const paymentStatus = order?.paymentStatus || "PAID";
+    const customerName =
+      order?.customerName ||
+      order?.receiverName ||
+      order?.buyerName ||
+      order?.customer?.name ||
+      "Khách hàng";
+    const shippingAddress =
+      order?.shippingAddress ||
+      order?.address ||
+      order?.deliveryAddress ||
+      order?.customer?.address ||
+      "Tại cửa hàng";
+    const orderDate = order?.orderDate
+      ? new Date(order.orderDate).toLocaleString("vi-VN")
+      : new Date().toLocaleString("vi-VN");
+    const paymentStatus = order?.paymentStatus || "PAID";
 
-  const barcodeBlock = `
+    const barcodeBlock = `
             <div class="barcode-box">
                 <svg id="barcode-order" width="100%" height="50"></svg>
                 <div class="barcode-label">Mã hóa đơn: ${orderCode}</div>
             </div>
         `;
 
-  const generateOrderQR = (code) => {
-    if (!code) return "";
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(code)}`;
-    return `
+    const generateOrderQR = (code) => {
+      if (!code) return "";
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(code)}`;
+      return `
         <div class="qr-order-left">
             <img src="${qrUrl}" />
             <div class="qr-label">Quét mã đơn</div>
             <div class="qr-code">${code}</div>
         </div>
     `;
-  };
+    };
 
-  const getInvoiceItems = (orderData = {}) => {
-    const candidates = [
-      orderData.items,
-      orderData.orderItems,
-      orderData.orderDetails,
-      orderData.details,
-      orderData.orderDetailList,
-      orderData.order_items,
-      orderData.order_detail_list,
-    ];
+    const getInvoiceItems = (orderData = {}) => {
+      const candidates = [
+        orderData.items,
+        orderData.orderItems,
+        orderData.orderDetails,
+        orderData.details,
+        orderData.orderDetailList,
+        orderData.order_items,
+        orderData.order_detail_list,
+      ];
 
-    return candidates.find((value) => Array.isArray(value)) || [];
-  };
+      return candidates.find((value) => Array.isArray(value)) || [];
+    };
 
-  const getItemName = (item) => {
-    return (
-      item?.productName ||
-      item?.name ||
-      item?.productColorName ||
-      item?.product?.productName ||
-      item?.productColor?.productName ||
-      item?.nameProduct ||
-      "Sản phẩm"
+    const getItemName = (item) => {
+      return (
+        item?.productName ||
+        item?.name ||
+        item?.productColorName ||
+        item?.product?.productName ||
+        item?.productColor?.productName ||
+        item?.nameProduct ||
+        "Sản phẩm"
+      );
+    };
+
+    const getItemVariant = (item) => {
+      const color =
+        item?.colorName || item?.color || item?.productColor?.colorName || "";
+      const size =
+        item?.sizeName || item?.size || item?.productColor?.sizeName || "";
+      const variant = [color, size].filter(Boolean).join(" / ");
+      return variant || item?.variant || "";
+    };
+
+    const getItemQuantity = (item) => {
+      return Number(item?.quantity ?? item?.qty ?? item?.amount ?? 0);
+    };
+
+    const getItemPrice = (item) => {
+      return Number(
+        item?.price ??
+          item?.unitPrice ??
+          item?.salePrice ??
+          item?.priceAfterDiscount ??
+          0,
+      );
+    };
+
+    const getItemTotal = (item) => {
+      const explicitTotal = Number(
+        item?.total ?? item?.totalAmount ?? item?.lineTotal ?? 0,
+      );
+      if (explicitTotal > 0) return explicitTotal;
+      return getItemQuantity(item) * getItemPrice(item);
+    };
+
+    const invoiceItems = getInvoiceItems(order);
+    const invoiceTotal = Number(
+      order?.totalAmount ??
+        order?.total ??
+        order?.grandTotal ??
+        order?.orderTotal ??
+        invoiceItems.reduce((sum, item) => sum + getItemTotal(item), 0),
     );
-  };
+    const invoiceCode =
+      order?.orderId ||
+      order?.id ||
+      order?.orderCode ||
+      order?.trackingCode ||
+      "-";
 
-  const getItemVariant = (item) => {
-    const color = item?.colorName || item?.color || item?.productColor?.colorName || "";
-    const size = item?.sizeName || item?.size || item?.productColor?.sizeName || "";
-    const variant = [color, size].filter(Boolean).join(" / ");
-    return variant || item?.variant || "";
-  };
-
-  const getItemQuantity = (item) => {
-    return Number(item?.quantity ?? item?.qty ?? item?.amount ?? 0);
-  };
-
-  const getItemPrice = (item) => {
-    return Number(
-      item?.price ?? item?.unitPrice ?? item?.salePrice ?? item?.priceAfterDiscount ?? 0,
-    );
-  };
-
-  const getItemTotal = (item) => {
-    const explicitTotal = Number(item?.total ?? item?.totalAmount ?? item?.lineTotal ?? 0);
-    if (explicitTotal > 0) return explicitTotal;
-    return getItemQuantity(item) * getItemPrice(item);
-  };
-
-  const invoiceItems = getInvoiceItems(order);
-  const invoiceTotal = Number(
-    order?.totalAmount ?? order?.total ?? order?.grandTotal ?? order?.orderTotal ??
-      invoiceItems.reduce((sum, item) => sum + getItemTotal(item), 0),
-  );
-  const invoiceCode = order?.orderId || order?.id || order?.orderCode || order?.trackingCode || "-";
-
-  const bankInfoBlock =
-    order?.bankName || order?.accountNumber || order?.accountName || order?.transferContent || order?.amount
-      ? `
+    const bankInfoBlock =
+      order?.bankName ||
+      order?.accountNumber ||
+      order?.accountName ||
+      order?.transferContent ||
+      order?.amount
+        ? `
         <div class="banking-box">
             ${order?.bankName ? `<div><strong>Ngân hàng:</strong> ${order.bankName}</div>` : ""}
             ${order?.accountNumber ? `<div><strong>Số tài khoản:</strong> ${order.accountNumber}</div>` : ""}
@@ -1568,15 +1548,15 @@ const syncReturnStepFromBackend = (order) => {
             ${order?.amount ? `<div><strong>Số tiền CK:</strong> ${formatCurrency(order.amount)}</div>` : ""}
         </div>
       `
-      : "";
+        : "";
 
-  const invoiceRows = invoiceItems.length
-    ? invoiceItems
-        .map((item, index) => {
-          const quantity = getItemQuantity(item);
-          const price = getItemPrice(item);
-          const total = getItemTotal(item);
-          return `
+    const invoiceRows = invoiceItems.length
+      ? invoiceItems
+          .map((item, index) => {
+            const quantity = getItemQuantity(item);
+            const price = getItemPrice(item);
+            const total = getItemTotal(item);
+            return `
                     <tr>
                         <td class="center">${index + 1}</td>
                         <td>
@@ -1589,15 +1569,15 @@ const syncReturnStepFromBackend = (order) => {
                         <td class="center">${paymentStatus}</td>
                     </tr>
                     `;
-        })
-        .join("")
-    : `
+          })
+          .join("")
+      : `
                 <tr>
                     <td colspan="6" class="center">Không có chi tiết sản phẩm</td>
                 </tr>
             `;
 
-  return `
+    return `
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -1743,7 +1723,7 @@ const syncReturnStepFromBackend = (order) => {
 </body>
 </html>
 `;
-};
+  };
 
   const printInvoice = (order, type = "shipping") => {
     if (!order) return;
@@ -1825,28 +1805,28 @@ const syncReturnStepFromBackend = (order) => {
   });
 
   const extractReturnNote = (orderNote, item, type) => {
-  const noteText = String(orderNote || "").trim();
-  if (!noteText) return "";
+    const noteText = String(orderNote || "").trim();
+    if (!noteText) return "";
 
-  const productName = String(item?.productName || "").trim();
-  const label = type === "SHIPPING_RETURN" ? "HOAN_HANG" : "TRA_HANG";
+    const productName = String(item?.productName || "").trim();
+    const label = type === "SHIPPING_RETURN" ? "HOAN_HANG" : "TRA_HANG";
 
-  const lines = noteText
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+    const lines = noteText
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
 
-  const matchedLine = [...lines].reverse().find((line) => {
-    const sameType = line.includes(`[${label}`);
-    const sameProduct = productName ? line.includes(productName) : true;
-    return sameType && sameProduct;
-  });
+    const matchedLine = [...lines].reverse().find((line) => {
+      const sameType = line.includes(`[${label}`);
+      const sameProduct = productName ? line.includes(productName) : true;
+      return sameType && sameProduct;
+    });
 
-  if (!matchedLine) return "";
+    if (!matchedLine) return "";
 
-  const match = matchedLine.match(/Ghi chú:\s*(.*)$/i);
-  return match?.[1]?.trim() || "";
-};
+    const match = matchedLine.match(/Ghi chú:\s*(.*)$/i);
+    return match?.[1]?.trim() || "";
+  };
 
   const shippingReturnedItems = computed(() => {
     const items = Array.isArray(selectedOrder.value?.items)
@@ -1859,7 +1839,12 @@ const syncReturnStepFromBackend = (order) => {
         ...item,
         id: `shipping-${item.orderDetailId}`,
         quantity: Number(item.shippingReturnedQuantity || 0),
-note: extractReturnNote(selectedOrder.value?.note, item, "SHIPPING_RETURN"),        createdAt: selectedOrder.value?.orderDate,
+        note: extractReturnNote(
+          selectedOrder.value?.note,
+          item,
+          "SHIPPING_RETURN",
+        ),
+        createdAt: selectedOrder.value?.orderDate,
         returnType: "SHIPPING_RETURN",
       }));
   });
@@ -1875,7 +1860,12 @@ note: extractReturnNote(selectedOrder.value?.note, item, "SHIPPING_RETURN"),    
         ...item,
         id: `completed-${item.orderDetailId}`,
         quantity: Number(item.completedReturnedQuantity || 0),
-note: extractReturnNote(selectedOrder.value?.note, item, "COMPLETED_RETURN"),        createdAt: selectedOrder.value?.orderDate,
+        note: extractReturnNote(
+          selectedOrder.value?.note,
+          item,
+          "COMPLETED_RETURN",
+        ),
+        createdAt: selectedOrder.value?.orderDate,
         returnType: "COMPLETED_RETURN",
       }));
   });
