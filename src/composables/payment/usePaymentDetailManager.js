@@ -202,21 +202,19 @@ export function usePaymentDetailManager() {
     persistIdSet(ONLINE_SHIPPING_STARTED_KEY, next);
   };
 
+  // 1. getOrderVisualStage — thêm CONFIRMED, bỏ check UI confirmed cho COD
   const getOrderVisualStage = (order) => {
     const orderStatus = String(order?.orderStatus || "").toUpperCase();
     const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
 
-    if (orderStatus === "CANCELLED" || paymentStatus === "CANCELLED") {
+    if (orderStatus === "CANCELLED" || paymentStatus === "CANCELLED")
       return "CANCELLED";
-    }
-
     if (orderStatus === "RETURNED") return "RETURNED";
     if (orderStatus === "PARTIAL_RETURNED") return "PARTIAL_RETURNED";
 
     if (isOfflineGuestOrder(order)) {
-      if (orderStatus === "PAID" || paymentStatus === "PAID") {
+      if (orderStatus === "PAID" || paymentStatus === "PAID")
         return "COMPLETED";
-      }
       return "WAIT_CONFIRM";
     }
 
@@ -230,7 +228,6 @@ export function usePaymentDetailManager() {
       ) {
         return "WAIT_PAYMENT_CONFIRM";
       }
-
       if (
         isCodPaymentMethod(order) &&
         isUiDeliveredOrder(order) &&
@@ -238,19 +235,18 @@ export function usePaymentDetailManager() {
       ) {
         return "WAIT_COMPLETE";
       }
-
       if (isUiDeliveredOrder(order)) return "DELIVERED";
       if (isUiShippingStartedOrder(order)) return "IN_TRANSIT";
       return "WAIT_SHIP";
     }
 
+    // ✅ CONFIRMED → Chờ giao hàng
+    if (orderStatus === "CONFIRMED") return "WAIT_SHIP";
+
     if (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") {
-      if (isCodPaymentMethod(order) && isUiOrderConfirmed(order)) {
+      // COD ở PENDING_PAYMENT → Chờ xác nhận (không cần check UI nữa)
+      if (isOnlinePaymentMethod(order) && paymentStatus === "PAID")
         return "WAIT_SHIP";
-      }
-      if (isOnlinePaymentMethod(order) && paymentStatus === "PAID") {
-        return "WAIT_SHIP";
-      }
       return "WAIT_CONFIRM";
     }
 
@@ -293,13 +289,10 @@ export function usePaymentDetailManager() {
 
   const getStartShippingButtonLabel = (order) => {
     const orderStatus = String(order?.orderStatus || "").toUpperCase();
-    const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
 
     if (
       isCodPaymentMethod(order) &&
-      paymentStatus === "UNPAID" &&
-      (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") &&
-      !isUiOrderConfirmed(order)
+      (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING")
     ) {
       return "Xác nhận đơn";
     }
@@ -433,6 +426,7 @@ export function usePaymentDetailManager() {
     stages.forEach((stage) => appendTimelineStep(order, stage));
   };
 
+  // 5. seedTimelineIfMissing — bỏ CONFIRM_ORDER khỏi tất cả stages COD
   const seedTimelineIfMissing = (order) => {
     const orderId = normalizeOrderId(order?.orderId);
     if (!orderId) return;
@@ -466,15 +460,12 @@ export function usePaymentDetailManager() {
 
     const stage = getOrderVisualStage(order);
 
+    // ✅ Bỏ hoàn toàn CONFIRM_ORDER — COD đi thẳng WAIT_CONFIRM → WAIT_SHIP
     if (stage === "WAIT_SHIP") {
       if (isOnlinePaymentMethod(order)) {
-        appendManyTimelineSteps(order, [
-          "TRANSFER_CONFIRM",
-          "CONFIRM_ORDER",
-          "WAIT_SHIP",
-        ]);
+        appendManyTimelineSteps(order, ["TRANSFER_CONFIRM", "WAIT_SHIP"]);
       } else {
-        appendManyTimelineSteps(order, ["CONFIRM_ORDER", "WAIT_SHIP"]);
+        appendManyTimelineSteps(order, ["WAIT_SHIP"]);
       }
     }
 
@@ -482,40 +473,24 @@ export function usePaymentDetailManager() {
       if (isOnlinePaymentMethod(order)) {
         appendManyTimelineSteps(order, [
           "TRANSFER_CONFIRM",
-          "CONFIRM_ORDER",
           "WAIT_SHIP",
           "IN_TRANSIT",
         ]);
       } else {
-        appendManyTimelineSteps(order, [
-          "CONFIRM_ORDER",
-          "WAIT_SHIP",
-          "IN_TRANSIT",
-        ]);
+        appendManyTimelineSteps(order, ["WAIT_SHIP", "IN_TRANSIT"]);
       }
     }
 
     if (stage === "DELIVERED") {
-      appendManyTimelineSteps(order, [
-        "CONFIRM_ORDER",
-        "WAIT_SHIP",
-        "IN_TRANSIT",
-        "DELIVERED",
-      ]);
+      appendManyTimelineSteps(order, ["WAIT_SHIP", "IN_TRANSIT", "DELIVERED"]);
     }
 
     if (stage === "WAIT_PAYMENT_CONFIRM") {
-      appendManyTimelineSteps(order, [
-        "CONFIRM_ORDER",
-        "WAIT_SHIP",
-        "IN_TRANSIT",
-        "DELIVERED",
-      ]);
+      appendManyTimelineSteps(order, ["WAIT_SHIP", "IN_TRANSIT", "DELIVERED"]);
     }
 
     if (stage === "WAIT_COMPLETE") {
       appendManyTimelineSteps(order, [
-        "CONFIRM_ORDER",
         "WAIT_SHIP",
         "IN_TRANSIT",
         "DELIVERED",
@@ -529,15 +504,14 @@ export function usePaymentDetailManager() {
       } else if (isOnlinePaymentMethod(order)) {
         appendManyTimelineSteps(order, [
           "TRANSFER_CONFIRM",
-          "CONFIRM_ORDER",
           "WAIT_SHIP",
           "IN_TRANSIT",
           "DELIVERED",
           "COMPLETED",
         ]);
       } else {
+        // COD
         appendManyTimelineSteps(order, [
-          "CONFIRM_ORDER",
           "WAIT_SHIP",
           "IN_TRANSIT",
           "DELIVERED",
@@ -710,6 +684,7 @@ export function usePaymentDetailManager() {
     ].includes(stage);
   };
 
+  // 2. canStartShipping — bỏ check uiOrderConfirmed, thêm CONFIRMED
   const canStartShipping = (order) => {
     if (!order || !isOnlineOrder(order)) return false;
 
@@ -720,61 +695,60 @@ export function usePaymentDetailManager() {
     if (isUiShippingStartedOrder(order)) return false;
 
     if (isOnlinePaymentMethod(order)) {
-      // BANK/EWALLET: BE set CONFIRMED sau confirmPayment
-      // FE patch optimistic là SHIPPING nhưng nếu refresh thì sẽ là CONFIRMED
-      return (
-        paymentStatus === "PAID" &&
-        (orderStatus === "CONFIRMED" || orderStatus === "SHIPPING")
-      );
+      // BANK/EWALLET: chỉ hiện khi CONFIRMED + PAID
+      return orderStatus === "CONFIRMED" && paymentStatus === "PAID";
     }
 
     if (isCodPaymentMethod(order)) {
-      // COD: BE chấp nhận cả PENDING_PAYMENT và CONFIRMED
-      // PENDING_PAYMENT: chưa qua confirmPayment
-      // CONFIRMED: nếu có gọi confirmPayment trước (hoặc refresh)
+      // Bước 1: PENDING_PAYMENT → "Xác nhận đơn"
+      // Bước 2: CONFIRMED → "Bắt đầu giao hàng"
       return (
         paymentStatus === "UNPAID" &&
         (orderStatus === "PENDING_PAYMENT" ||
           orderStatus === "PENDING" ||
-          orderStatus === "CONFIRMED") // ← thêm CONFIRMED
+          orderStatus === "CONFIRMED")
       );
     }
 
     return false;
   };
 
+  // 4. startShipping — bỏ hoàn toàn bước UI-only "Xác nhận đơn", gọi API thẳng
   const startShipping = async (order) => {
     if (!canStartShipping(order)) return;
 
     const orderStatus = String(order?.orderStatus || "").toUpperCase();
-    const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
     const fromOrderStatus = order?.orderStatus;
     const fromPaymentStatus = order?.paymentStatus;
 
-    // COD - lần đầu bấm: "Xác nhận đơn" → gọi API confirmPayment
+    // =============================
+    // BƯỚC 1: COD PENDING → Xác nhận đơn → gọi confirmPayment
+    // =============================
     if (
       isCodPaymentMethod(order) &&
-      paymentStatus === "UNPAID" &&
-      (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") &&
-      !isUiOrderConfirmed(order)
+      (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING")
     ) {
+      const confirmed = window.confirm(
+        `Xác nhận đơn COD ${getDisplayOrderCode(order)}?`,
+      );
+      if (!confirmed) return;
+
       startingShippingOrderId.value = order.orderId;
       try {
         const token = localStorage.getItem("token");
-        // ✅ Gọi API để BE set CONFIRMED
         await paymentApi.confirmPayment(order.orderId, token);
 
-        markUiOrderConfirmed(order.orderId);
         applyOrderPatch(order, {
-          orderStatus: "CONFIRMED", // ← patch UI đúng với BE
+          orderStatus: "CONFIRMED",
           paymentStatus: "UNPAID", // COD chưa thu tiền
         });
 
         appendManyTimelineSteps(order, ["CONFIRM_ORDER", "WAIT_SHIP"]);
+
         appendOrderEditHistory({
           order,
           action: "Xác nhận đơn",
-          reason: "Nhân viên xác nhận đơn COD và chuyển sang chờ giao hàng",
+          reason: "Nhân viên xác nhận đơn COD, chuyển sang chờ giao hàng",
           fromOrderStatus,
           fromPaymentStatus,
           toOrderStatus: "CONFIRMED",
@@ -796,8 +770,48 @@ export function usePaymentDetailManager() {
       return;
     }
 
-    // Lần 2: "Bắt đầu giao hàng" → gọi startShipping API bình thường
-    // ... giữ nguyên phần còn lại
+    // =============================
+    // BƯỚC 2: CONFIRMED → Bắt đầu giao → gọi startShippingByAdmin
+    // =============================
+    const confirmed = window.confirm(
+      `Bắt đầu giao hàng cho đơn ${getDisplayOrderCode(order)}?`,
+    );
+    if (!confirmed) return;
+
+    startingShippingOrderId.value = order.orderId;
+    try {
+      const token = localStorage.getItem("token");
+      await paymentApi.startShippingByAdmin(order.orderId, token);
+
+      applyOrderPatch(order, { orderStatus: "SHIPPING" });
+
+      markUiShippingStarted(order.orderId);
+      clearUiDelivered(order.orderId);
+
+      appendTimelineStep(order, "IN_TRANSIT");
+
+      appendOrderEditHistory({
+        order,
+        action: "Bắt đầu giao hàng",
+        reason: "Nhân viên xác nhận bàn giao đơn cho đơn vị vận chuyển",
+        fromOrderStatus,
+        fromPaymentStatus,
+        toOrderStatus: "SHIPPING",
+        toPaymentStatus: order?.paymentStatus,
+      });
+
+      startTimelineReveal();
+      snackbarMessage.value = `Đơn ${getDisplayOrderCode(order)} đang vận chuyển`;
+      snackbarColor.value = "success";
+      showSnackbar.value = true;
+    } catch (error) {
+      snackbarMessage.value =
+        error?.response?.data?.message || "Không thể bắt đầu giao hàng";
+      snackbarColor.value = "error";
+      showSnackbar.value = true;
+    } finally {
+      startingShippingOrderId.value = null;
+    }
   };
 
   const canCompleteDelivery = (order) => {
@@ -892,9 +906,7 @@ export function usePaymentDetailManager() {
           paymentStatus: "PAID",
           orderStatus: "PAID",
         });
-
         appendManyTimelineSteps(order, ["TRANSFER_CONFIRM", "COMPLETED"]);
-
         appendOrderEditHistory({
           order,
           action: "Xác nhận thanh toán",
@@ -905,42 +917,38 @@ export function usePaymentDetailManager() {
           toPaymentStatus: "PAID",
         });
       } else if (isCodPaymentMethod(order)) {
+        // COD đã giao xong → xác nhận thu tiền mặt
+        // Giữ SHIPPING, set PAID → completeDelivery sẽ set PAID sau
         applyOrderPatch(order, {
           paymentStatus: "PAID",
-          orderStatus: order?.orderStatus || "SHIPPING",
+          orderStatus: order?.orderStatus,
         });
-
         appendTimelineStep(order, "TRANSFER_CONFIRM");
-
         appendOrderEditHistory({
           order,
-          action: "Xác nhận thanh toán",
+          action: "Xác nhận thanh toán COD",
           reason: "Nhân viên xác nhận đã nhận tiền COD",
           fromOrderStatus,
           fromPaymentStatus,
-          toOrderStatus: order?.orderStatus || "SHIPPING",
+          toOrderStatus: order?.orderStatus,
           toPaymentStatus: "PAID",
         });
       } else {
+        // BANK/EWALLET: xác nhận chuyển khoản → CONFIRMED (chờ giao hàng)
+        // ✅ Patch CONFIRMED không phải SHIPPING
         applyOrderPatch(order, {
           paymentStatus: "PAID",
-          orderStatus: "SHIPPING",
+          orderStatus: "CONFIRMED",
         });
-
         clearUiShippingStarted(order.orderId);
-        appendManyTimelineSteps(order, [
-          "TRANSFER_CONFIRM",
-          "CONFIRM_ORDER",
-          "WAIT_SHIP",
-        ]);
-
+        appendManyTimelineSteps(order, ["TRANSFER_CONFIRM", "WAIT_SHIP"]);
         appendOrderEditHistory({
           order,
           action: "Xác nhận thanh toán",
           reason: "Nhân viên xác nhận giao dịch thanh toán thành công",
           fromOrderStatus,
           fromPaymentStatus,
-          toOrderStatus: "SHIPPING",
+          toOrderStatus: "CONFIRMED",
           toPaymentStatus: "PAID",
         });
       }
@@ -950,7 +958,6 @@ export function usePaymentDetailManager() {
       snackbarColor.value = "success";
       showSnackbar.value = true;
     } catch (error) {
-      console.error("Lỗi xác nhận thanh toán:", error);
       snackbarMessage.value = "Xác nhận thanh toán thất bại";
       snackbarColor.value = "error";
       showSnackbar.value = true;
@@ -1115,6 +1122,8 @@ export function usePaymentDetailManager() {
         token,
       );
 
+      // Trong revertOrderStatus, phần xử lý sau khi gọi API thành công:
+
       const responseOrderStatus = String(
         response?.data?.orderStatus ||
           response?.data?.status ||
@@ -1133,12 +1142,17 @@ export function usePaymentDetailManager() {
 
       if (isOnlineOrder(order)) {
         if (
-          responseOrderStatus === "PENDING" ||
-          responseOrderStatus === "PENDING_PAYMENT"
+          responseOrderStatus === "PENDING_PAYMENT" ||
+          responseOrderStatus === "PENDING"
         ) {
           clearUiOrderConfirmed(order.orderId);
           clearUiDelivered(order.orderId);
           clearUiShippingStarted(order.orderId);
+        } else if (responseOrderStatus === "CONFIRMED") {
+          // ✅ Revert từ SHIPPING về CONFIRMED = Chờ giao hàng
+          // Xóa trạng thái đang giao, giữ lại shipping started nếu cần
+          clearUiDelivered(order.orderId);
+          clearUiShippingStarted(order.orderId); // reset để nút "Bắt đầu giao" hiện lại
         } else if (responseOrderStatus === "SHIPPING") {
           if (previousStage === "WAIT_COMPLETE") {
             markUiDelivered(order.orderId);

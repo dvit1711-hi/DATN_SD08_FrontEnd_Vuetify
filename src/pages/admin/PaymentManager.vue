@@ -317,9 +317,7 @@ const getOrderVisualStage = (order) => {
   const orderStatus = String(order?.orderStatus || "").toUpperCase();
   const paymentStatus = String(order?.paymentStatus || "").toUpperCase();
 
-  if (orderStatus === "CANCELLED" || paymentStatus === "CANCELLED")
-    return "CANCELLED";
-
+  if (orderStatus === "CANCELLED" || paymentStatus === "CANCELLED") return "CANCELLED";
   if (orderStatus === "RETURNED") return "RETURNED";
   if (orderStatus === "PARTIAL_RETURNED") return "PARTIAL_RETURNED";
 
@@ -331,30 +329,22 @@ const getOrderVisualStage = (order) => {
   if (orderStatus === "PAID") return "COMPLETED";
 
   if (orderStatus === "SHIPPING") {
-    if (
-      isCodPaymentMethod(order) &&
-      isUiDeliveredOrder(order) &&
-      paymentStatus === "UNPAID"
-    ) {
+    if (isCodPaymentMethod(order) && isUiDeliveredOrder(order) && paymentStatus === "UNPAID") {
       return "WAIT_PAYMENT_CONFIRM";
     }
-
-    if (
-      isCodPaymentMethod(order) &&
-      isUiDeliveredOrder(order) &&
-      paymentStatus === "PAID"
-    ) {
+    if (isCodPaymentMethod(order) && isUiDeliveredOrder(order) && paymentStatus === "PAID") {
       return "WAIT_COMPLETE";
     }
-
     if (isUiDeliveredOrder(order)) return "DELIVERED";
     if (isUiShippingStartedOrder(order)) return "IN_TRANSIT";
     return "WAIT_SHIP";
   }
 
+  // ✅ CONFIRMED = Chờ giao hàng (BANK đã thanh toán, chờ ship)
+  if (orderStatus === "CONFIRMED") return "WAIT_SHIP";
+
   if (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") {
-    if (isOnlinePaymentMethod(order) && paymentStatus === "PAID")
-      return "WAIT_SHIP";
+    if (isOnlinePaymentMethod(order) && paymentStatus === "PAID") return "WAIT_SHIP";
     return "WAIT_CONFIRM";
   }
 
