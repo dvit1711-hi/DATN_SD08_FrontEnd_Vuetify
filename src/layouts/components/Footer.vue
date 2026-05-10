@@ -1,7 +1,15 @@
 <template>
     <v-footer class="text-center d-flex flex-column ga-2 py-4 footer-custom">
-        <div class="d-flex ga-3">
-            <v-btn v-for="icon in icons" :key="icon" :icon="icon" density="comfortable" variant="text"></v-btn>
+                <div class="d-flex ga-3">
+            <v-btn
+                v-for="item in icons"
+                :key="item.icon"
+                :icon="item.icon"
+                :href="item.link"
+                target="_blank"
+                density="comfortable"
+                variant="text"
+            ></v-btn>
         </div>
 
         <v-divider class="my-2" thickness="2" width="50"></v-divider>
@@ -20,9 +28,16 @@
 </template>
 <script setup>
 const icons = [
-    'mdi-github',
-    'mdi-facebook',
-    'mdi-google',
+  {
+    icon: 'mdi-github',
+  },
+  {
+    icon: 'mdi-facebook',
+    link: 'https://web.facebook.com/share/1BZiTRGqYE/?mibextid=wwXIfr&_rdc=1&_rdr',
+  },
+  {
+    icon: 'mdi-google',
+  }
 ]
 </script>
 

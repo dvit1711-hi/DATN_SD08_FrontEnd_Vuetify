@@ -25,19 +25,48 @@
         >
           Tìm kiếm
         </v-btn>
+        <v-btn
+          color="indigo"
+          prepend-icon="mdi-qrcode-scan"
+          @click="startScanner"
+        >
+          Quét mã
+        </v-btn>
       </div>
     </v-card>
+    <v-snackbar
+  v-model="snackbar"
+  location="top right"
+  :timeout="3000"
+  content-class="custom-snackbar"
+>
+  <div class="toast-wrapper">
+    <div class="toast-content">
+      <v-icon
+        :color="snackbarColor"
+        size="22"
+      >
+        {{ snackbarIcon }}
+      </v-icon>
 
-    <v-alert
-      v-if="message"
-      :type="messageType"
-      variant="tonal"
-      class="mb-4"
-      closable
-      @click:close="message = ''"
-    >
-      {{ message }}
-    </v-alert>
+      <span class="toast-text">
+        {{ message }}
+      </span>
+    </div>
+
+    <v-btn
+      icon="mdi-close"
+      size="x-small"
+      variant="text"
+      @click="snackbar = false"
+    />
+  </div>
+
+  <div
+    class="toast-progress"
+    :class="snackbarColor"
+  ></div>
+</v-snackbar>
 
     <template v-if="selectedOrder">
       <!-- BẢNG CHỌN SẢN PHẨM TRẢ -->
@@ -47,7 +76,9 @@
             <tr>
               <th style="width: 52px"></th>
               <th>Sản phẩm</th>
-              <th class="text-center" style="width: 220px">Số lượng có thể trả</th>
+              <th class="text-center" style="width: 220px">
+                Số lượng có thể trả
+              </th>
               <th class="text-right" style="width: 140px">Đơn giá</th>
             </tr>
           </thead>
@@ -76,7 +107,7 @@
                       <span v-if="item.sizeName">[{{ item.sizeName }}]</span>
                     </div>
                     <div class="text-caption text-grey-darken-1">
-                      {{ item.colorName || '-' }}
+                      {{ item.colorName || "-" }}
                     </div>
                   </div>
                 </div>
@@ -98,7 +129,10 @@
                     icon="mdi-plus"
                     size="x-small"
                     variant="text"
-                    :disabled="!item.checked || item.returnQuantity >= item.maxReturnQuantity"
+                    :disabled="
+                      !item.checked ||
+                      item.returnQuantity >= item.maxReturnQuantity
+                    "
                     @click="increaseQty(item)"
                   />
                 </div>
@@ -149,10 +183,14 @@
                       </v-avatar>
 
                       <div>
-                        <div class="font-weight-medium">{{ item.productName }}</div>
+                        <div class="font-weight-medium">
+                          {{ item.productName }}
+                        </div>
                         <div class="text-caption text-grey-darken-1">
-                          {{ item.colorName || '-' }}
-                          <span v-if="item.sizeName">[{{ item.sizeName }}]</span>
+                          {{ item.colorName || "-" }}
+                          <span v-if="item.sizeName"
+                            >[{{ item.sizeName }}]</span
+                          >
                         </div>
                       </div>
                     </div>
@@ -197,7 +235,9 @@
             <div class="customer-info-box mb-4">
               <div class="info-row">
                 <v-icon size="18">mdi-account</v-icon>
-                <span><strong>Khách hàng:</strong> {{ displayCustomerName }}</span>
+                <span
+                  ><strong>Khách hàng:</strong> {{ displayCustomerName }}</span
+                >
               </div>
 
               <div class="info-row">
@@ -219,7 +259,9 @@
 
               <div class="summary-row">
                 <span>Giảm giá</span>
-                <strong>{{ formatPrice(selectedOrder.discountAmount || 0) }}</strong>
+                <strong>{{
+                  formatPrice(selectedOrder.discountAmount || 0)
+                }}</strong>
               </div>
 
               <div class="summary-row total-row">
@@ -241,225 +283,343 @@
         </v-col>
       </v-row>
     </template>
+    <template v-else>
+      <v-card rounded="lg" elevation="0" class="pa-5 mb-4">
+        <div class="empty-return">
+          <img src="/images/Trahang.png" alt="Trả hàng" class="empty-image" />
+        </div>
+      </v-card>
+    </template>
   </v-container>
+
+  <v-dialog v-model="scannerVisible" max-width="700">
+    <v-card rounded="xl">
+      <v-card-title class="d-flex justify-space-between align-center">
+        <span>Quét mã hóa đơn</span>
+
+        <v-btn icon="mdi-close" variant="text" @click="stopScanner" />
+      </v-card-title>
+
+      <v-card-text>
+        <div class="scanner-wrapper">
+          <video
+            id="barcode-video"
+            class="scanner-video"
+            autoplay
+            muted
+            playsinline
+          ></video>
+          <div v-if="scannerLoading" class="scanner-loading">
+            Đang mở camera...
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import paymentApi from '@/api/paymentApi'
+import { computed, ref, onBeforeUnmount } from "vue";
+import paymentApi from "@/api/paymentApi";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
-const API_BASE_IMAGE = ''
+const API_BASE_IMAGE = "";
 
-const invoiceCode = ref('')
-const selectedOrder = ref(null)
-const returnRows = ref([])
-const returnNote = ref('')
-const searching = ref(false)
-const submitting = ref(false)
-const message = ref('')
-const messageType = ref('success')
+const invoiceCode = ref("");
+const selectedOrder = ref(null);
+const returnRows = ref([]);
+const returnNote = ref("");
+const searching = ref(false);
+const submitting = ref(false);
+const message = ref("");
+const messageType = ref("success");
 
-const getToken = () => localStorage.getItem('token') || localStorage.getItem('accessToken')
+
+const scannerVisible = ref(false);
+const scannerLoading = ref(false);
+
+const codeReader = new BrowserMultiFormatReader();
+let controls = null;
+
+const getToken = () =>
+  localStorage.getItem("token") || localStorage.getItem("accessToken");
 
 const formatPrice = (value) => {
-  return `${new Intl.NumberFormat('vi-VN').format(Number(value || 0))} VND`
-}
+  return `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))} VND`;
+};
 
 const resolveImage = (imageUrl) => {
-  const value = String(imageUrl || '').trim()
+  const value = String(imageUrl || "").trim();
 
-  if (!value) return 'https://via.placeholder.com/80x80?text=No+Image'
+  if (!value) return "https://via.placeholder.com/80x80?text=No+Image";
   if (
-    value.startsWith('http://') ||
-    value.startsWith('https://') ||
-    value.startsWith('data:') ||
-    value.startsWith('blob:')
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
   ) {
-    return value
+    return value;
   }
 
-  return value.startsWith('/')
+  return value.startsWith("/")
     ? `${API_BASE_IMAGE}${value}`
-    : `${API_BASE_IMAGE}/${value}`
-}
+    : `${API_BASE_IMAGE}/${value}`;
+};
 
 const displayCustomerName = computed(() => {
   return (
     selectedOrder.value?.customerName ||
     selectedOrder.value?.accountUsername ||
-    'Khách hàng'
-  )
-})
+    "Khách hàng"
+  );
+});
 
 const displayCustomerPhone = computed(() => {
   return (
-    selectedOrder.value?.customerPhone ||
-    selectedOrder.value?.phone ||
-    '-'
-  )
-})
+    selectedOrder.value?.customerPhone || selectedOrder.value?.phone || "-"
+  );
+});
 
 const displayAddress = computed(() => {
-  return selectedOrder.value?.shippingAddress || '-'
-})
+  return selectedOrder.value?.shippingAddress || "-";
+});
 
 const selectedReturnRows = computed(() => {
   return returnRows.value.filter(
-    (item) => item.checked && Number(item.returnQuantity || 0) > 0
-  )
-})
+    (item) => item.checked && Number(item.returnQuantity || 0) > 0,
+  );
+});
 
 const returnTotal = computed(() => {
   return selectedReturnRows.value.reduce((sum, item) => {
-    return sum + getReturnLineTotal(item)
-  }, 0)
-})
+    return sum + getReturnLineTotal(item);
+  }, 0);
+});
 
 const getReturnLineTotal = (item) => {
-  return Number(item.price || 0) * Number(item.returnQuantity || 0)
-}
+  return Number(item.price || 0) * Number(item.returnQuantity || 0);
+};
+const snackbar = ref(false);
+const snackbarColor = ref("success");
+const snackbarIcon = ref("mdi-check-circle");
 
-const showMessage = (text, type = 'success') => {
-  message.value = text
-  messageType.value = type
-}
+const showMessage = (
+  text,
+  type = "success"
+) => {
+  message.value = text;
+
+  snackbarColor.value =
+    type === "error"
+      ? "error"
+      : type === "warning"
+      ? "warning"
+      : "success";
+
+  snackbarIcon.value =
+    type === "error"
+      ? "mdi-close-circle"
+      : type === "warning"
+      ? "mdi-alert-circle"
+      : "mdi-check-circle";
+
+  snackbar.value = true;
+};
 
 const buildRows = (order) => {
-  const items = Array.isArray(order?.items) ? order.items : []
+  const items = Array.isArray(order?.items) ? order.items : [];
 
   return items.map((item) => {
-    const quantity = Number(item.quantity || 0)
-    const returnedQuantity = Number(item.returnedQuantity || 0)
+    const quantity = Number(item.quantity || 0);
+    const returnedQuantity = Number(item.returnedQuantity || 0);
 
     const maxReturnQuantity = Number(
       item.returnableQuantity ??
         item.remainingQuantity ??
-        Math.max(0, quantity - returnedQuantity)
-    )
+        Math.max(0, quantity - returnedQuantity),
+    );
 
     return {
       ...item,
       checked: false,
       returnQuantity: 0,
       maxReturnQuantity,
-    }
-  })
-}
+    };
+  });
+};
 
 const toggleItem = (item, checked) => {
-  item.checked = !!checked
+  item.checked = !!checked;
 
   if (item.checked) {
     if (item.returnQuantity <= 0 && item.maxReturnQuantity > 0) {
-      item.returnQuantity = 1
+      item.returnQuantity = 1;
     }
   } else {
-    item.returnQuantity = 0
+    item.returnQuantity = 0;
   }
-}
+};
 
 const increaseQty = (item) => {
-  if (!item.checked) return
+  if (!item.checked) return;
 
-  const current = Number(item.returnQuantity || 0)
-  const max = Number(item.maxReturnQuantity || 0)
+  const current = Number(item.returnQuantity || 0);
+  const max = Number(item.maxReturnQuantity || 0);
 
   if (current < max) {
-    item.returnQuantity = current + 1
+    item.returnQuantity = current + 1;
   }
-}
+};
 
 const decreaseQty = (item) => {
-  if (!item.checked) return
+  if (!item.checked) return;
 
-  const current = Number(item.returnQuantity || 0)
+  const current = Number(item.returnQuantity || 0);
 
   if (current > 0) {
-    item.returnQuantity = current - 1
+    item.returnQuantity = current - 1;
   }
 
   if (item.returnQuantity <= 0) {
-    item.returnQuantity = 0
+    item.returnQuantity = 0;
   }
-}
+};
 
 const searchOrder = async () => {
-  const code = String(invoiceCode.value || '').trim()
+  const code = String(invoiceCode.value || "").trim();
 
   if (!code) {
-    showMessage('Vui lòng nhập mã hóa đơn', 'warning')
-    return
+    showMessage("Vui lòng nhập mã hóa đơn", "warning");
+    return;
   }
 
-  searching.value = true
+  searching.value = true;
   try {
-    const res = await paymentApi.searchReturnableOrder(code, getToken())
-    selectedOrder.value = res.data
-    returnRows.value = buildRows(res.data)
-    returnNote.value = ''
-    showMessage('Tìm thấy đơn hàng có thể trả', 'success')
+    const res = await paymentApi.searchReturnableOrder(code, getToken());
+    selectedOrder.value = res.data;
+    returnRows.value = buildRows(res.data);
+    returnNote.value = "";
+    showMessage("Tìm thấy đơn hàng có thể trả", "success");
   } catch (error) {
-    selectedOrder.value = null
-    returnRows.value = []
+    selectedOrder.value = null;
+    returnRows.value = [];
     showMessage(
-      error?.response?.data?.message || 'Không tìm thấy đơn hàng hợp lệ để trả',
-      'error'
-    )
+      error?.response?.data?.message || "Không tìm thấy đơn hàng hợp lệ để trả",
+      "error",
+    );
   } finally {
-    searching.value = false
+    searching.value = false;
   }
-}
+};
 
 const submitReturn = async () => {
-  if (!selectedOrder.value) return
+  if (!selectedOrder.value) return;
 
   const items = selectedReturnRows.value.map((item) => ({
     orderDetailId: item.orderDetailId,
     quantity: Number(item.returnQuantity),
-    note: String(returnNote.value || '').trim() || 'Trả hàng tại quầy',
-  }))
+    note: String(returnNote.value || "").trim() || "Trả hàng tại quầy",
+  }));
 
   if (!items.length) {
-    showMessage('Vui lòng chọn sản phẩm cần trả', 'warning')
-    return
+    showMessage("Vui lòng chọn sản phẩm cần trả", "warning");
+    return;
   }
 
   for (const item of selectedReturnRows.value) {
     if (Number(item.returnQuantity || 0) <= 0) {
-      showMessage(`Vui lòng chọn số lượng trả cho ${item.productName}`, 'warning')
-      return
+      showMessage(
+        `Vui lòng chọn số lượng trả cho ${item.productName}`,
+        "warning",
+      );
+      return;
     }
 
-    if (Number(item.returnQuantity || 0) > Number(item.maxReturnQuantity || 0)) {
+    if (
+      Number(item.returnQuantity || 0) > Number(item.maxReturnQuantity || 0)
+    ) {
       showMessage(
         `Số lượng trả của ${item.productName} vượt quá số lượng có thể trả`,
-        'warning'
-      )
-      return
+        "warning",
+      );
+      return;
     }
   }
 
-  submitting.value = true
+  submitting.value = true;
   try {
     const res = await paymentApi.returnCompletedOrderByAdmin(
       selectedOrder.value.orderId,
       {
-        note: String(returnNote.value || '').trim() || 'Trả hàng tại quầy',
+        note: String(returnNote.value || "").trim() || "Trả hàng tại quầy",
         items,
       },
-      getToken()
-    )
+      getToken(),
+    );
 
-    selectedOrder.value = res.data
-    returnRows.value = buildRows(res.data)
-    returnNote.value = ''
-    showMessage('Trả hàng thành công', 'success')
+    selectedOrder.value = res.data;
+    returnRows.value = buildRows(res.data);
+    returnNote.value = "";
+    showMessage("Trả hàng thành công", "success");
   } catch (error) {
-    showMessage(error?.response?.data?.message || 'Trả hàng thất bại', 'error')
+    showMessage(error?.response?.data?.message || "Trả hàng thất bại", "error");
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
-}
+};
+const startScanner = async () => {
+  scannerVisible.value = true;
+  scannerLoading.value = true;
+
+  setTimeout(async () => {
+    try {
+      const videoElement = document.getElementById("barcode-video");
+
+      // camera đã mount xong
+      scannerLoading.value = false;
+
+      const result = await codeReader.decodeOnceFromVideoDevice(
+        undefined,
+        videoElement
+      );
+
+      if (result) {
+        invoiceCode.value = result.getText();
+
+        showMessage(
+          `Đã quét: ${result.getText()}`,
+          "success"
+        );
+
+        stopScanner();
+
+        searchOrder();
+      }
+    } catch (error) {
+      console.error(error);
+
+      scannerLoading.value = false;
+
+      showMessage(
+        "Không nhận diện được mã QR",
+        "error"
+      );
+    }
+  }, 300);
+};
+const stopScanner = () => {
+  try {
+    codeReader.reset();
+  } catch (e) {
+    console.log(e);
+  }
+
+  scannerVisible.value = false;
+};
+
+onBeforeUnmount(() => {
+  stopScanner();
+});
 </script>
 
 <style scoped>
@@ -538,5 +698,113 @@ const submitReturn = async () => {
 
 .text-red {
   color: #ef3d2f;
+}
+.empty-return {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.empty-image {
+  width: 720px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.scanner-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  background: black;
+}
+
+.scanner-video {
+  width: 100%;
+  min-height: 400px;
+  object-fit: cover;
+}
+
+.scanner-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+:deep(.custom-snackbar) {
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 12px !important;
+  background: white !important;
+  min-width: 320px;
+}
+
+.toast-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 14px 12px;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toast-text {
+  color: #444;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.toast-progress {
+  height: 4px;
+  width: 100%;
+  animation: progress-animation 3s linear forwards;
+}
+
+.toast-progress.success {
+  background: #1db954;
+}
+
+.toast-progress.error {
+  background: #ef5350;
+}
+
+.toast-progress.warning {
+  background: #ff9800;
+}
+
+@keyframes progress-animation {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
+:deep(.v-snackbar__wrapper) {
+  animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
