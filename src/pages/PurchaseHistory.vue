@@ -638,42 +638,36 @@ const getDisplayStatus = (order) => {
   if (orderStatus === "CANCELLED" || paymentStatus === "CANCELLED") {
     return { label: "Đã hủy", color: "error" };
   }
-
   if (orderStatus === "RETURNED") {
-    if (hasCompletedReturnedItems(order)) {
-      return { label: "Trả hàng", color: "error" };
-    }
-
-    return { label: "Hoàn hàng", color: "error" };
+    return hasCompletedReturnedItems(order)
+      ? { label: "Trả hàng", color: "error" }
+      : { label: "Hoàn hàng", color: "error" };
   }
-
   if (orderStatus === "PARTIAL_RETURNED") {
     return { label: "Trả hàng một phần", color: "deep-orange" };
   }
-
   if (orderStatus === "PAID") {
     return { label: "Hoàn thành", color: "success" };
   }
 
+  // ✅ CONFIRMED = admin đã xác nhận, chờ giao hàng
+  if (orderStatus === "CONFIRMED") {
+    return { label: "Chờ giao hàng", color: "warning" };
+  }
+
   if (orderStatus === "SHIPPING") {
+    if (uiDelivered && paymentStatus === "PAID")
+      return { label: "Chờ hoàn thành", color: "success" };
+    if (uiDelivered && paymentStatus === "UNPAID")
+      return { label: "Chờ xác nhận thanh toán", color: "warning" };
     if (uiDelivered) return { label: "Đã giao hàng", color: "warning" };
     if (uiShippingStarted) return { label: "Đang giao hàng", color: "primary" };
     return { label: "Chờ giao hàng", color: "warning" };
   }
 
-  if (
-    isOnlinePaymentMethod(order) &&
-    orderStatus === "PENDING_PAYMENT" &&
-    paymentStatus === "PAID"
-  ) {
-    return { label: "Chờ giao hàng", color: "warning" };
-  }
-
-  if (paymentStatus === "PAID" && isCodPaymentMethod(order)) {
-    return { label: "Xác nhận thanh toán", color: "warning" };
-  }
-
-  if (paymentStatus === "UNPAID" || orderStatus === "PENDING_PAYMENT") {
+  if (orderStatus === "PENDING_PAYMENT" || orderStatus === "PENDING") {
+    if (isOnlinePaymentMethod(order) && paymentStatus === "PAID")
+      return { label: "Chờ giao hàng", color: "warning" };
     return { label: "Chờ xác nhận", color: "warning" };
   }
 
@@ -833,60 +827,55 @@ const getTrackingSteps = (order) => {
 
   let activeIndex = 0;
 
-  if (isOnlinePaymentMethod(order)) {
+  // BANK baseSteps index sau khi thêm CONFIRMED:
+// 0: WAIT_CONFIRM
+// 1: CONFIRMED
+// 2: TRANSFER_CONFIRM
+// 3: WAIT_SHIP
+// 4: SHIPPING
+// 5: DELIVERED
+// 6: COMPLETED
 
+// COD baseSteps index sau khi thêm CONFIRMED:
+// 0: WAIT_CONFIRM
+// 1: CONFIRMED
+// 2: WAIT_SHIP
+// 3: SHIPPING
+// 4: DELIVERED
+// 5: TRANSFER_CONFIRM
+// 6: COMPLETED
+
+if (isOnlinePaymentMethod(order)) {
   if (orderStatus === "PAID") {
     activeIndex = 6; // COMPLETED
-  }
-
-  else if (paymentStatus === "PAID" && uiDelivered) {
+  } else if (paymentStatus === "PAID" && uiDelivered) {
     activeIndex = 5; // DELIVERED
-  }
-
-  else if (paymentStatus === "PAID" && uiShippingStarted) {
+  } else if (paymentStatus === "PAID" && uiShippingStarted) {
     activeIndex = 4; // SHIPPING
-  }
-
-  else if (paymentStatus === "PAID") {
-    activeIndex = 3; // WAIT_SHIP
-  }
-
-  else if (orderStatus === "CONFIRMED") {
-    activeIndex = 1; // ✅ FIX QUAN TRỌNG
-  }
-
-  else if (orderStatus === "PENDING_PAYMENT") {
+  } else if (paymentStatus === "PAID" || orderStatus === "CONFIRMED") {
+    // ✅ CONFIRMED + PAID → hiện đủ: WAIT_CONFIRM, CONFIRMED, TRANSFER_CONFIRM, WAIT_SHIP
+    activeIndex = 3; // WAIT_SHIP (current)
+  } else {
     activeIndex = 0; // WAIT_CONFIRM
   }
 } else {
-    if (orderStatus === "PAID") {
-      activeIndex = 5;
-    } else if (
-      paymentStatus === "UNPAID" &&
-      orderStatus === "PENDING_PAYMENT"
-    ) {
-      activeIndex = 0;
-    } else if (
-      orderStatus === "SHIPPING" &&
-      uiShippingStarted &&
-      !uiDelivered
-    ) {
-      activeIndex = 2;
-    } else if (
-      orderStatus === "SHIPPING" &&
-      uiDelivered &&
-      paymentStatus === "UNPAID"
-    ) {
-      activeIndex = 3;
-    } else if (
-      orderStatus === "SHIPPING" &&
-      uiDelivered &&
-      paymentStatus === "PAID"
-    ) {
-      activeIndex = 4;
-    }
+  // COD
+  if (orderStatus === "PAID") {
+    activeIndex = 6; // COMPLETED
+  } else if (orderStatus === "CONFIRMED" || 
+    (orderStatus === "PENDING_PAYMENT" && paymentStatus === "UNPAID")) {
+    // ✅ CONFIRMED → Chờ giao hàng (sau khi admin xác nhận đơn)
+    activeIndex = orderStatus === "CONFIRMED" ? 1 : 0;
+  } else if (orderStatus === "SHIPPING" && uiShippingStarted && !uiDelivered) {
+    activeIndex = 3; // SHIPPING (đã tăng từ 2 → 3)
+  } else if (orderStatus === "SHIPPING" && uiDelivered && paymentStatus === "UNPAID") {
+    activeIndex = 4; // DELIVERED (đã tăng từ 3 → 4)
+  } else if (orderStatus === "SHIPPING" && uiDelivered && paymentStatus === "PAID") {
+    activeIndex = 5; // TRANSFER_CONFIRM (đã tăng từ 4 → 5)
+  } else {
+    activeIndex = 0;
   }
-
+}
   return baseSteps.slice(0, activeIndex + 1)
   .map((step, index) => {
     let state = "pending";
