@@ -32,7 +32,7 @@
       </v-empty-state>
 
       <v-expansion-panels v-else variant="accordion">
-        <v-expansion-panel v-for="order in orders" :key="order.orderId" class="mb-3">
+        <v-expansion-panel v-for="order in paginatedOrders" :key="order.orderId" class="mb-3">
           <v-expansion-panel-title>
             <div class="w-100 order-summary">
               <div class="d-flex align-center justify-space-between flex-wrap ga-2">
@@ -349,6 +349,37 @@
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
+
+      <!-- Pagination Controls -->
+      <div v-if="orders.length > 0" class="d-flex align-center justify-center ga-4 mt-8 mb-4">
+        <v-pagination
+          v-model="currentPage"
+          :length="totalPages"
+          :total-visible="7"
+          color="primary"
+          show-first-last-page
+        />
+      </div>
+
+      <!-- Items per page selector -->
+      <div class="d-flex align-center justify-center ga-2 mb-4">
+        <span class="text-caption text-grey">Hiển thị:</span>
+        <v-select
+          v-model="itemsPerPage"
+          :items="[5, 10, 15, 20]"
+          density="compact"
+          style="max-width: 80px"
+          hide-details
+        />
+        <span class="text-caption text-grey">mục / trang</span>
+      </div>
+
+      <!-- Items info -->
+      <div class="text-center text-caption text-grey mb-4">
+        Hiển thị {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{
+          Math.min(currentPage * itemsPerPage, orders.length)
+        }} trong {{ orders.length }} đơn hàng
+      </div>
     </div>
 
     <div v-if="isLoading" class="d-flex justify-center py-16">
@@ -358,7 +389,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import paymentApi from "@/api/paymentApi";
@@ -373,6 +404,10 @@ const cancellingOrderId = ref(null);
 const uiShippingStartedOrderIds = ref(new Set());
 const uiDeliveredOrderIds = ref(new Set());
 
+// Pagination
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+
 const IMAGE_BASE_URL = "";
 const fallbackImage = "https://via.placeholder.com/64x64?text=No+Image";
 
@@ -382,6 +417,16 @@ const ADMIN_ONLINE_SHIPPING_STARTED_KEY = "adminOnlineShippingStartedOrderIds";
 const ADMIN_UI_DELIVERED_ORDER_IDS_KEY = "adminUiDeliveredOrderIds";
 
 const isLoggedIn = computed(() => userStore.isLoggedIn);
+
+const paginatedOrders = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return orders.value.slice(start, end);
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(orders.value.length / itemsPerPage.value);
+});
 
 const formatPrice = (value) => {
   return new Intl.NumberFormat("vi-VN").format(Number(value || 0));
@@ -839,7 +884,7 @@ const getTrackingSteps = (order) => {
 // COD baseSteps index sau khi thêm CONFIRMED:
 // 0: WAIT_CONFIRM
 // 1: CONFIRMED
-// 2: WAIT_SHIP
+// 2: WAIT_SHIP ← current khi CONFIRMED
 // 3: SHIPPING
 // 4: DELIVERED
 // 5: TRANSFER_CONFIRM
@@ -860,20 +905,18 @@ if (isOnlinePaymentMethod(order)) {
   }
 } else {
   // COD
-  if (orderStatus === "PAID") {
-    activeIndex = 6; // COMPLETED
-  } else if (orderStatus === "CONFIRMED" || 
-    (orderStatus === "PENDING_PAYMENT" && paymentStatus === "UNPAID")) {
-    // ✅ CONFIRMED → Chờ giao hàng (sau khi admin xác nhận đơn)
-    activeIndex = orderStatus === "CONFIRMED" ? 1 : 0;
+    if (orderStatus === "PAID") {
+    activeIndex = 6;
+  } else if (orderStatus === "CONFIRMED") {
+    activeIndex = 2; // ✅ SỬA: 1 → 2, CONFIRMED done, WAIT_SHIP current
   } else if (orderStatus === "SHIPPING" && uiShippingStarted && !uiDelivered) {
-    activeIndex = 3; // SHIPPING (đã tăng từ 2 → 3)
+    activeIndex = 3;
   } else if (orderStatus === "SHIPPING" && uiDelivered && paymentStatus === "UNPAID") {
-    activeIndex = 4; // DELIVERED (đã tăng từ 3 → 4)
+    activeIndex = 4;
   } else if (orderStatus === "SHIPPING" && uiDelivered && paymentStatus === "PAID") {
-    activeIndex = 5; // TRANSFER_CONFIRM (đã tăng từ 4 → 5)
+    activeIndex = 5;
   } else {
-    activeIndex = 0;
+    activeIndex = 0; // PENDING_PAYMENT → Chờ xác nhận
   }
 }
   return baseSteps.slice(0, activeIndex + 1)
@@ -959,12 +1002,14 @@ const getOrderSortTime = (order) => {
 const loadOrders = async () => {
   if (!isLoggedIn.value) {
     orders.value = [];
+    currentPage.value = 1;
     return;
   }
 
   const accountId = Number.parseInt(userStore.accountId, 10);
   if (!Number.isFinite(accountId) || accountId <= 0) {
     orders.value = [];
+    currentPage.value = 1;
     return;
   }
 
@@ -1009,9 +1054,13 @@ const loadOrders = async () => {
           Number.parseInt(a?.orderId || 0, 10)
         );
       });
+
+    // Reset to first page when orders are loaded
+    currentPage.value = 1;
   } catch (error) {
     console.error("Lỗi tải lịch sử mua hàng:", error);
     orders.value = [];
+    currentPage.value = 1;
   } finally {
     isLoading.value = false;
   }
@@ -1056,6 +1105,11 @@ const goLogin = () => router.push({ name: "Login" });
 const goProducts = () => router.push({ name: "ProductList" });
 
 onMounted(loadOrders);
+
+// Scroll to top when page changes
+watch(currentPage, () => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
 </script>
 
 <style scoped>
