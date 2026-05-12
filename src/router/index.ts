@@ -21,6 +21,7 @@ import Statistics from '@/pages/admin/Statistics.vue'
 import Review from '@/pages/Review.vue'
 import Home from '@/pages/Home.vue'
 import PurchaseHistory from '@/pages/PurchaseHistory.vue'
+import OrderDetail from '@/pages/OrderDetail.vue'
 import PaymentManager from '@/pages/admin/PaymentManager.vue'
 import ForgotPassword from '@/pages/ForgotPassword.vue'
 import AdminBrandMetarial from '@/pages/admin/AdminBrandMetarial.vue'
@@ -72,6 +73,7 @@ const router = createRouter({
         { path: 'cart', component: () => import('@/pages/Cart.vue'), name: 'Cart' },
         { path: 'checkout', component: () => import('@/pages/Checkout.vue'), name: 'Checkout' },
         { path: 'purchase-history', component: PurchaseHistory, name: 'PurchaseHistory' },
+        { path: 'purchase-history/:id', component: OrderDetail, name: 'OrderDetail', props: true },
         { path: 'account-security', component: AccountSecurity, name: 'AccountSecurity' },
         { path: 'account-setting', component: AccountSetting, name: 'AccountSetting' },
       ],
