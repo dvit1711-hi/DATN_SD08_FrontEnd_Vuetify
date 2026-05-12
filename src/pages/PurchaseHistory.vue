@@ -839,7 +839,7 @@ const getTrackingSteps = (order) => {
 // COD baseSteps index sau khi thêm CONFIRMED:
 // 0: WAIT_CONFIRM
 // 1: CONFIRMED
-// 2: WAIT_SHIP
+// 2: WAIT_SHIP ← current khi CONFIRMED
 // 3: SHIPPING
 // 4: DELIVERED
 // 5: TRANSFER_CONFIRM
@@ -860,20 +860,18 @@ if (isOnlinePaymentMethod(order)) {
   }
 } else {
   // COD
-  if (orderStatus === "PAID") {
-    activeIndex = 6; // COMPLETED
-  } else if (orderStatus === "CONFIRMED" || 
-    (orderStatus === "PENDING_PAYMENT" && paymentStatus === "UNPAID")) {
-    // ✅ CONFIRMED → Chờ giao hàng (sau khi admin xác nhận đơn)
-    activeIndex = orderStatus === "CONFIRMED" ? 1 : 0;
+    if (orderStatus === "PAID") {
+    activeIndex = 6;
+  } else if (orderStatus === "CONFIRMED") {
+    activeIndex = 2; // ✅ SỬA: 1 → 2, CONFIRMED done, WAIT_SHIP current
   } else if (orderStatus === "SHIPPING" && uiShippingStarted && !uiDelivered) {
-    activeIndex = 3; // SHIPPING (đã tăng từ 2 → 3)
+    activeIndex = 3;
   } else if (orderStatus === "SHIPPING" && uiDelivered && paymentStatus === "UNPAID") {
-    activeIndex = 4; // DELIVERED (đã tăng từ 3 → 4)
+    activeIndex = 4;
   } else if (orderStatus === "SHIPPING" && uiDelivered && paymentStatus === "PAID") {
-    activeIndex = 5; // TRANSFER_CONFIRM (đã tăng từ 4 → 5)
+    activeIndex = 5;
   } else {
-    activeIndex = 0;
+    activeIndex = 0; // PENDING_PAYMENT → Chờ xác nhận
   }
 }
   return baseSteps.slice(0, activeIndex + 1)
