@@ -939,7 +939,10 @@ async function createPendingOrder() {
 
         loading.value = true
 
-        const payload = buildCustomerPayload()
+        // ✅ Reset form TRƯỚC khi build payload để đơn mới luôn là đơn trắng
+        resetOrderForm()
+
+        const payload = buildCustomerPayload()  // Lúc này payload sẽ rỗng
 
         const { data } = await posApi.createOfflineOrder(payload)
         currentOrder.value = data
@@ -957,6 +960,9 @@ async function createPendingOrder() {
 async function switchOrder(order) {
     try {
         loading.value = true
+
+        resetOrderForm()
+
         const { data } = await posApi.getOrder(getCurrentOrderId(order))
         currentOrder.value = data
         syncFormFromOrder(data)

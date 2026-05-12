@@ -6,67 +6,34 @@
       <div class="d-flex align-center justify-center ga-3 flex-wrap">
         <div class="font-weight-bold">Mã hóa đơn:</div>
 
-        <v-text-field
-          v-model="invoiceCode"
-          placeholder="VD: HD13 hoặc mã vận đơn"
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          style="max-width: 420px"
-          @keyup.enter="searchOrder"
-        />
+        <v-text-field v-model="invoiceCode" placeholder="VD: HD13 hoặc mã vận đơn" prepend-inner-icon="mdi-magnify"
+          variant="outlined" density="comfortable" hide-details style="max-width: 420px" @keyup.enter="searchOrder" />
 
-        <v-btn
-          color="deep-orange"
-          prepend-icon="mdi-magnify"
-          :loading="searching"
-          @click="searchOrder"
-        >
+        <v-btn color="deep-orange" prepend-icon="mdi-magnify" :loading="searching" @click="searchOrder">
           Tìm kiếm
         </v-btn>
-        <v-btn
-          color="indigo"
-          prepend-icon="mdi-qrcode-scan"
-          @click="startScanner"
-        >
+        <v-btn color="indigo" prepend-icon="mdi-qrcode-scan" @click="startScanner">
           Quét mã
         </v-btn>
       </div>
     </v-card>
-    <v-snackbar
-  v-model="snackbar"
-  location="top right"
-  :timeout="3000"
-  content-class="custom-snackbar"
->
-  <div class="toast-wrapper">
-    <div class="toast-content">
-      <v-icon
-        :color="snackbarColor"
-        size="22"
-      >
-        {{ snackbarIcon }}
-      </v-icon>
+    <v-snackbar v-model="snackbar" location="top right" :timeout="3000" content-class="custom-snackbar">
+      <div class="toast-wrapper">
+        <div class="toast-content">
+          <v-icon :color="snackbarColor" size="22">
+            {{ snackbarIcon }}
+          </v-icon>
 
-      <span class="toast-text">
-        {{ message }}
-      </span>
-    </div>
+          <span class="toast-text">
+            {{ message }}
+          </span>
+        </div>
 
-    <v-btn
-      icon="mdi-close"
-      size="x-small"
-      variant="text"
-      @click="snackbar = false"
-    />
-  </div>
+        <v-btn icon="mdi-close" size="x-small" variant="text" @click="snackbar = false" />
+      </div>
 
-  <div
-    class="toast-progress"
-    :class="snackbarColor"
-  ></div>
-</v-snackbar>
+      <div class="toast-progress" :class="snackbarColor"></div>
+    </v-snackbar>
 
     <template v-if="selectedOrder">
       <!-- BẢNG CHỌN SẢN PHẨM TRẢ -->
@@ -86,13 +53,8 @@
           <tbody>
             <tr v-for="item in returnRows" :key="item.orderDetailId">
               <td class="text-center">
-                <v-checkbox
-                  :model-value="item.checked"
-                  density="compact"
-                  hide-details
-                  :disabled="item.maxReturnQuantity <= 0"
-                  @update:modelValue="toggleItem(item, $event)"
-                />
+                <v-checkbox :model-value="item.checked" density="compact" hide-details
+                  :disabled="item.maxReturnQuantity <= 0" @update:modelValue="toggleItem(item, $event)" />
               </td>
 
               <td>
@@ -115,26 +77,14 @@
 
               <td class="text-center">
                 <div class="quantity-control">
-                  <v-btn
-                    icon="mdi-minus"
-                    size="x-small"
-                    variant="text"
-                    :disabled="!item.checked || item.returnQuantity <= 0"
-                    @click="decreaseQty(item)"
-                  />
+                  <v-btn icon="mdi-minus" size="x-small" variant="text"
+                    :disabled="!item.checked || item.returnQuantity <= 0" @click="decreaseQty(item)" />
                   <div class="quantity-value">
                     {{ item.returnQuantity }} / {{ item.maxReturnQuantity }}
                   </div>
-                  <v-btn
-                    icon="mdi-plus"
-                    size="x-small"
-                    variant="text"
-                    :disabled="
-                      !item.checked ||
-                      item.returnQuantity >= item.maxReturnQuantity
-                    "
-                    @click="increaseQty(item)"
-                  />
+                  <v-btn icon="mdi-plus" size="x-small" variant="text" :disabled="!item.checked ||
+                    item.returnQuantity >= item.maxReturnQuantity
+                    " @click="increaseQty(item)" />
                 </div>
               </td>
 
@@ -172,10 +122,7 @@
                   </td>
                 </tr>
 
-                <tr
-                  v-for="item in selectedReturnRows"
-                  :key="`selected-${item.orderDetailId}`"
-                >
+                <tr v-for="item in selectedReturnRows" :key="`selected-${item.orderDetailId}`">
                   <td>
                     <div class="d-flex align-center ga-3 py-2">
                       <v-avatar size="46" rounded="lg">
@@ -188,9 +135,7 @@
                         </div>
                         <div class="text-caption text-grey-darken-1">
                           {{ item.colorName || "-" }}
-                          <span v-if="item.sizeName"
-                            >[{{ item.sizeName }}]</span
-                          >
+                          <span v-if="item.sizeName">[{{ item.sizeName }}]</span>
                         </div>
                       </div>
                     </div>
@@ -214,15 +159,8 @@
             </v-table>
 
             <div class="mt-4">
-              <v-textarea
-                v-model="returnNote"
-                label="Ghi chú"
-                variant="outlined"
-                rows="3"
-                auto-grow
-                hide-details="auto"
-                placeholder="Nhập lý do trả hàng..."
-              />
+              <v-textarea v-model="returnNote" label="Ghi chú" variant="outlined" rows="3" auto-grow hide-details="auto"
+                placeholder="Nhập lý do trả hàng..." />
             </div>
           </v-card>
         </v-col>
@@ -235,9 +173,7 @@
             <div class="customer-info-box mb-4">
               <div class="info-row">
                 <v-icon size="18">mdi-account</v-icon>
-                <span
-                  ><strong>Khách hàng:</strong> {{ displayCustomerName }}</span
-                >
+                <span><strong>Khách hàng:</strong> {{ displayCustomerName }}</span>
               </div>
 
               <div class="info-row">
@@ -270,13 +206,7 @@
               </div>
             </div>
 
-            <v-btn
-              color="deep-orange"
-              block
-              class="mt-4"
-              :loading="submitting"
-              @click="submitReturn"
-            >
+            <v-btn color="deep-orange" block class="mt-4" :loading="submitting" @click="submitReturn">
               Trả hàng
             </v-btn>
           </v-card>
@@ -302,13 +232,7 @@
 
       <v-card-text>
         <div class="scanner-wrapper">
-          <video
-            id="barcode-video"
-            class="scanner-video"
-            autoplay
-            muted
-            playsinline
-          ></video>
+          <video id="barcode-video" class="scanner-video" autoplay muted playsinline></video>
           <div v-if="scannerLoading" class="scanner-loading">
             Đang mở camera...
           </div>
@@ -413,15 +337,15 @@ const showMessage = (
     type === "error"
       ? "error"
       : type === "warning"
-      ? "warning"
-      : "success";
+        ? "warning"
+        : "success";
 
   snackbarIcon.value =
     type === "error"
       ? "mdi-close-circle"
       : type === "warning"
-      ? "mdi-alert-circle"
-      : "mdi-check-circle";
+        ? "mdi-alert-circle"
+        : "mdi-check-circle";
 
   snackbar.value = true;
 };
@@ -435,8 +359,8 @@ const buildRows = (order) => {
 
     const maxReturnQuantity = Number(
       item.returnableQuantity ??
-        item.remainingQuantity ??
-        Math.max(0, quantity - returnedQuantity),
+      item.remainingQuantity ??
+      Math.max(0, quantity - returnedQuantity),
     );
 
     return {
@@ -699,6 +623,7 @@ onBeforeUnmount(() => {
 .text-red {
   color: #ef3d2f;
 }
+
 .empty-return {
   display: flex;
   flex-direction: column;
@@ -792,6 +717,7 @@ onBeforeUnmount(() => {
     width: 0%;
   }
 }
+
 :deep(.v-snackbar__wrapper) {
   animation: slideIn 0.25s ease;
 }
