@@ -15,93 +15,133 @@
 
     <!-- Filter and Search Section -->
     <v-card class="mb-5 filter-card" elevation="0" border>
-      <v-card-text class="pa-4">
-        <div class="filter-container">
+      <v-card-text class="pa-5">
+        <!-- Search Box and Price Range Row -->
+        <div class="search-price-row mb-5">
           <!-- Search Box -->
-          <div class="filter-section">
-            <label class="filter-label">Tìm kiếm</label>
+          <div class="search-section">
             <v-text-field
               v-model="searchQuery"
-              placeholder="Tìm theo màu, size..."
+              placeholder="Nhập mã sản phẩm để tìm..."
               prepend-inner-icon="mdi-magnify"
               variant="outlined"
               density="compact"
               clearable
+              class="search-field"
             />
           </div>
 
+          <!-- Price Range Slider -->
+          <div class="price-range-section">
+            <div class="price-header">
+              <span class="price-label">{{ formatPrice(filterPriceMin || 0) }} VND</span>
+              <span class="price-label">{{ formatPrice(filterPriceMax || 10000000) }} VND</span>
+            </div>
+            <div class="range-slider-container">
+              <input
+                type="range"
+                v-model.number="filterPriceMin"
+                min="0"
+                max="10000000"
+                class="range-slider range-slider-min"
+              />
+              <input
+                type="range"
+                v-model.number="filterPriceMax"
+                min="0"
+                max="10000000"
+                class="range-slider range-slider-max"
+              />
+              <div class="range-track">
+                <div 
+                  class="range-fill"
+                  :style="{
+                    left: ((filterPriceMin || 0) / 10000000) * 100 + '%',
+                    right: (1 - ((filterPriceMax || 10000000) / 10000000)) * 100 + '%'
+                  }"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters Row -->
+        <div class="filters-row mb-4">
           <!-- Status Filter -->
-          <div class="filter-section">
-            <label class="filter-label">Trạng thái</label>
+          <div class="filter-item">
             <v-select
               v-model="filterStatus"
               :items="statusOptions"
+              label="Trạng thái"
               multiple
               chips
-              placeholder="Chọn trạng thái"
               variant="outlined"
               density="compact"
               clearable
+              class="filter-dropdown"
             />
           </div>
 
           <!-- Stock Filter -->
-          <div class="filter-section">
-            <label class="filter-label">Tồn kho</label>
+          <div class="filter-item">
             <v-select
               v-model="filterStock"
               :items="stockOptions"
-              placeholder="Chọn tồn kho"
+              label="Tồn kho"
               variant="outlined"
               density="compact"
               clearable
-            />
-          </div>
-
-          <!-- Representative Filter -->
-          <div class="filter-section">
-            <label class="filter-label">Biến thể</label>
-            <v-select
-              v-model="filterRepresentative"
-              :items="representativeOptions"
-              placeholder="Chọn loại"
-              variant="outlined"
-              density="compact"
-              clearable
+              class="filter-dropdown"
             />
           </div>
 
           <!-- Color Filter -->
-          <div class="filter-section">
-            <label class="filter-label">Màu sắc</label>
+          <div class="filter-item">
             <v-select
               v-model="filterColors"
               :items="colors"
               item-title="colorName"
               item-value="colorID"
+              label="Màu sắc"
               multiple
               chips
-              placeholder="Chọn màu"
               variant="outlined"
               density="compact"
               clearable
+              class="filter-dropdown"
             />
           </div>
 
-          <!-- Clear Filters Button -->
-          <div class="filter-section button-section">
-            <v-btn
-              color="secondary"
-              variant="tonal"
-              size="small"
-              @click="clearFilters"
-            >
-              Xóa bộ lọc
-            </v-btn>
-            <span class="filter-result-text">
-              Hiển thị {{ filteredGroupCount }} nhóm màu
-            </span>
+          <!-- Size Filter -->
+          <div class="filter-item">
+            <v-select
+              v-model="filterSizes"
+              :items="sizes"
+              item-title="sizeName"
+              item-value="sizeID"
+              label="Size"
+              multiple
+              chips
+              variant="outlined"
+              density="compact"
+              clearable
+              class="filter-dropdown"
+            />
           </div>
+        </div>
+
+        <!-- Results Counter and Clear Button -->
+        <div class="filter-results">
+          <span class="results-text">Hiển thị <strong>{{ filteredGroupCount }}</strong> nhóm màu</span>
+          <v-btn
+            color="orange"
+            variant="tonal"
+            @click="clearFilters"
+            size="small"
+            class="clear-btn"
+          >
+            Xóa bộ lọc
+          </v-btn>
         </div>
       </v-card-text>
     </v-card>
@@ -179,7 +219,9 @@ export default {
       searchQuery: "",
       filterStatus: [],
       filterStock: null,
-      filterRepresentative: null,
+      filterSizes: [],
+      filterPriceMin: 0,
+      filterPriceMax: 10000000,
       filterColors: [],
       statusOptions: [
         { title: "Hoạt động", value: "ACTIVE" },
@@ -189,14 +231,19 @@ export default {
         { title: "Còn hàng", value: "inStock" },
         { title: "Hết hàng", value: "outOfStock" },
       ],
-      representativeOptions: [
-        { title: "Chỉ đại diện", value: "representative" },
-        { title: "Chỉ không đại diện", value: "notRepresentative" },
-      ],
     };
   },
 
   computed: {
+    rangeFillStyle() {
+      const min = (this.filterPriceMin || 0) / 10000000 * 100;
+      const max = (this.filterPriceMax || 10000000) / 10000000 * 100;
+      return {
+        left: min + '%',
+        right: (100 - max) + '%'
+      };
+    },
+
     groupedByColor() {
       if (!this.product?.colors?.length) return [];
 
@@ -207,7 +254,8 @@ export default {
         const matchesSearch =
           !this.searchQuery ||
           (variant.colorName?.toLowerCase().includes(searchLower) ?? false) ||
-          (variant.sizeName?.toLowerCase().includes(searchLower) ?? false);
+          (variant.sizeName?.toLowerCase().includes(searchLower) ?? false) ||
+          (variant.productColorCode?.toLowerCase().includes(searchLower) ?? false);
 
         if (!matchesSearch) return false;
 
@@ -227,17 +275,19 @@ export default {
           return false;
         }
 
-        // Representative filter
+        // Size filter
         if (
-          this.filterRepresentative === "representative" &&
-          !variant.isRepresentative
+          this.filterSizes.length > 0 &&
+          !this.filterSizes.includes(variant.sizeID)
         ) {
           return false;
         }
-        if (
-          this.filterRepresentative === "notRepresentative" &&
-          variant.isRepresentative
-        ) {
+
+        // Price range filter
+        if (this.filterPriceMin > 0 && variant.price < this.filterPriceMin) {
+          return false;
+        }
+        if (this.filterPriceMax < 10000000 && variant.price > this.filterPriceMax) {
           return false;
         }
 
@@ -319,12 +369,27 @@ export default {
     this.loadSizes();
   },
 
+  watch: {
+    filterPriceMin(newVal) {
+      if (newVal > this.filterPriceMax) {
+        this.filterPriceMax = newVal;
+      }
+    },
+    filterPriceMax(newVal) {
+      if (newVal < this.filterPriceMin) {
+        this.filterPriceMin = newVal;
+      }
+    },
+  },
+
   methods: {
     clearFilters() {
       this.searchQuery = "";
       this.filterStatus = [];
       this.filterStock = null;
-      this.filterRepresentative = null;
+      this.filterSizes = [];
+      this.filterPriceMin = 0;
+      this.filterPriceMax = 10000000;
       this.filterColors = [];
     },
 
@@ -704,49 +769,212 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.filter-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  align-items: flex-end;
-}
-
-.filter-section {
+/* Search and Price Row */
+.search-price-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 24px;
+  justify-content: flex; /* đẩy sang phải */
+  gap: 450px; /* giảm khoảng cách */
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
-.filter-label {
-  font-size: 12px;
+.search-section {
+  flex: 0 0 auto;
+  min-width: 280px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.search-field {
+  width: 100%;
+}
+
+.search-field :deep(.v-field__input) {
+  font-size: 14px;
+}
+
+.search-field :deep(.v-field) {
+  border-radius: 8px;
+}
+
+/* Price Range Section */
+.price-range-section {
+      justify-content: flex-end; /* đẩy sang phải */
+  flex: 0 0 auto;
+  width: 340px;
+  padding: 0;
+}
+
+.price-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.price-label {
+  font-size: 13px;
   font-weight: 600;
-  color: #333;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #ff9800;
 }
 
-.button-section {
+.range-slider-container {
+  position: relative;
+  height: 40px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
+}
+
+.range-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.range-fill {
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(90deg, #ff9800, #ffc107);
+  border-radius: 4px;
+}
+
+.range-slider {
+  position: absolute;
+  width: 100%;
+  height: 40px;
+  top: 0;
+  left: 0;
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  z-index: 5;
+}
+
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff9800;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+  border: 2px solid white;
+}
+
+.range-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff9800;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+  border: 2px solid white;
+}
+
+.range-slider::-webkit-slider-runnable-track {
+  background: transparent;
+  border: none;
+}
+
+.range-slider::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+
+/* Filters Rows */
+.filters-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
+  margin-bottom: 12px;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-dropdown {
+  width: 100%;
+}
+
+.filter-dropdown :deep(.v-field) {
+  border-radius: 6px;
+  border-color: #e0e0e0;
+}
+
+.filter-dropdown :deep(.v-field__outline__start::before),
+.filter-dropdown :deep(.v-field__outline__end::before) {
+  border-color: #e0e0e0;
+}
+
+.filter-dropdown :deep(.v-field__input) {
+  font-size: 13px;
+  color: #666;
+}
+
+.filter-dropdown :deep(.v-field--focused .v-field__outline__start::before),
+.filter-dropdown :deep(.v-field--focused .v-field__outline__end::before) {
+  border-color: #ff9800 !important;
+}
+
+.clear-btn {
+  font-weight: 600;
+  text-transform: none;
+  background: #fff3e0 !important;
+  color: #ff9800 !important;
+  border: 1px solid #ffe0b2 !important;
+}
+
+.clear-btn:hover {
+  background: #ffe0b2 !important;
+}
+
+/* Results Counter */
+.filter-results {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
   flex-wrap: wrap;
 }
 
-.filter-result-text {
+.results-text {
   font-size: 13px;
   color: #666;
   font-weight: 500;
-  white-space: nowrap;
+}
+
+.results-text strong {
+  color: #ff9800;
+  font-weight: 700;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .filter-container {
+  .filters-row {
     grid-template-columns: 1fr;
   }
 
-  .button-section {
-    grid-column: 1 / -1;
+  .search-field {
+    max-width: 100%;
+  }
+
+  .price-header {
+    font-size: 12px;
   }
 }
 </style>
