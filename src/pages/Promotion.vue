@@ -4,7 +4,6 @@
     <div class="header-section">
       <div class="header-content">
         <div class="section-label">
-          PROMOTION
         </div>
 
         <h1>Khuyến mãi & mã giảm giá</h1>
@@ -510,21 +509,32 @@ onMounted(async () => {
 
 /* TABS */
 .tabs-section {
-  margin-bottom: 32px;
-  padding-left: 60px;
-  padding-right: 60px;
+  margin-bottom: 40px;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .custom-tabs {
   background: white;
   border: 1px solid #ececec;
-  border-radius: 18px;
-  padding: 6px;
+  border-radius: 20px;
+  padding: 10px;
+  height: 70px;
+}
+
+.custom-tabs :deep(.v-tabs-bar) {
+  height: 70px;
+}
+
+.custom-tabs :deep(.v-tabs-bar__content) {
+  height: 70px;
 }
 
 .tab-item {
   text-transform: none !important;
   font-weight: 600;
+  font-size: 16px !important;
+  height: 50px !important;
 }
 
 /* CARD */

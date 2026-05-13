@@ -180,7 +180,7 @@
               border
               :class="{
                 'product-card-selected': selectedProductId === product.orderDetailId,
-                'product-card-reviewed': isProductReviewed(product.orderDetailId)
+                'product-card-reviewed': isProductReviewed(product.productId)
               }"
               @click="handleSelectProduct(product)"
             >
@@ -201,7 +201,7 @@
                     </div>
 
                     <v-chip
-                      v-if="isProductReviewed(product.orderDetailId)"
+                      v-if="isProductReviewed(product.productId)"
                       size="x-small"
                       color="success"
                       variant="tonal"
@@ -225,7 +225,7 @@
           </v-col>
         </v-row>
 
-        <v-row v-if="selectedProductId && !isProductReviewed(selectedProductId)" class="mb-8">
+        <v-row v-if="selectedProductId && !isProductReviewed(getSelectedProductIdForApi())" class="mb-8">
           <v-col cols="12" md="8">
             <v-card class="mb-6" elevation="0" border>
               <v-row class="ma-0">
@@ -479,7 +479,7 @@ const selectedProductId = ref(null)
 const paidOrders = ref([])
 const selectedOrderProducts = ref([])
 const reviews = ref([])
-const reviewedOrderDetailIds = ref(new Set())
+const reviewedProductIds = ref(new Set())
 const selectedStarFilter = ref(null)
 const isLoading = ref(false)
 const isSubmitting = ref(false)
@@ -698,8 +698,8 @@ const filteredReviews = computed(() => {
   return reviews.value.filter((r) => r.rating === selectedStarFilter.value)
 })
 
-const isProductReviewed = (orderDetailId) => {
-  return orderDetailId && reviewedOrderDetailIds.value.has(orderDetailId)
+const isProductReviewed = (productId) => {
+  return productId && reviewedProductIds.value.has(productId)
 }
 
 const loadPaidOrders = async () => {
@@ -758,15 +758,14 @@ const loadReviewedProducts = async () => {
 
   try {
     const response = await reviewApi.getReviewsByAccountId(currentUserId.value)
-    reviewedOrderDetailIds.value = new Set(
+    reviewedProductIds.value = new Set(
       (response.data || [])
-        .map((review) => review.orderDetailId || review.orderItemId)
+        .map((review) => review.productId)
         .filter(Boolean)
     )
-    console.log('Reviewed order detail IDs:', Array.from(reviewedOrderDetailIds.value))
   } catch (error) {
     console.error("Failed to load reviewed products:", error)
-    reviewedOrderDetailIds.value = new Set()
+    reviewedProductIds.value = new Set()
   }
 }
 
@@ -812,8 +811,8 @@ const handleSelectProduct = async (product) => {
   selectedProductId.value = product.orderDetailId
   await loadReviews()
 
-  if (isProductReviewed(product.orderDetailId)) {
-    showSnackbar("Bạn đã đánh giá sản phẩm này ở đơn hàng này rồi.", "info")
+  if (isProductReviewed(product.productId)) {
+    showSnackbar("Sản phẩm này bạn đã đánh giá rồi.", "info")
   }
 }
 
@@ -915,7 +914,6 @@ const submitReview = async () => {
         accountId: currentUserId.value,
         rating: newReview.value.rating,
         comment: newReview.value.comment,
-        orderDetailId: selectedProductId.value,
       })
 
       showSnackbar("Gửi đánh giá thành công!", "success")

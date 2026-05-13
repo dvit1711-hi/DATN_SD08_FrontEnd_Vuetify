@@ -2,7 +2,6 @@
   <div class="cart-page">
     <div class="page-header">
       <div>
-        <p class="page-eyebrow">Order History</p>
         <h1 class="page-title">Lịch sử mua hàng</h1>
       </div>
     </div>

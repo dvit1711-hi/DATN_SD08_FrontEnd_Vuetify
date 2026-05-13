@@ -3,7 +3,6 @@
     <!-- Page Header -->
     <div class="page-header">
       <div>
-        <p class="page-eyebrow">Shopping Bag</p>
         <h1 class="page-title">Giỏ hàng của bạn</h1>
       </div>
     </div>
