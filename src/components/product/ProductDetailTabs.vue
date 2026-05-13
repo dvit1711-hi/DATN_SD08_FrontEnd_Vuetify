@@ -73,7 +73,9 @@
           <li>Sản phẩm đổi trả cần còn tem, nhãn và phụ kiện đi kèm.</li>
           <li>Không áp dụng đổi trả với sản phẩm hư hỏng do người dùng.</li>
           <li>Khuyến khích giữ lại hóa đơn hoặc thông tin đơn hàng để đối chiếu.</li>
-          <li>Thời gian xử lý đổi trả tùy theo chính sách cửa hàng của bạn.</li>
+          <li>Thời gian xử lý đổi trả 5 ngày từ khi nhận hàng.</li>
+          <li>Đối tượng khách hàng: Tất cả khách hàng sử dụng dịch vụ tại DTVD</li>
+          <li>Hỗ trợ đổi trả  tại <a href="https://www.facebook.com/share/1BZiTRGqYE/?mibextid=wwXIfr" target="_blank">Fanpage DTVD</a></li>
         </ul>
       </div>
     </div>

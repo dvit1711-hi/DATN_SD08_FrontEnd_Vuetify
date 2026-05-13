@@ -709,6 +709,9 @@ watch(currentPage, () => { window.scrollTo({ top: 0, behavior: 'smooth' }) })
 }
 
 .purchase-order-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   min-width: 160px;
 }
 
@@ -730,9 +733,39 @@ watch(currentPage, () => { window.scrollTo({ top: 0, behavior: 'smooth' }) })
   margin-top: 2px;
 }
 
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #fff;
+  color: #d32f2f;
+  border: 1px solid #d32f2f;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  align-self: flex-end;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #d32f2f;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3);
+}
+
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .purchase-order-cancel {
-  margin-top: 10px;
-  justify-content: flex-end;
+  margin-top: 0;
 }
 
 .btn-primary {
