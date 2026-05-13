@@ -63,7 +63,7 @@
           </h1>
 
           <div class="product-style-code">
-            Mã sản phẩm: #{{ product.productID }}
+            Mã sản phẩm: DTVD{{ product.productID }}
           </div>
 
           <div class="product-detail-price mb-6">

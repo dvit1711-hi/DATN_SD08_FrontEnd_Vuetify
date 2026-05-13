@@ -79,21 +79,32 @@
                     </v-card-title>
 
                     <v-card-text>
-                        <v-text-field v-model="productKeyword" label="Tìm sản phẩm" variant="outlined"
-                            density="comfortable" prepend-inner-icon="mdi-magnify" @input="searchProducts" />
+                        <v-text-field v-model="productKeyword" label="Tìm sản phẩm (tên, mã sản phẩm, màu, hãng)"
+                            variant="outlined" density="comfortable" prepend-inner-icon="mdi-magnify" clearable
+                            @update:model-value="handleProductSearch" @keyup.enter="loadProducts" />
 
-                        <v-row>
+                        <div class="text-caption text-grey mt-2">
+                            Tìm theo: Tên sản phẩm, Mã sản phẩm, Màu, Hãng
+                        </div>
+
+                        <v-row class="mt-4">
                             <v-col v-for="product in products" :key="getProductColorId(product)" cols="12" sm="6">
                                 <v-card variant="outlined" class="h-100">
                                     <v-img :src="product.imageUrl || defaultImage" height="180" cover />
-                                    <v-card-title class="text-subtitle-1">
+
+                                    <v-card-title class="text-subtitle-1 pb-1">
                                         {{ product.productName }}
                                     </v-card-title>
-                                    <v-card-subtitle>
+
+                                    <v-card-subtitle class="text-caption">
+                                        Mã: {{ product.productColorCode || "-" }}
+                                    </v-card-subtitle>
+
+                                    <v-card-subtitle class="text-caption">
                                         Màu: {{ product.colorName || "-" }} | Size: {{ product.sizeName || "-" }}
                                     </v-card-subtitle>
 
-                                    <v-card-text>
+                                    <v-card-text class="pt-2">
                                         <div class="mb-2">
                                             <template v-if="product.discounted">
                                                 <div class="text-caption text-grey text-decoration-line-through">
@@ -122,7 +133,7 @@
                                             </template>
                                         </div>
 
-                                        <div>
+                                        <div class="mb-3">
                                             Tồn kho:
                                             <strong>{{ product.stockQuantity ?? 0 }}</strong>
                                         </div>
@@ -431,6 +442,7 @@ const bankingDialog = ref(false)
 const bankingInfo = ref(null)
 const confirmingBankingPayment = ref(false)
 let customerSearchTimer = null
+let productSearchTimer = null
 
 const guest = ref({
     customerName: "",
@@ -876,8 +888,16 @@ async function loadProducts() {
     }
 }
 
-async function searchProducts() {
-    await loadProducts()
+function handleProductSearch(value) {
+    productKeyword.value = value || ""
+
+    if (productSearchTimer) {
+        clearTimeout(productSearchTimer)
+    }
+
+    productSearchTimer = setTimeout(() => {
+        loadProducts()
+    }, 300)
 }
 
 async function loadPromotions() {

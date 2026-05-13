@@ -224,6 +224,102 @@
             </div>
           </div>
         </div>
+
+        <!-- Barcode & QR Code Section -->
+        <div v-if="showIdentifierSection" class="mt-6">
+          <div class="text-subtitle-1 font-weight-bold mb-4">
+            <v-icon size="20" color="primary" class="me-2">mdi-qrcode</v-icon>
+            Mã định danh sản phẩm
+          </div>
+
+          <v-alert type="info" variant="tonal" class="mb-4">
+            <v-alert-title>Mã sản phẩm: {{ productColorCodeDisplay }}</v-alert-title>
+          </v-alert>
+
+          <v-row class="ga-6">
+            <!-- Barcode Section -->
+            <v-col cols="12" md="6">
+              <div class="code-container">
+                <div class="code-label">Mã vạch (Barcode)</div>
+                <div class="barcode-wrapper" ref="barcodeContainer">
+                  <svg ref="barcodeSvg" />
+                </div>
+                <div class="code-actions mt-3">
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-printer"
+                    @click="printBarcode"
+                    class="me-2"
+                  >
+                    In
+                  </v-btn>
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-content-copy"
+                    @click="copyToClipboard('barcode')"
+                  >
+                    Sao chép
+                  </v-btn>
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-download"
+                    @click="downloadBarcode"
+                    class="ms-2"
+                  >
+                    Tải
+                  </v-btn>
+                </div>
+              </div>
+            </v-col>
+
+            <!-- QR Code Section -->
+            <v-col cols="12" md="6">
+              <div class="code-container">
+                <div class="code-label">Mã QR</div>
+                <div class="qrcode-wrapper">
+                  <canvas ref="qrcodeCanvas" />
+                </div>
+                <div class="code-actions mt-3">
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-printer"
+                    @click="printQRCode"
+                    class="me-2"
+                  >
+                    In
+                  </v-btn>
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-content-copy"
+                    @click="copyToClipboard('qrcode')"
+                  >
+                    Sao chép
+                  </v-btn>
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-download"
+                    @click="downloadQRCode"
+                    class="ms-2"
+                  >
+                    Tải
+                  </v-btn>
+                </div>
+              </div>
+            </v-col>
+          </v-row>
+        </div>
       </v-card-text>
 
       <v-divider />
@@ -240,7 +336,9 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, nextTick } from "vue";
+import JsBarcode from "jsbarcode";
+import QRCode from "qrcode";
 
 const props = defineProps({
   open: Boolean,
@@ -282,6 +380,9 @@ const defaultForm = () => ({
 
 const form = ref(defaultForm());
 const newFiles = ref([]);
+const barcodeSvg = ref(null);
+const qrcodeCanvas = ref(null);
+const barcodeContainer = ref(null);
 
 const existingImages = computed(() => props.variant?.images || []);
 const totalImagesCount = computed(
@@ -289,9 +390,17 @@ const totalImagesCount = computed(
 );
 const remainingSlots = computed(() => Math.max(0, 5 - totalImagesCount.value));
 
+const productColorCodeDisplay = computed(() => {
+  return props.variant?.productColorCode || "—";
+});
+
+const showIdentifierSection = computed(() => {
+  return props.mode === "edit" && props.variant?.productColorCode;
+});
+
 watch(
   () => props.variant,
-  (val) => {
+  async (val) => {
     if (!val) {
       form.value = defaultForm();
       newFiles.value = [];
@@ -308,9 +417,237 @@ watch(
     };
 
     newFiles.value = [];
+
+    // Generate codes after dialog updates
+    if (props.mode === "edit" && val.productColorCode) {
+      await nextTick();
+      await generateBarcode();
+      await generateQRCode();
+    }
   },
   { immediate: true },
 );
+
+const generateBarcode = async () => {
+  try {
+    const code = props.variant?.productColorCode || "";
+    if (!code || !barcodeSvg.value) return;
+
+    JsBarcode(barcodeSvg.value, code, {
+      format: "CODE128",
+      width: 2,
+      height: 100,
+      displayValue: true,
+      fontSize: 14,
+      margin: 10,
+    });
+  } catch (error) {
+    console.error("Error generating barcode:", error);
+  }
+};
+
+const generateQRCode = async () => {
+  try {
+    const code = props.variant?.productColorCode || "";
+    if (!code || !qrcodeCanvas.value) return;
+
+    await QRCode.toCanvas(qrcodeCanvas.value, code, {
+      errorCorrectionLevel: "H",
+      type: "image/png",
+      width: 200,
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    });
+  } catch (error) {
+    console.error("Error generating QR code:", error);
+  }
+};
+
+const printBarcode = async () => {
+  try {
+    const code = props.variant?.productColorCode || "";
+    const svgElement = barcodeSvg.value;
+    if (!svgElement || !code) return;
+
+    const printWindow = window.open("", "", "width=800,height=600");
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>In Mã Vạch - ${code}</title>
+          <style>
+            body { 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              height: 100vh;
+              margin: 0;
+              font-family: Arial, sans-serif;
+            }
+            .barcode-print {
+              text-align: center;
+            }
+            svg { 
+              max-width: 100%; 
+              height: auto;
+            }
+            .code-text {
+              margin-top: 10px;
+              font-size: 14px;
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="barcode-print">
+            ${svgString}
+            <div class="code-text">${code}</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 250);
+  } catch (error) {
+    console.error("Error printing barcode:", error);
+  }
+};
+
+const printQRCode = async () => {
+  try {
+    const code = props.variant?.productColorCode || "";
+    const canvas = qrcodeCanvas.value;
+    if (!canvas || !code) return;
+
+    const printWindow = window.open("", "", "width=800,height=600");
+    const imageData = canvas.toDataURL("image/png");
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>In Mã QR - ${code}</title>
+          <style>
+            body { 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              height: 100vh;
+              margin: 0;
+              font-family: Arial, sans-serif;
+            }
+            .qr-print {
+              text-align: center;
+            }
+            img { 
+              max-width: 400px; 
+              height: auto;
+              border: 1px solid #ddd;
+              padding: 20px;
+            }
+            .code-text {
+              margin-top: 10px;
+              font-size: 14px;
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="qr-print">
+            <img src="${imageData}" alt="QR Code" />
+            <div class="code-text">${code}</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 250);
+  } catch (error) {
+    console.error("Error printing QR code:", error);
+  }
+};
+
+const downloadBarcode = () => {
+  try {
+    const code = props.variant?.productColorCode || "";
+    const svgElement = barcodeSvg.value;
+    if (!svgElement || !code) return;
+
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const blob = new Blob([svgString], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `barcode_${code}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error downloading barcode:", error);
+  }
+};
+
+const downloadQRCode = () => {
+  try {
+    const code = props.variant?.productColorCode || "";
+    const canvas = qrcodeCanvas.value;
+    if (!canvas || !code) return;
+
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `qrcode_${code}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Error downloading QR code:", error);
+  }
+};
+
+const copyToClipboard = async (type) => {
+  try {
+    const code = props.variant?.productColorCode || "";
+    if (!code) return;
+
+    if (type === "barcode") {
+      const canvas = document.createElement("canvas");
+      const svgElement = barcodeSvg.value;
+      if (!svgElement) return;
+
+      const svgString = new XMLSerializer().serializeToString(svgElement);
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+        });
+      };
+      img.src =
+        "data:image/svg+xml;base64," +
+        btoa(unescape(encodeURIComponent(svgString)));
+    } else if (type === "qrcode") {
+      const canvas = qrcodeCanvas.value;
+      if (!canvas) return;
+
+      canvas.toBlob((blob) => {
+        navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+      });
+    }
+  } catch (error) {
+    console.error("Error copying to clipboard:", error);
+  }
+};
 
 const onFileChange = (event) => {
   const files = Array.from(event.target.files || []);
@@ -502,5 +839,66 @@ const formatPrice = (price) => {
   border-radius: 50%;
   border: 1px solid #999;
   flex-shrink: 0;
+}
+
+/* Code Section Styles */
+.code-container {
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+}
+
+.code-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.barcode-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  min-height: 140px;
+  border: 1px solid #e0e0e0;
+}
+
+.qrcode-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  min-height: 240px;
+  border: 1px solid #e0e0e0;
+}
+
+.code-wrapper canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.code-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.code-actions .v-btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .code-container {
+    margin-bottom: 12px;
+  }
 }
 </style>

@@ -18,31 +18,16 @@
       <v-row class="mb-6" v-if="paidOrders.length > 0 && !selectedOrderId">
         <v-col cols="12">
           <div class="search-bar-wrapper">
-            <v-text-field
-              v-model="searchQuery"
-              placeholder="Tìm kiếm theo tên sản phẩm, màu sắc, size, giá, hoặc mã đơn hàng..."
-              variant="outlined"
-              density="comfortable"
-              clearable
-              rounded="lg"
-              class="search-field"
-              :maxlength="MAX_SEARCH_LENGTH"
-              :error="!!searchError"
-              :error-messages="searchError ? [searchError] : []"
-              @focus="searchError = ''"
-            >
+            <v-text-field v-model="searchQuery"
+              placeholder="Tìm kiếm theo tên sản phẩm, màu sắc, size, giá, hoặc mã đơn hàng..." variant="outlined"
+              density="comfortable" clearable rounded="lg" class="search-field" :maxlength="MAX_SEARCH_LENGTH"
+              :error="!!searchError" :error-messages="searchError ? [searchError] : []" @focus="searchError = ''">
               <template #append-inner>
                 <v-icon icon="mdi-keyboard" size="small" class="keyboard-icon"></v-icon>
               </template>
               <template #append>
-                <v-btn
-                  icon="mdi-magnify"
-                  variant="text"
-                  color="primary"
-                  size="large"
-                  class="search-btn"
-                  :disabled="!!searchError"
-                />
+                <v-btn icon="mdi-magnify" variant="text" color="primary" size="large" class="search-btn"
+                  :disabled="!!searchError" />
               </template>
             </v-text-field>
 
@@ -59,7 +44,9 @@
               <v-alert type="info" variant="tonal" density="compact" class="mb-0">
                 <div class="text-caption">
                   <v-icon size="x-small" class="mr-2">mdi-lightbulb</v-icon>
-                  <strong>Mẹo tìm kiếm:</strong> Bạn có thể tìm kiếm theo tên sản phẩm, màu sắc, size, giá tiền, số lượng, ngày đặt hàng, hoặc mã đơn hàng
+                  <strong>Mẹo tìm kiếm:</strong> Bạn có thể tìm kiếm theo tên sản phẩm, màu sắc, size, giá tiền, số
+                  lượng, ngày đặt
+                  hàng, hoặc mã đơn hàng
                 </div>
               </v-alert>
             </div>
@@ -79,6 +66,7 @@
       </template>
 
       <template v-else>
+        <!-- ===== BƯỚC 1: CHỌN ĐƠN HÀNG ===== -->
         <v-row class="mb-8" v-if="!selectedOrderId">
           <v-col cols="12">
             <div class="mb-4 d-flex align-center justify-space-between">
@@ -87,7 +75,7 @@
                   {{ searchQuery ? 'Kết quả tìm kiếm' : 'Chọn đơn hàng để đánh giá' }}
                 </h2>
                 <p class="text-body-2 text-grey">
-                  {{ filteredPaidOrders.length }} 
+                  {{ filteredPaidOrders.length }}
                   {{ searchQuery ? 'kết quả phù hợp' : 'đơn hàng đã được thanh toán' }}
                 </p>
               </div>
@@ -95,21 +83,10 @@
           </v-col>
 
           <template v-if="filteredPaidOrders.length > 0">
-            <v-col
-              v-for="order in filteredPaidOrders"
-              :key="order.orderId"
-              cols="12"
-              md="6"
-              lg="4"
-              class="mb-4"
-            >
-              <v-card
-                class="order-card cursor-pointer h-100 transition-transform"
-                elevation="0"
-                border
+            <v-col v-for="order in filteredPaidOrders" :key="order.orderId" cols="12" md="6" lg="4" class="mb-4">
+              <v-card class="order-card cursor-pointer h-100 transition-transform" elevation="0" border
                 @click="selectedOrderId = order.orderId; onOrderSelected(order.orderId)"
-                :class="{ 'order-card-selected': selectedOrderId === order.orderId }"
-              >
+                :class="{ 'order-card-selected': selectedOrderId === order.orderId }">
                 <v-card-item>
                   <div class="d-flex justify-space-between align-start mb-4">
                     <div>
@@ -129,13 +106,8 @@
                   <v-divider class="my-4"></v-divider>
 
                   <div class="d-flex gap-2 flex-wrap">
-                    <v-avatar
-                      v-for="item in order.items"
-                      :key="item.orderDetailId"
-                      size="48"
-                      rounded
-                      class="order-product-thumb"
-                    >
+                    <v-avatar v-for="item in order.items" :key="item.orderDetailId" size="48" rounded
+                      class="order-product-thumb">
                       <v-img :src="item.imageUrl || fallbackImage" cover></v-img>
                     </v-avatar>
                   </div>
@@ -152,20 +124,19 @@
           </v-col>
         </v-row>
 
+        <!-- ===== BƯỚC 2: CHỌN SẢN PHẨM TRONG ĐƠN ===== -->
         <v-row v-if="selectedOrderId && selectedOrderProducts.length > 0" class="mb-8">
           <v-col cols="12">
             <div class="mb-4 d-flex justify-space-between align-center">
               <div>
-                <v-btn
-                  variant="text"
-                  icon="mdi-chevron-left"
-                  @click="selectedOrderId = null; selectedProductId = null; selectedOrderProducts = []"
-                ></v-btn>
+                <v-btn variant="text" icon="mdi-chevron-left"
+                  @click="selectedOrderId = null; selectedProductId = null; selectedProductObj = null; selectedOrderProducts = []"></v-btn>
                 <span class="text-h6 font-weight-bold">Chọn sản phẩm để đánh giá</span>
               </div>
             </div>
           </v-col>
 
+<<<<<<< HEAD
           <v-col
             v-for="product in selectedOrderProducts"
             :key="product.orderDetailId"
@@ -184,13 +155,16 @@
               }"
               @click="handleSelectProduct(product)"
             >
+=======
+          <v-col v-for="product in selectedOrderProducts" :key="product.orderDetailId" cols="12" md="6" lg="4"
+            class="mb-4">
+            <v-card class="product-card cursor-pointer h-100 transition-transform" elevation="0" border :class="{
+              'product-card-selected': selectedProductId === product.orderDetailId,
+              'product-card-reviewed': isProductReviewed(product)
+            }" @click="handleSelectProduct(product)">
+>>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
               <div class="product-image-container">
-                <v-img
-                  :src="product.imageUrl || fallbackImage"
-                  height="200"
-                  cover
-                  class="product-card-image"
-                ></v-img>
+                <v-img :src="product.imageUrl || fallbackImage" height="200" cover class="product-card-image"></v-img>
               </div>
 
               <v-card-item>
@@ -200,12 +174,17 @@
                       {{ product.productName }}
                     </div>
 
+<<<<<<< HEAD
                     <v-chip
                       v-if="isProductReviewed(product.productId)"
                       size="x-small"
                       color="success"
                       variant="tonal"
                     >
+=======
+                    <!-- ✅ Sửa: truyền object product thay vì orderDetailId -->
+                    <v-chip v-if="isProductReviewed(product)" size="x-small" color="success" variant="tonal">
+>>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
                       Đã đánh giá
                     </v-chip>
                   </div>
@@ -225,7 +204,13 @@
           </v-col>
         </v-row>
 
+<<<<<<< HEAD
         <v-row v-if="selectedProductId && !isProductReviewed(getSelectedProductIdForApi())" class="mb-8">
+=======
+        <!-- ===== BƯỚC 3: FORM ĐÁNH GIÁ ===== -->
+        <!-- ✅ Sửa: dùng isProductReviewed(selectedProductObj) thay vì isProductReviewed(selectedProductId) -->
+        <v-row v-if="selectedProductId && !isProductReviewed(selectedProductObj)" class="mb-8">
+>>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
           <v-col cols="12" md="8">
             <v-card class="mb-6" elevation="0" border>
               <v-row class="ma-0">
@@ -251,13 +236,7 @@
                     <div class="d-flex align-center gap-3">
                       <div class="text-h4 font-weight-bold">{{ averageRating.toFixed(1) }}</div>
                       <div>
-                        <v-rating
-                          :model-value="averageRating"
-                          readonly
-                          size="small"
-                          color="amber"
-                          class="mb-2"
-                        />
+                        <v-rating :model-value="averageRating" readonly size="small" color="amber" class="mb-2" />
                         <div class="text-caption text-grey">{{ totalReviews }} đánh giá</div>
                       </div>
                     </div>
@@ -273,51 +252,26 @@
                 <v-form @submit.prevent="submitReview" class="review-form">
                   <div class="mb-6">
                     <div class="text-body-2 font-weight-bold mb-3">Đánh giá sản phẩm</div>
-                    <v-rating
-                      v-model="newReview.rating"
-                      :length="5"
-                      size="large"
-                      color="amber"
-                      hover
-                    />
+                    <v-rating v-model="newReview.rating" :length="5" size="large" color="amber" hover />
                     <div class="text-caption text-grey mt-2">
                       {{ newReview.rating ? `${newReview.rating} sao` : "Chọn đánh giá" }}
                     </div>
                   </div>
 
                   <div class="mb-6">
-                    <v-textarea
-                      v-model="newReview.comment"
-                      label="Bình luận"
-                      placeholder="Chia sẻ trải nghiệm của bạn..."
-                      variant="outlined"
-                      rows="4"
-                      counter="500"
-                      maxlength="500"
-                      persistent-placeholder
-                    />
+                    <v-textarea v-model="newReview.comment" label="Bình luận"
+                      placeholder="Chia sẻ trải nghiệm của bạn..." variant="outlined" rows="4" counter="500"
+                      maxlength="500" persistent-placeholder />
                   </div>
 
                   <div class="d-flex gap-2">
-                    <v-btn
-                      type="submit"
-                      color="primary"
-                      size="large"
-                      :loading="isSubmitting"
-                      :disabled="!newReview.rating"
-                      class="px-8"
-                    >
+                    <v-btn type="submit" color="primary" size="large" :loading="isSubmitting"
+                      :disabled="!newReview.rating" class="px-8">
                       {{ editingReviewId ? "Cập nhật đánh giá" : "Gửi đánh giá" }}
                     </v-btn>
 
-                    <v-btn
-                      v-if="editingReviewId"
-                      color="grey"
-                      variant="outlined"
-                      size="large"
-                      @click="cancelEdit"
-                      class="px-8"
-                    >
+                    <v-btn v-if="editingReviewId" color="grey" variant="outlined" size="large" @click="cancelEdit"
+                      class="px-8">
                       Hủy
                     </v-btn>
                   </div>
@@ -332,13 +286,9 @@
                 <div class="text-body-2 text-grey mb-4">Tổng quan đánh giá</div>
 
                 <div class="mb-4">
-                  <button
-                    v-for="star in [5, 4, 3, 2, 1]"
-                    :key="star"
-                    class="star-filter-btn"
+                  <button v-for="star in [5, 4, 3, 2, 1]" :key="star" class="star-filter-btn"
                     :class="{ active: selectedStarFilter === star }"
-                    @click="selectedStarFilter = selectedStarFilter === star ? null : star"
-                  >
+                    @click="selectedStarFilter = selectedStarFilter === star ? null : star">
                     <span class="d-flex align-center gap-2">
                       {{ star }} <v-icon icon="mdi-star" size="small" />
                     </span>
@@ -349,6 +299,7 @@
           </v-col>
         </v-row>
 
+        <!-- ===== DANH SÁCH ĐÁNH GIÁ ===== -->
         <v-row v-if="selectedProductId">
           <v-col cols="12" md="8">
             <div class="mb-4">
@@ -357,13 +308,7 @@
             </div>
 
             <template v-if="filteredReviews.length > 0">
-              <v-card
-                v-for="review in filteredReviews"
-                :key="review.id"
-                class="mb-4 review-card"
-                elevation="0"
-                border
-              >
+              <v-card v-for="review in filteredReviews" :key="review.id" class="mb-4 review-card" elevation="0" border>
                 <v-card-item>
                   <div class="d-flex gap-3">
                     <v-avatar size="48" color="primary" class="text-white">
@@ -379,13 +324,8 @@
 
                         <v-menu>
                           <template v-slot:activator="{ props }">
-                            <v-btn
-                              icon="mdi-dots-vertical"
-                              variant="text"
-                              size="small"
-                              v-bind="props"
-                              v-if="review.accountId === currentUserId"
-                            />
+                            <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"
+                              v-if="review.accountId === currentUserId" />
                           </template>
 
                           <v-list>
@@ -406,13 +346,7 @@
                         </v-menu>
                       </div>
 
-                      <v-rating
-                        :model-value="review.rating"
-                        readonly
-                        size="small"
-                        color="amber"
-                        class="mb-2"
-                      />
+                      <v-rating :model-value="review.rating" readonly size="small" color="amber" class="mb-2" />
 
                       <p class="text-body-2 mb-0" style="line-height: 1.5; color: #424242;">
                         {{ review.comment }}
@@ -432,6 +366,7 @@
       </template>
     </v-container>
 
+    <!-- Dialog xác nhận xóa -->
     <v-dialog v-model="showDeleteConfirm" max-width="400">
       <v-card>
         <v-card-text class="pt-6">
@@ -439,26 +374,18 @@
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="text" @click="showDeleteConfirm = false">Hủy</v-btn>
-          <v-btn color="error" @click="deleteReview" :loading="isDeleting">
-            Xóa
-          </v-btn>
+          <v-btn color="error" @click="deleteReview" :loading="isDeleting">Xóa</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      :timeout="3000"
-      location="top right"
-      rounded="lg"
-      elevation="8"
-    >
+    <!-- Snackbar thông báo -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000" location="top right" rounded="lg"
+      elevation="8">
       <div class="d-flex align-center">
         <v-icon :icon="snackbar.icon" class="mr-3" size="20" />
         <span>{{ snackbar.text }}</span>
       </div>
-
       <template #actions>
         <v-btn variant="text" @click="snackbar.show = false">Đóng</v-btn>
       </template>
@@ -474,12 +401,18 @@
 import { ref, computed, onMounted, watch } from "vue"
 import reviewApi from "@/api/ReviewApi"
 
+// ===== STATE =====
 const selectedOrderId = ref(null)
 const selectedProductId = ref(null)
+const selectedProductObj = ref(null)         // ✅ MỚI: lưu object product đang chọn
 const paidOrders = ref([])
 const selectedOrderProducts = ref([])
 const reviews = ref([])
+<<<<<<< HEAD
 const reviewedProductIds = ref(new Set())
+=======
+const reviewedKeys = ref(new Set())          // ✅ ĐỔI TÊN: Set chứa key "orderId_productId"
+>>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
 const selectedStarFilter = ref(null)
 const isLoading = ref(false)
 const isSubmitting = ref(false)
@@ -493,13 +426,8 @@ const searchError = ref("")
 const searchDebounceTimer = ref(null)
 const fallbackImage = "https://via.placeholder.com/200x200?text=No+Image"
 const MAX_SEARCH_LENGTH = 100
-const MIN_SEARCH_LENGTH = 0
 
-const newReview = ref({
-  rating: 0,
-  comment: "",
-})
-
+const newReview = ref({ rating: 0, comment: "" })
 const averageRating = ref(0)
 const totalReviews = ref(0)
 
@@ -510,6 +438,7 @@ const snackbar = ref({
   icon: "mdi-check-circle",
 })
 
+// ===== HELPERS =====
 const showSnackbar = (text, color = "success") => {
   const iconMap = {
     success: "mdi-check-circle",
@@ -517,233 +446,129 @@ const showSnackbar = (text, color = "success") => {
     warning: "mdi-alert",
     info: "mdi-information",
   }
-
-  snackbar.value = {
-    show: true,
-    text,
-    color,
-    icon: iconMap[color] || "mdi-information",
-  }
+  snackbar.value = { show: true, text, color, icon: iconMap[color] || "mdi-information" }
 }
 
-// Validate search input
 const validateSearchInput = (value) => {
   searchError.value = ""
-  
-  if (!value) {
-    return true
-  }
-
-  // Check length
+  if (!value) return true
   if (value.length > MAX_SEARCH_LENGTH) {
     searchError.value = `Tìm kiếm không được vượt quá ${MAX_SEARCH_LENGTH} ký tự`
     return false
   }
-
-  // Allow only alphanumeric, spaces, Vietnamese characters, and common symbols
   const validPattern = /^[a-zA-Z0-9\u0100-\u01B0\u1E00-\u1EFF\s\-.,#_%()]*$/
   if (!validPattern.test(value)) {
     searchError.value = "Từ khóa tìm kiếm chứa ký tự không hợp lệ"
     return false
   }
-
   return true
 }
 
-// Watch for search query changes with debouncing
 watch(searchQuery, (newValue) => {
-  if (newValue && !validateSearchInput(newValue)) {
-    return
-  }
-
-  // Clear existing timer
-  if (searchDebounceTimer.value) {
-    clearTimeout(searchDebounceTimer.value)
-  }
-
-  // Set new timer for debounced validation
-  searchDebounceTimer.value = setTimeout(() => {
-    validateSearchInput(newValue)
-  }, 300)
+  if (newValue && !validateSearchInput(newValue)) return
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value)
+  searchDebounceTimer.value = setTimeout(() => { validateSearchInput(newValue) }, 300)
 })
 
-// Clean up on component unmount
-onMounted(() => {
-  return () => {
-    if (searchDebounceTimer.value) {
-      clearTimeout(searchDebounceTimer.value)
-    }
-  }
-})
-
+// ===== LIFECYCLE =====
 onMounted(async () => {
   const accountIdStr = localStorage.getItem("accountId")
   if (accountIdStr) {
     try {
       currentUserId.value = parseInt(accountIdStr)
-      await Promise.all([
-        loadPaidOrders(),
-        loadReviewedProducts(),
-      ])
+      await Promise.all([loadPaidOrders(), loadReviewedProducts()])
     } catch (e) {
       console.log("Could not parse accountId from localStorage")
       currentUserId.value = null
     }
-  } else {
-    console.log("No accountId found in localStorage")
   }
 })
 
+// ===== COMPUTED =====
 const filteredPaidOrders = computed(() => {
   const trimmedQuery = searchQuery.value.trim()
-  if (!trimmedQuery) {
-    return paidOrders.value
-  }
+  if (!trimmedQuery) return paidOrders.value
 
   const query = trimmedQuery.toLowerCase()
-
   return paidOrders.value.filter((order) => {
     if (!order) return false
-    
-    // Search by Order ID
-    if (order.orderId && order.orderId.toString().includes(query)) {
-      return true
-    }
-
-    // Search by Order Date
+    if (order.orderId && order.orderId.toString().includes(query)) return true
     if (order.orderDate) {
-      const orderDate = new Date(order.orderDate).toLocaleDateString('vi-VN').toLowerCase()
-      if (orderDate.includes(query)) {
-        return true
-      }
+      const orderDate = new Date(order.orderDate).toLocaleDateString("vi-VN").toLowerCase()
+      if (orderDate.includes(query)) return true
     }
-
-    // Search by Total Amount (price format)
     if (order.totalAmount) {
-      const formattedPrice = new Intl.NumberFormat('vi-VN').format(order.totalAmount).toLowerCase()
-      if (formattedPrice.includes(query)) {
-        return true
-      }
-      // Also search for plain number
-      if (order.totalAmount.toString().includes(query)) {
-        return true
-      }
+      const formattedPrice = new Intl.NumberFormat("vi-VN").format(order.totalAmount).toLowerCase()
+      if (formattedPrice.includes(query) || order.totalAmount.toString().includes(query)) return true
     }
-
-    // Search in Items/Products details
-    if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+    if (order.items && Array.isArray(order.items)) {
       return order.items.some((item) => {
-        // Validate item has required properties
         if (!item) return false
-
-        // Search by Product Name
-        if (item.productName && item.productName.toLowerCase().includes(query)) {
-          return true
-        }
-
-        // Search by Color Name
-        if (item.colorName && item.colorName.toLowerCase().includes(query)) {
-          return true
-        }
-
-        // Search by Size
-        if (item.sizeName && item.sizeName.toLowerCase().includes(query)) {
-          return true
-        }
-
-        // Search by Material
-        if (item.materialName && item.materialName.toLowerCase().includes(query)) {
-          return true
-        }
-
-        // Search by Price
+        if (item.productName && item.productName.toLowerCase().includes(query)) return true
+        if (item.colorName && item.colorName.toLowerCase().includes(query)) return true
+        if (item.sizeName && item.sizeName.toLowerCase().includes(query)) return true
+        if (item.materialName && item.materialName.toLowerCase().includes(query)) return true
         if (item.price) {
-          const formattedItemPrice = new Intl.NumberFormat('vi-VN').format(item.price).toLowerCase()
-          if (formattedItemPrice.includes(query)) {
-            return true
-          }
-          if (item.price.toString().includes(query)) {
-            return true
-          }
+          const fmt = new Intl.NumberFormat("vi-VN").format(item.price).toLowerCase()
+          if (fmt.includes(query) || item.price.toString().includes(query)) return true
         }
-
-        // Search by Quantity
-        if (item.quantity && item.quantity.toString().includes(query)) {
-          return true
-        }
-
-        // Search by Product ID
-        if (item.productId && item.productId.toString().includes(query)) {
-          return true
-        }
-
-        // Search by Color ID
-        if (item.productColorId && item.productColorId.toString().includes(query)) {
-          return true
-        }
-
+        if (item.quantity && item.quantity.toString().includes(query)) return true
         return false
       })
     }
-
-    // If no items array but search found match in order level, return true
     return false
   })
 })
 
 const filteredReviews = computed(() => {
-  if (!selectedStarFilter.value) {
-    return reviews.value
-  }
+  if (!selectedStarFilter.value) return reviews.value
   return reviews.value.filter((r) => r.rating === selectedStarFilter.value)
 })
 
+<<<<<<< HEAD
 const isProductReviewed = (productId) => {
   return productId && reviewedProductIds.value.has(productId)
+=======
+// ===== KEY LOGIC: CHECK ĐÃ REVIEW CHƯA =====
+// ✅ Nhận vào object product, tạo key "orderId_productId" để check
+const isProductReviewed = (product) => {
+  if (!product || !selectedOrderId.value || !product.productId) return false
+  const key = `${selectedOrderId.value}_${product.productId}`
+  return reviewedKeys.value.has(key)
+>>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
 }
 
+// ===== LOAD DATA =====
 const loadPaidOrders = async () => {
   if (!currentUserId.value) return
-
   try {
     isLoading.value = true
     const response = await reviewApi.getPaidOrdersWithDetailsForAccount(currentUserId.value)
-    
-    // Validate and normalize order data
     paidOrders.value = (response.data || []).map((order) => {
-      // Validate order has required properties
       if (!order) return null
-      
-      // Get items from either 'items' or 'orderDetails' or 'details'
       const itemsArray = order.items || order.orderDetails || order.details || []
-      
-      console.log('Order data:', order) // Debug log
-      
       return {
         ...order,
-        // Ensure items array exists and is valid
-        items: Array.isArray(itemsArray) 
-          ? itemsArray.map(item => ({
-              ...item,
-              // Normalize missing properties
-              productName: item.productName || item.product_name || 'Sản phẩm không xác định',
-              colorName: item.colorName || item.color_name || 'Không xác định',
-              sizeName: item.sizeName || item.size_name || '',
-              materialName: item.materialName || item.material_name || '',
-              price: item.price || item.unitPrice || 0,
-              quantity: item.quantity || item.qty || 1,
-              imageUrl: item.imageUrl || item.image_url || fallbackImage,
-              productId: item.productId || item.product_id || null,
-              productColorId: item.productColorId || item.product_color_id || null,
-              orderDetailId: item.orderDetailId || item.order_detail_id || null,
-            }))
+        items: Array.isArray(itemsArray)
+          ? itemsArray.map((item) => ({
+            ...item,
+            productName: item.productName || "Sản phẩm không xác định",
+            colorName: item.colorName || "Không xác định",
+            sizeName: item.sizeName || "",
+            materialName: item.materialName || "",
+            price: item.price || item.unitPrice || 0,
+            quantity: item.quantity || 1,
+            imageUrl: item.imageUrl || fallbackImage,
+            productId: item.productId || null,
+            productColorId: item.productColorId || null,
+            orderDetailId: item.orderDetailId || null,
+          }))
           : [],
-        // Ensure order has essential fields
-        orderId: order.orderId || order.order_id || null,
-        orderDate: order.orderDate || order.order_date || new Date().toISOString(),
-        totalAmount: order.totalAmount || order.total_amount || 0,
+        orderId: order.orderId || null,
+        orderDate: order.orderDate || new Date().toISOString(),
+        totalAmount: order.totalAmount || 0,
       }
-    }).filter(Boolean) // Remove null entries
+    }).filter(Boolean)
   } catch (error) {
     console.error("Failed to load paid orders:", error)
     paidOrders.value = []
@@ -753,11 +578,12 @@ const loadPaidOrders = async () => {
   }
 }
 
+// ✅ Track theo key "orderId_productId" thay vì orderDetailId
 const loadReviewedProducts = async () => {
   if (!currentUserId.value) return
-
   try {
     const response = await reviewApi.getReviewsByAccountId(currentUserId.value)
+<<<<<<< HEAD
     reviewedProductIds.value = new Set(
       (response.data || [])
         .map((review) => review.productId)
@@ -766,15 +592,32 @@ const loadReviewedProducts = async () => {
   } catch (error) {
     console.error("Failed to load reviewed products:", error)
     reviewedProductIds.value = new Set()
+=======
+    reviewedKeys.value = new Set(
+      (response.data || [])
+        .map((review) => {
+          // Backend trả về orderId và productId trong GetReviewDto
+          if (review.orderId && review.productId) {
+            return `${review.orderId}_${review.productId}`
+          }
+          return null
+        })
+        .filter(Boolean)
+    )
+    console.log("Reviewed keys:", Array.from(reviewedKeys.value))
+  } catch (error) {
+    console.error("Failed to load reviewed products:", error)
+    reviewedKeys.value = new Set()
+>>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
   }
 }
 
 const onOrderSelected = (orderId) => {
   selectedProductId.value = null
+  selectedProductObj.value = null      // ✅ Reset object product
   reviews.value = []
   selectedStarFilter.value = null
 
-  // Validate order exists and has items
   const order = paidOrders.value.find((o) => o && o.orderId === orderId)
   if (!order) {
     selectedOrderProducts.value = []
@@ -782,74 +625,65 @@ const onOrderSelected = (orderId) => {
     return
   }
 
-  // Get items from order (handle multiple field names)
   const itemsData = order.items || []
-  
-  if (itemsData && Array.isArray(itemsData) && itemsData.length > 0) {
+  if (Array.isArray(itemsData) && itemsData.length > 0) {
     selectedOrderProducts.value = itemsData.map((item) => {
-      // Validate each item
       if (!item) return null
       return {
-        productId: item.productId || item.product_id || null,
-        productName: item.productName || item.product_name || 'Sản phẩm không xác định',
-        colorName: item.colorName || item.color_name || 'Không xác định',
-        sizeName: item.sizeName || item.size_name || '',
-        materialName: item.materialName || item.material_name || '',
-        imageUrl: item.imageUrl || item.image_url || fallbackImage,
-        price: item.price || item.unitPrice || 0,
-        quantity: item.quantity || item.qty || 1,
-        orderDetailId: item.orderDetailId || item.order_detail_id || null,
+        productId: item.productId || null,
+        productName: item.productName || "Sản phẩm không xác định",
+        colorName: item.colorName || "Không xác định",
+        sizeName: item.sizeName || "",
+        materialName: item.materialName || "",
+        imageUrl: item.imageUrl || fallbackImage,
+        price: item.price || 0,
+        quantity: item.quantity || 1,
+        orderDetailId: item.orderDetailId || null,
       }
-    }).filter(Boolean) // Remove null items
+    }).filter(Boolean)
   } else {
     selectedOrderProducts.value = []
     showSnackbar("Đơn hàng không có sản phẩm.", "info")
   }
 }
 
+// ✅ Lưu cả object product vào selectedProductObj
 const handleSelectProduct = async (product) => {
   selectedProductId.value = product.orderDetailId
+  selectedProductObj.value = product           // ✅ Lưu để dùng trong isProductReviewed
   await loadReviews()
 
+<<<<<<< HEAD
   if (isProductReviewed(product.productId)) {
     showSnackbar("Sản phẩm này bạn đã đánh giá rồi.", "info")
+=======
+  if (isProductReviewed(product)) {
+    showSnackbar("Bạn đã đánh giá sản phẩm này ở đơn hàng này rồi.", "info")
+>>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
   }
 }
 
+// ===== PRODUCT INFO HELPERS =====
 const getSelectedProductInfo = () => {
-  const product = selectedOrderProducts.value.find(
+  return selectedOrderProducts.value.find(
     (p) => p.orderDetailId === selectedProductId.value
-  )
-  return product || {}
+  ) || {}
 }
 
-const getSelectedProductImage = () => {
-  return getSelectedProductInfo().imageUrl || fallbackImage
-}
-
-const getSelectedProductName = () => {
-  return getSelectedProductInfo().productName || "Sản phẩm"
-}
-
-const getSelectedProductColor = () => {
-  return getSelectedProductInfo().colorName || "Không xác định"
-}
-
+const getSelectedProductImage = () => getSelectedProductInfo().imageUrl || fallbackImage
+const getSelectedProductName = () => getSelectedProductInfo().productName || "Sản phẩm"
+const getSelectedProductColor = () => getSelectedProductInfo().colorName || "Không xác định"
 const getSelectedProductPrice = () => {
   const price = getSelectedProductInfo().price
   return price ? new Intl.NumberFormat("vi-VN").format(price) : "0"
 }
+const getSelectedProductIdForApi = () => getSelectedProductInfo().productId || null
 
-const getSelectedProductIdForApi = () => {
-  return getSelectedProductInfo().productId || null
-}
-
+// ===== REVIEWS =====
 const loadReviews = async () => {
   if (!selectedProductId.value) return
-
   const productIdForApi = getSelectedProductIdForApi()
   if (!productIdForApi) return
-
   try {
     isLoading.value = true
     const response = await reviewApi.getReviewsByProductId(productIdForApi)
@@ -866,10 +700,12 @@ const loadReviews = async () => {
 
 const loadRatingStats = async (productId) => {
   try {
-    const avgResponse = await reviewApi.getAverageRatingForProduct(productId)
-    const totalResponse = await reviewApi.getTotalReviewsForProduct(productId)
-    averageRating.value = avgResponse.data || 0
-    totalReviews.value = totalResponse.data || 0
+    const [avgRes, totalRes] = await Promise.all([
+      reviewApi.getAverageRatingForProduct(productId),
+      reviewApi.getTotalReviewsForProduct(productId),
+    ])
+    averageRating.value = avgRes.data || 0
+    totalReviews.value = totalRes.data || 0
   } catch (error) {
     console.error("Failed to load rating stats:", error)
     averageRating.value = 0
@@ -877,17 +713,16 @@ const loadRatingStats = async (productId) => {
   }
 }
 
+// ===== SUBMIT =====
 const submitReview = async () => {
   if (!currentUserId.value) {
     showSnackbar("Vui lòng đăng nhập để đánh giá sản phẩm!", "warning")
     return
   }
-
   if (!newReview.value.rating) {
     showSnackbar("Vui lòng chọn số sao đánh giá!", "warning")
     return
   }
-
   const productIdForApi = getSelectedProductIdForApi()
   if (!productIdForApi) {
     showSnackbar("Không thể lấy thông tin sản phẩm!", "error")
@@ -898,40 +733,36 @@ const submitReview = async () => {
     isSubmitting.value = true
 
     if (editingReviewId.value) {
+      // Cập nhật đánh giá
       await reviewApi.updateReview(editingReviewId.value, {
         rating: newReview.value.rating,
         comment: newReview.value.comment,
       })
-
       showSnackbar("Cập nhật đánh giá thành công!", "success")
       editingReviewId.value = null
-      await loadReviewedProducts()
-      await loadPaidOrders()
-      await loadReviews()
+      await Promise.all([loadReviewedProducts(), loadPaidOrders(), loadReviews()])
     } else {
+      // ✅ Tạo mới: gửi orderId thay vì orderDetailId
       await reviewApi.createReview({
         productId: productIdForApi,
         accountId: currentUserId.value,
+        orderId: selectedOrderId.value,       // ✅ KEY FIX: orderId thay vì orderDetailId
         rating: newReview.value.rating,
         comment: newReview.value.comment,
       })
-
       showSnackbar("Gửi đánh giá thành công!", "success")
       resetForm()
-      await loadReviewedProducts()
-      await loadPaidOrders()
-
+      await Promise.all([loadReviewedProducts(), loadPaidOrders()])
       selectedProductId.value = null
+      selectedProductObj.value = null
       await onOrderSelected(selectedOrderId.value)
     }
   } catch (error) {
     console.error("Failed to submit review:", error)
-
     const message =
       error?.response?.data?.message ||
       error?.response?.data ||
       "Có lỗi xảy ra, vui lòng thử lại."
-
     showSnackbar(String(message), "error")
   } finally {
     isSubmitting.value = false
@@ -951,10 +782,7 @@ const cancelEdit = () => {
 }
 
 const resetForm = () => {
-  newReview.value = {
-    rating: 0,
-    comment: "",
-  }
+  newReview.value = { rating: 0, comment: "" }
 }
 
 const confirmDelete = (reviewId) => {
@@ -968,9 +796,7 @@ const deleteReview = async () => {
     await reviewApi.deleteReview(deleteReviewId.value)
     showDeleteConfirm.value = false
     showSnackbar("Xóa đánh giá thành công!", "success")
-    await loadReviewedProducts()
-    await loadPaidOrders()
-    await loadReviews()
+    await Promise.all([loadReviewedProducts(), loadPaidOrders(), loadReviews()])
   } catch (error) {
     console.error("Failed to delete review:", error)
     showSnackbar("Không thể xóa đánh giá.", "error")
@@ -981,17 +807,14 @@ const deleteReview = async () => {
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A"
-  const date = new Date(dateString)
-  return date.toLocaleDateString("vi-VN", {
+  return new Date(dateString).toLocaleDateString("vi-VN", {
     year: "numeric",
     month: "long",
     day: "numeric",
   })
 }
 
-const formatPrice = (value) => {
-  return new Intl.NumberFormat("vi-VN").format(value || 0)
-}
+const formatPrice = (value) => new Intl.NumberFormat("vi-VN").format(value || 0)
 </script>
 
 <style scoped>
@@ -1016,12 +839,6 @@ const formatPrice = (value) => {
 
 .header-section p {
   margin: 4px 0 0 0 !important;
-}
-
-.search-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .search-bar-wrapper {
@@ -1059,10 +876,6 @@ const formatPrice = (value) => {
   padding: 0 !important;
 }
 
-.search-field :deep(.v-field--error:not(.v-field--disabled)) {
-  border-color: #d32f2f !important;
-}
-
 .search-hint {
   animation: slideDown 0.3s ease-out;
 }
@@ -1072,6 +885,7 @@ const formatPrice = (value) => {
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

@@ -30,6 +30,7 @@
         <thead>
           <tr>
             <th>Đại diện</th>
+            <th>Mã sản phẩm</th>
             <th>Màu</th>
             <th>Size</th>
             <th>Giá</th>
@@ -70,6 +71,10 @@
                 </v-btn>
               </div>
             </td>
+            <td>
+                {{ variant.productColorCode || "—" }}
+            </td>
+
 
             <!-- Color with visual indicator -->
             <td>
