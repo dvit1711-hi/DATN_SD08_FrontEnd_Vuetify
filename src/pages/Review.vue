@@ -136,33 +136,12 @@
             </div>
           </v-col>
 
-<<<<<<< HEAD
-          <v-col
-            v-for="product in selectedOrderProducts"
-            :key="product.orderDetailId"
-            cols="12"
-            md="6"
-            lg="4"
-            class="mb-4"
-          >
-            <v-card
-              class="product-card cursor-pointer h-100 transition-transform"
-              elevation="0"
-              border
-              :class="{
-                'product-card-selected': selectedProductId === product.orderDetailId,
-                'product-card-reviewed': isProductReviewed(product.productId)
-              }"
-              @click="handleSelectProduct(product)"
-            >
-=======
           <v-col v-for="product in selectedOrderProducts" :key="product.orderDetailId" cols="12" md="6" lg="4"
             class="mb-4">
             <v-card class="product-card cursor-pointer h-100 transition-transform" elevation="0" border :class="{
               'product-card-selected': selectedProductId === product.orderDetailId,
               'product-card-reviewed': isProductReviewed(product)
             }" @click="handleSelectProduct(product)">
->>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
               <div class="product-image-container">
                 <v-img :src="product.imageUrl || fallbackImage" height="200" cover class="product-card-image"></v-img>
               </div>
@@ -174,22 +153,16 @@
                       {{ product.productName }}
                     </div>
 
-<<<<<<< HEAD
-                    <v-chip
-                      v-if="isProductReviewed(product.productId)"
-                      size="x-small"
-                      color="success"
-                      variant="tonal"
-                    >
-=======
                     <!-- ✅ Sửa: truyền object product thay vì orderDetailId -->
                     <v-chip v-if="isProductReviewed(product)" size="x-small" color="success" variant="tonal">
->>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
                       Đã đánh giá
                     </v-chip>
                   </div>
 
                   <div class="text-caption text-grey">Màu: {{ product.colorName || "Không xác định" }}</div>
+                  <div class="text-caption text-grey" v-if="product.sizeName">
+                    Size: {{ product.sizeName }}
+                  </div>
                   <div class="text-caption text-grey" v-if="product.quantity">
                     Số lượng: {{ product.quantity }}
                   </div>
@@ -204,13 +177,9 @@
           </v-col>
         </v-row>
 
-<<<<<<< HEAD
-        <v-row v-if="selectedProductId && !isProductReviewed(getSelectedProductIdForApi())" class="mb-8">
-=======
         <!-- ===== BƯỚC 3: FORM ĐÁNH GIÁ ===== -->
         <!-- ✅ Sửa: dùng isProductReviewed(selectedProductObj) thay vì isProductReviewed(selectedProductId) -->
         <v-row v-if="selectedProductId && !isProductReviewed(selectedProductObj)" class="mb-8">
->>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
           <v-col cols="12" md="8">
             <v-card class="mb-6" elevation="0" border>
               <v-row class="ma-0">
@@ -221,7 +190,8 @@
                 <v-col cols="12" md="8" class="pa-6">
                   <div class="mb-4">
                     <h2 class="text-h5 font-weight-bold mb-2">{{ getSelectedProductName() }}</h2>
-                    <div class="text-body-2 text-grey mb-4">{{ getSelectedProductColor() }}</div>
+                    <div class="text-body-2 text-grey mb-2">Màu: {{ getSelectedProductColor() }}</div>
+                    <div class="text-body-2 text-grey mb-4">Size: {{ getSelectedProductSize() }}</div>
                   </div>
 
                   <div class="mb-4">
@@ -408,11 +378,7 @@ const selectedProductObj = ref(null)         // ✅ MỚI: lưu object product �
 const paidOrders = ref([])
 const selectedOrderProducts = ref([])
 const reviews = ref([])
-<<<<<<< HEAD
-const reviewedProductIds = ref(new Set())
-=======
 const reviewedKeys = ref(new Set())          // ✅ ĐỔI TÊN: Set chứa key "orderId_productId"
->>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
 const selectedStarFilter = ref(null)
 const isLoading = ref(false)
 const isSubmitting = ref(false)
@@ -525,17 +491,12 @@ const filteredReviews = computed(() => {
   return reviews.value.filter((r) => r.rating === selectedStarFilter.value)
 })
 
-<<<<<<< HEAD
-const isProductReviewed = (productId) => {
-  return productId && reviewedProductIds.value.has(productId)
-=======
 // ===== KEY LOGIC: CHECK ĐÃ REVIEW CHƯA =====
 // ✅ Nhận vào object product, tạo key "orderId_productId" để check
 const isProductReviewed = (product) => {
   if (!product || !selectedOrderId.value || !product.productId) return false
   const key = `${selectedOrderId.value}_${product.productId}`
   return reviewedKeys.value.has(key)
->>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
 }
 
 // ===== LOAD DATA =====
@@ -544,9 +505,11 @@ const loadPaidOrders = async () => {
   try {
     isLoading.value = true
     const response = await reviewApi.getPaidOrdersWithDetailsForAccount(currentUserId.value)
+    
     paidOrders.value = (response.data || []).map((order) => {
       if (!order) return null
       const itemsArray = order.items || order.orderDetails || order.details || []
+      
       return {
         ...order,
         items: Array.isArray(itemsArray)
@@ -565,7 +528,7 @@ const loadPaidOrders = async () => {
           }))
           : [],
         orderId: order.orderId || null,
-        orderDate: order.orderDate || new Date().toISOString(),
+        orderDate: order.orderDate,
         totalAmount: order.totalAmount || 0,
       }
     }).filter(Boolean)
@@ -583,16 +546,6 @@ const loadReviewedProducts = async () => {
   if (!currentUserId.value) return
   try {
     const response = await reviewApi.getReviewsByAccountId(currentUserId.value)
-<<<<<<< HEAD
-    reviewedProductIds.value = new Set(
-      (response.data || [])
-        .map((review) => review.productId)
-        .filter(Boolean)
-    )
-  } catch (error) {
-    console.error("Failed to load reviewed products:", error)
-    reviewedProductIds.value = new Set()
-=======
     reviewedKeys.value = new Set(
       (response.data || [])
         .map((review) => {
@@ -608,7 +561,6 @@ const loadReviewedProducts = async () => {
   } catch (error) {
     console.error("Failed to load reviewed products:", error)
     reviewedKeys.value = new Set()
->>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
   }
 }
 
@@ -653,13 +605,8 @@ const handleSelectProduct = async (product) => {
   selectedProductObj.value = product           // ✅ Lưu để dùng trong isProductReviewed
   await loadReviews()
 
-<<<<<<< HEAD
-  if (isProductReviewed(product.productId)) {
-    showSnackbar("Sản phẩm này bạn đã đánh giá rồi.", "info")
-=======
   if (isProductReviewed(product)) {
     showSnackbar("Bạn đã đánh giá sản phẩm này ở đơn hàng này rồi.", "info")
->>>>>>> 7d89b73dbd89885ed51f347753b3028efb551b75
   }
 }
 
@@ -673,6 +620,7 @@ const getSelectedProductInfo = () => {
 const getSelectedProductImage = () => getSelectedProductInfo().imageUrl || fallbackImage
 const getSelectedProductName = () => getSelectedProductInfo().productName || "Sản phẩm"
 const getSelectedProductColor = () => getSelectedProductInfo().colorName || "Không xác định"
+const getSelectedProductSize = () => getSelectedProductInfo().sizeName || "Không xác định"
 const getSelectedProductPrice = () => {
   const price = getSelectedProductInfo().price
   return price ? new Intl.NumberFormat("vi-VN").format(price) : "0"
@@ -807,7 +755,30 @@ const deleteReview = async () => {
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A"
-  return new Date(dateString).toLocaleDateString("vi-VN", {
+  
+  let date = new Date(dateString)
+  
+  // Nếu Invalid Date, thử parse dạng "dd/MM/yyyy HH:mm:ss" từ backend
+  if (isNaN(date.getTime())) {
+    // Format: "14/05/2026 10:30:00"
+    const parts = String(dateString).split(' ')[0]?.split('/') // ["14", "05", "2026"]
+    if (parts && parts.length === 3) {
+      date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]))
+    } else {
+      // Thử format: "2026-05-13" hoặc "2026-05-13T10:30:00"
+      const isoParts = String(dateString).split('T')[0].split('-')
+      if (isoParts.length === 3) {
+        date = new Date(parseInt(isoParts[0]), parseInt(isoParts[1]) - 1, parseInt(isoParts[2]))
+      } else {
+        return "N/A"
+      }
+    }
+  }
+  
+  // Kiểm tra lại có hợp lệ không
+  if (isNaN(date.getTime())) return "N/A"
+  
+  return date.toLocaleDateString("vi-VN", {
     year: "numeric",
     month: "long",
     day: "numeric",
