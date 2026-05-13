@@ -134,15 +134,14 @@
         <v-divider />
 
         <v-card-text class="pa-6">
-          <v-row>
+          <v-form ref="formRef" validate-on="submit" @submit.prevent="saveDiscount">
+            <v-row>
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="form.couponCode"
                 label="Mã giảm giá"
                 variant="outlined"
                 :rules="validationRules.required"
-                :error="showValidationErrors && !form.couponCode"
-                :error-messages="showValidationErrors && !form.couponCode ? ['Vui lòng điền vào trường này.'] : []"
               />
             </v-col>
 
@@ -152,8 +151,6 @@
                 label="Tên chương trình"
                 variant="outlined"
                 :rules="validationRules.required"
-                :error="showValidationErrors && !form.name"
-                :error-messages="showValidationErrors && !form.name ? ['Vui lòng điền vào trường này.'] : []"
               />
             </v-col>
 
@@ -166,8 +163,6 @@
                 label="Loại giảm giá"
                 variant="outlined"
                 :rules="validationRules.required"
-                :error="showValidationErrors && !form.discountType"
-                :error-messages="showValidationErrors && !form.discountType ? ['Vui lòng điền vào trường này.'] : []"
               />
             </v-col>
 
@@ -178,8 +173,6 @@
                 label="Giá trị giảm"
                 variant="outlined"
                 :rules="validationRules.discountValue"
-                :error="showValidationErrors && form.discountValue <= 0"
-                :error-messages="showValidationErrors && form.discountValue <= 0 ? ['Giá trị giảm phải lớn hơn 0'] : []"
               />
             </v-col>
 
@@ -190,8 +183,6 @@
                 label="Đơn tối thiểu"
                 variant="outlined"
                 :rules="validationRules.minOrderValue"
-                :error="showValidationErrors && form.minOrderValue < 0"
-                :error-messages="showValidationErrors && form.minOrderValue < 0 ? ['Đơn tối thiểu phải >= 0'] : []"
               />
             </v-col>
 
@@ -203,8 +194,6 @@
                 variant="outlined"
                 :disabled="form.discountType === 'fixed'"
                 :rules="validationRules.maxDiscountValue"
-                :error="showValidationErrors && form.maxDiscountValue <= 0"
-                :error-messages="showValidationErrors && form.maxDiscountValue <= 0 ? ['Giảm tối đa phải > 0'] : []"
               />
             </v-col>
 
@@ -215,8 +204,6 @@
                 label="Số lượng"
                 variant="outlined"
                 :rules="validationRules.minQuantity"
-                :error="showValidationErrors && form.quantity <= 0"
-                :error-messages="showValidationErrors && form.quantity <= 0 ? ['Số lượng phải lớn hơn 0'] : []"
               />
             </v-col>
 
@@ -227,8 +214,6 @@
                 type="date"
                 variant="outlined"
                 :rules="validationRules.startDate"
-                :error="showValidationErrors && !form.startDate"
-                :error-messages="showValidationErrors && !form.startDate ? ['Ngày bắt đầu không được để trống'] : []"
               />
             </v-col>
 
@@ -239,8 +224,6 @@
                 type="date"
                 variant="outlined"
                 :rules="validationRules.endDate"
-                :error="showValidationErrors && !form.endDate"
-                :error-messages="showValidationErrors && !form.endDate ? ['Ngày kết thúc không được để trống'] : []"
               />
             </v-col>
 
@@ -253,15 +236,72 @@
                 hide-details="auto"
               />
             </v-col>
-          </v-row>
+            </v-row>
+          </v-form>
         </v-card-text>
 
         <v-divider />
 
         <v-card-actions class="pa-6 justify-end gap-3">
           <v-btn variant="outlined" @click="closeDialog">Hủy</v-btn>
-          <v-btn color="primary" @click="saveDiscount">
+          <v-btn color="primary" @click="saveDiscount" :loading="isSaving">
             {{ isEdit ? 'Cập nhật' : 'Lưu' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Toast Notification -->
+    <v-snackbar v-model="snackbar" location="top right" :timeout="3000" content-class="custom-snackbar">
+      <div class="toast-wrapper">
+        <div class="toast-content">
+          <v-icon :color="snackbarColor" size="22">{{ snackbarIcon }}</v-icon>
+          <span class="toast-text">{{ toastMessage }}</span>
+        </div>
+        <v-btn icon="mdi-close" size="x-small" variant="text" @click="snackbar = false" />
+      </div>
+      <div class="toast-progress" :class="snackbarColor"></div>
+    </v-snackbar>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="showDeleteDialog" max-width="440px">
+      <v-card>
+        <v-card-title class="pa-5 pb-2 d-flex align-center gap-2">
+          <v-icon :color="deleteWillDeactivate ? 'warning' : 'error'" size="22">
+            {{ deleteWillDeactivate ? 'mdi-alert-circle-outline' : 'mdi-trash-can-outline' }}
+          </v-icon>
+          {{ deleteWillDeactivate ? 'Không thể xóa' : 'Xác nhận xóa' }}
+        </v-card-title>
+
+        <v-card-text class="pa-5 pt-2">
+          <!-- Trường hợp đã được dùng: chỉ tắt trạng thái -->
+          <template v-if="deleteWillDeactivate">
+            <v-alert type="warning" variant="tonal" density="compact" class="mb-3">
+              Mã giảm giá này đã được sử dụng trong đơn hàng nên không thể xóa.
+            </v-alert>
+            <p class="text-body-2 text-grey-darken-1">
+              Hệ thống sẽ tắt kích hoạt mã này thay vì xóa để bảo vệ tính toàn vẹn dữ liệu đơn hàng.
+            </p>
+          </template>
+
+          <!-- Trường hợp chưa ai dùng: xóa bình thường -->
+          <template v-else>
+            <p class="text-body-2">
+              Bạn có chắc muốn xóa mã giảm giá "<strong>{{ discountToDelete?.couponCode }}</strong>" không?
+            </p>
+            <p class="text-caption text-grey mt-1">Hành động này không thể hoàn tác.</p>
+          </template>
+        </v-card-text>
+
+        <v-card-actions class="justify-end pa-4 pt-0">
+          <v-btn @click="showDeleteDialog = false" variant="outlined">Hủy</v-btn>
+          <v-btn
+            @click="deleteDiscount"
+            :color="deleteWillDeactivate ? 'warning' : 'error'"
+            :loading="isDeleting"
+            :prepend-icon="deleteWillDeactivate ? 'mdi-toggle-switch-off-outline' : 'mdi-trash-can-outline'"
+          >
+            {{ deleteWillDeactivate ? 'Tắt kích hoạt' : 'Xóa' }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -275,7 +315,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import {
   getAllDiscountCoupons,
   createDiscountCoupon,
@@ -289,9 +329,31 @@ const dialog = ref(false)
 const isEdit = ref(false)
 const editingId = ref(null)
 const isLoading = ref(false)
-const errorMessage = ref('')
-const showValidationErrors = ref(false)
 const formRef = ref(null)
+const isSaving = ref(false)
+const isDeleting = ref(false)
+const showDeleteDialog = ref(false)
+const discountToDelete = ref(null)
+
+// Toast Notification
+const snackbar = ref(false)
+const toastMessage = ref('')
+const snackbarColor = ref('success')
+const snackbarIcon = ref('mdi-check-circle')
+
+const showMessage = (text, type = 'success') => {
+  toastMessage.value = text
+
+  snackbarColor.value =
+    type === 'error'   ? 'error'   :
+    type === 'warning' ? 'warning' : 'success'
+
+  snackbarIcon.value =
+    type === 'error'   ? 'mdi-close-circle'  :
+    type === 'warning' ? 'mdi-alert-circle'  : 'mdi-check-circle'
+
+  snackbar.value = true
+}
 
 const statusOptions = [
   { title: 'Tất cả', value: 'all' },
@@ -417,7 +479,6 @@ onMounted(async () => {
 const loadDiscounts = async () => {
   try {
     isLoading.value = true
-    errorMessage.value = ''
     const response = await getAllDiscountCoupons()
     discounts.value = (response.data || []).map(item => ({
       ...item,
@@ -430,7 +491,7 @@ const loadDiscounts = async () => {
       active: item.active ?? true,
     }))
   } catch (error) {
-    errorMessage.value = 'Tải dữ liệu thất bại. Vui lòng thử lại'
+    showMessage('Không thể tải dữ liệu mã giảm giá', 'error')
     console.error('Error loading discounts:', error)
   } finally {
     isLoading.value = false
@@ -492,6 +553,7 @@ const openCreateDialog = () => {
   editingId.value = null
   form.value = defaultForm()
   dialog.value = true
+  setTimeout(() => formRef.value?.resetValidation?.(), 0)
 }
 
 const openEditDialog = (item) => {
@@ -511,12 +573,12 @@ const openEditDialog = (item) => {
     description: item.description || '',
   }
   dialog.value = true
+  setTimeout(() => formRef.value?.resetValidation?.(), 0)
 }
 
 const closeDialog = () => {
   dialog.value = false
-  errorMessage.value = ''
-  showValidationErrors.value = false
+  formRef.value?.resetValidation?.()
 }
 
 // Sanitize form data before sending to API
@@ -537,74 +599,28 @@ const sanitizeFormData = (data) => {
 }
 
 const saveDiscount = async () => {
-  // Clear previous error message and show validation errors
-  errorMessage.value = ''
-  showValidationErrors.value = true
+  if (!formRef.value) return
 
-  // Validate required fields
-  if (!form.value.couponCode || !form.value.couponCode.trim()) {
-    errorMessage.value = 'Mã giảm giá không được để trống'
+  const result = await formRef.value.validate()
+  if (!result.valid) return
+
+  // Validate additional business logic
+  if (form.value.startDate > form.value.endDate) {
+    showMessage('Ngày bắt đầu phải trước ngày kết thúc', 'warning')
     return
   }
 
-  if (!form.value.name || !form.value.name.trim()) {
-    errorMessage.value = 'Tên chương trình không được để trống'
-    return
-  }
-
-  if (!form.value.discountType) {
-    errorMessage.value = 'Loại giảm giá không được để trống'
-    return
-  }
-
-  if (Number(form.value.discountValue) <= 0) {
-    errorMessage.value = 'Giá trị giảm phải lớn hơn 0'
-    return
-  }
-
-  if (Number(form.value.quantity) <= 0) {
-    errorMessage.value = 'Số lượng phải lớn hơn 0'
-    return
-  }
-
-  if (Number(form.value.minOrderValue) < 0) {
-    errorMessage.value = 'Đơn tối thiểu phải >= 0'
-    return
-  }
-
-  if (Number(form.value.maxDiscountValue) < 0) {
-    errorMessage.value = 'Giảm tối đa phải >= 0'
+  const startDate = new Date(form.value.startDate)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (startDate < today) {
+    showMessage('Ngày bắt đầu không được trong quá khứ', 'warning')
     return
   }
 
   // Validate maxDiscountValue for percent type
   if (form.value.discountType === 'percent' && Number(form.value.maxDiscountValue) < Number(form.value.discountValue)) {
-    errorMessage.value = 'Giảm tối đa phải >= giá trị giảm cho loại phần trăm'
-    return
-  }
-
-  if (!form.value.startDate) {
-    errorMessage.value = 'Ngày bắt đầu không được để trống'
-    return
-  }
-
-  if (!form.value.endDate) {
-    errorMessage.value = 'Ngày kết thúc không được để trống'
-    return
-  }
-
-  // Check startDate > endDate
-  if (form.value.startDate > form.value.endDate) {
-    errorMessage.value = 'Ngày bắt đầu phải trước ngày kết thúc'
-    return
-  }
-
-  // Check startDate not in the past
-  const startDate = new Date(form.value.startDate)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  if (startDate < today) {
-    errorMessage.value = 'Ngày bắt đầu không được trong quá khứ'
+    showMessage('Giảm tối đa phải >= giá trị giảm cho loại phần trăm', 'warning')
     return
   }
 
@@ -614,13 +630,13 @@ const saveDiscount = async () => {
       (d) => d.couponCode.toLowerCase() === form.value.couponCode.toLowerCase()
     )
     if (isDuplicate) {
-      errorMessage.value = 'Mã giảm giá này đã tồn tại'
+      showMessage('Mã giảm giá này đã tồn tại', 'warning')
       return
     }
   }
 
   try {
-    isLoading.value = true
+    isSaving.value = true
 
     // Sanitize data before sending
     const sanitizedData = sanitizeFormData(form.value)
@@ -628,39 +644,70 @@ const saveDiscount = async () => {
     if (isEdit.value) {
       // Update existing coupon
       await updateDiscountCoupon(editingId.value, sanitizedData)
-      // Reload data after update
-      await loadDiscounts()
+      showMessage('Cập nhật mã giảm giá thành công', 'success')
     } else {
       // Create new coupon
       await createDiscountCoupon(sanitizedData)
-      // Reload data after create
-      await loadDiscounts()
+      showMessage('Thêm mã giảm giá thành công', 'success')
     }
-
+    
     closeDialog()
+    await loadDiscounts()
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Lưu dữ liệu thất bại. Vui lòng thử lại'
+    const errorMsg = error.response?.data?.message || 'Không thể lưu dữ liệu. Vui lòng thử lại'
+    showMessage(errorMsg, 'error')
     console.error('Error saving discount:', error)
   } finally {
-    isLoading.value = false
+    isSaving.value = false
   }
 }
 
-const removeDiscount = async (id) => {
-  const confirmDelete = confirm('Bạn có chắc muốn xóa mã giảm giá này không?')
-  if (!confirmDelete) return
+const deleteWillDeactivate = computed(() => {
+  if (!discountToDelete.value) return false
+  // Nếu giảm giá đã được dùng, chỉ có thể tắt trạng thái
+  return Number(discountToDelete.value.quantityUsed ?? discountToDelete.value.quantity ?? 0) > 0
+})
 
+const openDeleteDialog = (item) => {
+  discountToDelete.value = item
+  showDeleteDialog.value = true
+}
+
+const removeDiscount = async (id) => {
+  const discount = discounts.value.find(d => d.id === id)
+  if (discount) {
+    openDeleteDialog(discount)
+  }
+}
+
+const deleteDiscount = async () => {
+  if (!discountToDelete.value) return
+  
+  isDeleting.value = true
   try {
-    isLoading.value = true
-    errorMessage.value = ''
-    await deleteDiscountCoupon(id)
-    // Reload data after delete
+    if (deleteWillDeactivate.value) {
+      // Đã được sử dụng → chỉ tắt active, không xóa (tránh lỗi FK)
+      await updateDiscountCoupon(discountToDelete.value.id, {
+        ...discountToDelete.value,
+        active: false
+      })
+      showMessage(
+        `Đã tắt kích hoạt mã giảm giá "${discountToDelete.value.couponCode}" do đã có lượt sử dụng`,
+        'warning'
+      )
+    } else {
+      // Chưa ai dùng → xóa hẳn
+      await deleteDiscountCoupon(discountToDelete.value.id)
+      showMessage('Xóa mã giảm giá thành công', 'success')
+    }
+    showDeleteDialog.value = false
     await loadDiscounts()
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Xóa dữ liệu thất bại. Vui lòng thử lại'
-    console.error('Error deleting discount:', error)
+    const errorMsg = error.response?.data?.message || 'Không thể thực hiện thao tác. Vui lòng thử lại'
+    showMessage(errorMsg, 'error')
+    console.error('Error deleting/deactivating discount:', error)
   } finally {
-    isLoading.value = false
+    isDeleting.value = false
   }
 }
 
@@ -696,5 +743,75 @@ const removeDiscount = async (id) => {
 
 :deep(.v-card) {
   border-radius: 8px !important;
+}
+
+/* ── Toast Notification ─────────────────────────────────────────── */
+:deep(.custom-snackbar) {
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 12px !important;
+  background: white !important;
+  min-width: 320px;
+}
+
+.toast-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 14px 12px;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toast-text {
+  color: #444;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.toast-progress {
+  height: 4px;
+  width: 100%;
+  animation: progress-animation 3s linear forwards;
+}
+
+.toast-progress.success {
+  background: #1db954;
+}
+
+.toast-progress.error {
+  background: #ef5350;
+}
+
+.toast-progress.warning {
+  background: #ff9800;
+}
+
+@keyframes progress-animation {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+:deep(.v-snackbar__wrapper) {
+  animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

@@ -298,31 +298,29 @@ const loadNotifications = async () => {
         const token = localStorage.getItem('token')
         const items: NotifItem[] = []
 
-        // ── 1. Đơn hàng ───────────────────────────────────────────────────────
+        // ── 1. Đơn hàng MỚI ─────────────────────────────────────────────────
         try {
-            // Bỏ truyền token vào tham số — paymentApi tự lấy từ localStorage
-            const ordersRes = await paymentApi.getAllOrders()
+            const ordersRes = await paymentApi.getAllOrders(token)
             const orders: any[] = ordersRes.data || []
 
-            // ✅ Khớp đúng status backend đang dùng
-            const pendingOrders = orders.filter((o: any) => {
-                const s = (o.status || '').toUpperCase()
-                return (
-                    s === 'PENDING_PAYMENT' ||
-                    s === 'PENDING' ||
-                    s === 'UNPAID' ||
-                    s === 'CHỜ XÁC NHẬN' ||
-                    s === 'CHỜ THANH TOÁN'
-                )
-            })
-            newOrderCount.value = pendingOrders.length
+            // ✅ Log để xem status thực tế — xóa sau khi fix xong
+            console.log('[DEBUG] Order statuses:', [...new Set(orders.map((o: any) => o.status))])
 
-            pendingOrders.slice(0, 5).forEach((o: any) => {
+            // Lọc đơn mới đặt trong 7 ngày gần đây
+            const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+            const newOrders = orders.filter((o: any) => {
+                const created = new Date(o.createdAt || o.orderDate || 0).getTime()
+                return created > sevenDaysAgo
+            })
+
+            newOrderCount.value = newOrders.length
+
+            newOrders.slice(0, 5).forEach((o: any) => {
                 items.push({
                     id: `order-${o.id || o.orderId}`,
                     type: 'order',
                     title: `Đơn hàng mới #${o.id || o.orderId}`,
-                    subtitle: `${o.customerName || o.receiverName || 'Khách hàng'} — ${Number(o.totalAmount || o.total || 0).toLocaleString('vi-VN')} ₫`,
+                    subtitle: `${o.customerName || o.receiverName || o.accountName || 'Khách hàng'} — ${Number(o.totalAmount || o.total || 0).toLocaleString('vi-VN')} ₫`,
                     time: formatTimeAgo(o.createdAt || o.orderDate),
                     route: 'AdminPayments',
                     icon: 'mdi-cart-plus',
@@ -333,16 +331,9 @@ const loadNotifications = async () => {
             // Đơn trả hàng
             const returnOrders = orders.filter((o: any) => {
                 const s = (o.status || '').toUpperCase()
-                return (
-                    s.includes('RETURN') ||
-                    s.includes('TRẢ') ||
-                    s.includes('HOÀN') ||
-                    s === 'REFUND' ||
-                    s === 'RETURNED'
-                )
+                return s.includes('RETURN') || s.includes('TRẢ') || s.includes('HOÀN') || s === 'REFUND'
             })
             returnOrderCount.value = returnOrders.length
-
             returnOrders.slice(0, 3).forEach((o: any) => {
                 items.push({
                     id: `return-${o.id || o.orderId}`,
@@ -355,42 +346,49 @@ const loadNotifications = async () => {
                     unread: true,
                 })
             })
-
-            // ✅ Debug: bỏ comment dòng này để kiểm tra dữ liệu thực tế
-            // console.log('[NOTIF] orders sample:', orders.slice(0, 3))
         } catch (err) {
             console.error('[NOTIF] Lỗi tải đơn hàng:', err)
         }
 
-        // ── 2. Tồn kho ────────────────────────────────────────────────────────
+        // ── 2. Tồn kho thấp ──────────────────────────────────────────────────
         try {
-            const productsRes = await productApi.getAll()
-            const products: any[] = productsRes.data || []
+            const productsRes = await productApi.getAllCard('')
+            const raw = productsRes.data
+            const products: any[] = Array.isArray(raw)
+                ? raw
+                : raw?.content || raw?.data || []
 
-            // ✅ Thử tất cả các tên field có thể có
-            const getQty = (p: any): number =>
-                Number(
-                    p.stockQuantity ??    // POS dùng stockQuantity
-                    p.quantity ??
-                    p.stock ??
-                    p.soLuong ??
-                    0
-                )
+            // ✅ Log để xem structure thực tế
+            console.log('[DEBUG] Product sample:', products[0])
 
+            // Tính tổng tồn kho: ưu tiên mảng productColors, fallback field trực tiếp
+            const getQty = (p: any): number => {
+                if (Array.isArray(p.productColors) && p.productColors.length > 0) {
+                    return p.productColors.reduce((sum: number, pc: any) =>
+                        sum + Number(pc.stockQuantity ?? pc.quantity ?? 0), 0)
+                }
+                if (Array.isArray(p.colors) && p.colors.length > 0) {
+                    return p.colors.reduce((sum: number, pc: any) =>
+                        sum + Number(pc.stockQuantity ?? pc.quantity ?? 0), 0)
+                }
+                return Number(p.stockQuantity ?? p.totalQuantity ?? p.quantity ?? p.stock ?? 0)
+            }
+
+            const LOW_THRESHOLD = 10  // ✅ ngưỡng cảnh báo, chỉnh tùy ý
             const outOfStock = products.filter(p => getQty(p) === 0)
-            const lowStock = products.filter(p => getQty(p) > 0 && getQty(p) < 5)
+            const lowStock = products.filter(p => getQty(p) > 0 && getQty(p) <= LOW_THRESHOLD)
 
             outOfStockCount.value = outOfStock.length
             lowStockCount.value = lowStock.length
 
-                ;[...outOfStock.slice(0, 2), ...lowStock.slice(0, 3)].forEach((p: any) => {
+                ;[...outOfStock.slice(0, 3), ...lowStock.slice(0, 4)].forEach((p: any) => {
                     const qty = getQty(p)
                     const isOut = qty === 0
-                    const name = p.name || p.productName || p.tenSanPham || `SP#${p.id}`
+                    const name = p.productName || p.name || p.tenSanPham || `SP#${p.id}`
                     items.push({
                         id: `stock-${p.id}`,
                         type: 'stock',
-                        title: isOut ? `Hết hàng: ${name}` : `Sắp hết hàng: ${name}`,
+                        title: isOut ? `Hết hàng: ${name}` : `Sắp hết: ${name}`,
                         subtitle: isOut
                             ? 'Còn 0 sản phẩm — cần nhập hàng ngay'
                             : `Còn ${qty} sản phẩm — cần nhập thêm`,
@@ -400,29 +398,43 @@ const loadNotifications = async () => {
                         unread: true,
                     })
                 })
-
-            // ✅ Debug
-            // console.log('[NOTIF] products sample:', products.slice(0, 3))
         } catch (err) {
             console.error('[NOTIF] Lỗi tải sản phẩm:', err)
         }
 
-        // ── 3. Đánh giá ───────────────────────────────────────────────────────
+        // ── 3. Đánh giá MỚI (trong 7 ngày) ──────────────────────────────────
         try {
-            // ✅ Thử gọi trực tiếp bằng axios thay vì productApi.getNewReviews?.()
-            // vì method đó có thể không tồn tại
-            const reviewsRes = await axios.get('http://localhost:8080/api/reviews', {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { page: 0, size: 5, sort: 'createdAt,desc' },
+            let reviews: any[] = []
+            // Thử lần lượt các endpoint
+            for (const url of [
+                'http://localhost:8080/api/review',
+                'http://localhost:8080/api/reviews',
+                'http://localhost:8080/api/product/reviews',
+            ]) {
+                try {
+                    const res = await axios.get(url, {
+                        headers: { Authorization: `Bearer ${token}` },
+                        params: { page: 0, size: 20, sort: 'createdAt,desc' },
+                    })
+                    const data = res.data?.content || res.data?.data || res.data || []
+                    if (Array.isArray(data) && data.length > 0) {
+                        reviews = data
+                        console.log('[DEBUG] Review endpoint OK:', url, 'sample:', data[0])
+                        break
+                    }
+                } catch { /* thử endpoint tiếp theo */ }
+            }
+
+            // Chỉ lấy đánh giá trong 7 ngày gần đây
+            const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+            const newReviews = reviews.filter((r: any) => {
+                const created = new Date(r.createdAt || r.ngayTao || 0).getTime()
+                return created > sevenDaysAgo
             })
 
-            const reviews: any[] = reviewsRes.data?.content ||
-                reviewsRes.data?.data ||
-                reviewsRes.data || []
+            reviewCount.value = newReviews.length
 
-            reviewCount.value = reviews.length
-
-            reviews.slice(0, 3).forEach((r: any) => {
+            newReviews.slice(0, 4).forEach((r: any) => {
                 const rating = Number(r.rating || r.star || r.score || 0)
                 const stars = '★'.repeat(Math.min(5, rating)) + '☆'.repeat(Math.max(0, 5 - rating))
                 const comment = r.comment || r.content || r.noiDung || ''
@@ -440,25 +452,34 @@ const loadNotifications = async () => {
                 })
             })
         } catch (err) {
-            // Nếu chưa có API review thì bỏ qua
             reviewCount.value = 0
-            // console.warn('[NOTIF] API review chưa có hoặc lỗi:', err)
         }
 
-        // ── 4. Tài khoản mới ─────────────────────────────────────────────────
+        // ── 4. Tài khoản MỚI đăng ký (trong 24h) ────────────────────────────
         try {
-            const accountsRes = await axios.get('http://localhost:8080/api/account', {
-                headers: { Authorization: `Bearer ${token}` },
-            })
+            let allAccounts: any[] = []
+            for (const url of [
+                'http://localhost:8080/api/account/getAll',
+                'http://localhost:8080/api/account',
+                'http://localhost:8080/api/accounts',
+            ]) {
+                try {
+                    const res = await axios.get(url, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    })
+                    const data = res.data?.content || res.data?.data || res.data || []
+                    if (Array.isArray(data) && data.length > 0) {
+                        allAccounts = data
+                        console.log('[DEBUG] Account endpoint OK:', url)
+                        break
+                    }
+                } catch { /* thử endpoint tiếp theo */ }
+            }
 
-            const allAccounts: any[] = accountsRes.data?.content ||
-                accountsRes.data?.data ||
-                accountsRes.data || []
-
-            // Filter tài khoản mới tạo trong 24h
+            // Lấy tài khoản đăng ký trong 24h
             const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
             const newAccounts = allAccounts.filter((a: any) => {
-                const created = new Date(a.createdAt || a.ngayTao || 0).getTime()
+                const created = new Date(a.createdAt || a.ngayTao || a.registeredAt || 0).getTime()
                 return created > oneDayAgo
             })
 
@@ -476,17 +497,21 @@ const loadNotifications = async () => {
                     unread: true,
                 })
             })
+
+            console.log('[DEBUG] New accounts (24h):', newAccounts.length)
         } catch (err) {
             newAccountCount.value = 0
         }
 
-        // ── Sắp xếp unread lên đầu ───────────────────────────────────────────
-        notifItems.value = items.sort((a, b) =>
-            (isUnread(b) ? 1 : 0) - (isUnread(a) ? 1 : 0)
-        )
+        // ── Sắp xếp: unread lên đầu, sau đó theo thời gian ───────────────────
+        notifItems.value = items.sort((a, b) => {
+            if (isUnread(a) !== isUnread(b)) return isUnread(b) ? 1 : -1
+            return 0
+        })
 
-        // ✅ Debug tổng: bỏ comment để kiểm tra
-        // console.log('[NOTIF] Tổng items:', items.length, items)
+        console.log('[NOTIF] Tổng:', items.length, '| Đơn:', newOrderCount.value,
+            '| Tồn kho:', outOfStockCount.value + lowStockCount.value,
+            '| Review:', reviewCount.value, '| Tài khoản:', newAccountCount.value)
 
     } catch (error) {
         console.error('[NOTIF] Lỗi chung:', error)

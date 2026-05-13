@@ -11,18 +11,22 @@
             </v-btn>
         </div>
 
-        <!-- Loading & Error States -->
+        <!-- Loading State -->
         <v-overlay v-if="isLoading" class="d-flex align-center justify-center">
             <v-progress-circular indeterminate color="primary" size="60"></v-progress-circular>
         </v-overlay>
 
-        <v-alert v-if="errorMessage" type="error" closable @click:close="errorMessage = ''">
-            {{ errorMessage }}
-        </v-alert>
-
-        <v-alert v-if="successMessage" type="success" closable @click:close="successMessage = ''">
-            {{ successMessage }}
-        </v-alert>
+        <!-- Toast Notification -->
+        <v-snackbar v-model="snackbar" location="top right" :timeout="3000" content-class="custom-snackbar">
+            <div class="toast-wrapper">
+                <div class="toast-content">
+                    <v-icon :color="snackbarColor" size="22">{{ snackbarIcon }}</v-icon>
+                    <span class="toast-text">{{ toastMessage }}</span>
+                </div>
+                <v-btn icon="mdi-close" size="x-small" variant="text" @click="snackbar = false" />
+            </div>
+            <div class="toast-progress" :class="snackbarColor"></div>
+        </v-snackbar>
 
         <!-- Filter Section -->
         <v-card class="mb-6">
@@ -80,7 +84,6 @@
                                 class="product-thumbnail"
                                 cover
                             />
-
                             <div v-else class="placeholder-image">
                                 <v-icon color="grey">mdi-image-off</v-icon>
                             </div>
@@ -90,7 +93,6 @@
                             <div class="font-weight-bold">{{ discount.productName }}</div>
                             <div class="text-caption text-grey">- {{ discount.colorName }}</div>
                             <div class="text-caption text-grey">({{ discount.colorCode }})</div>
-
                             <div v-if="discount.reason" class="text-caption text-warning">
                                 {{ discount.reason }}
                             </div>
@@ -99,7 +101,7 @@
                         <td class="variant-cell">
                             <div v-if="discount.sizeName" class="size-badge">
                                 <v-chip size="small" variant="outlined" color="primary">
-                                  {{ discount.sizeName }}
+                                    {{ discount.sizeName }}
                                 </v-chip>
                             </div>
                             <div v-else class="text-caption text-grey">-</div>
@@ -115,11 +117,9 @@
                             <span v-if="discount.discountType === 'percent'">
                                 {{ discount.discountValue }}%
                             </span>
-
                             <span v-else>
                                 {{ formatCurrency(discount.discountValue) }}
                             </span>
-
                             <div v-if="discount.maxDiscountValue" class="text-caption">
                                 Tối đa: {{ formatCurrency(discount.maxDiscountValue) }}
                             </div>
@@ -129,7 +129,6 @@
 
                         <td class="text-right">
                             <span class="font-weight-bold">{{ discount.quantityUsed }}</span>
-
                             <div class="text-caption">
                                 {{ discount.quantity > 0 ? Math.round((discount.quantityUsed / discount.quantity) * 100) : 0 }}%
                             </div>
@@ -152,7 +151,6 @@
                                 @click="openEditDialog(discount)"
                                 title="Sửa"
                             ></v-btn>
-
                             <v-btn
                                 icon="mdi-delete"
                                 size="small"
@@ -173,41 +171,58 @@
         </v-card>
 
         <!-- Create/Edit Dialog -->
-        <v-dialog v-model="showDialog" max-width="600px">
+        <v-dialog v-model="showDialog" max-width="800px">
             <v-card>
-                <v-card-title>
+                <v-card-title class="pa-6 pb-2">
                     {{ isEditing ? 'Cập nhật giảm giá' : 'Thêm giảm giá biến thể màu' }}
                 </v-card-title>
 
-                <v-card-text class="pt-4">
+                <v-card-text class="pt-4 px-6">
                     <v-form ref="form" validate-on="submit" @submit.prevent="saveDiscount">
-                        <!-- Product Color Selection with Size Display -->
+                        <!-- Product Color Selection -->
+                        <!-- Dùng :item-props để truyền disabled vào từng item, tránh dùng slot #item override title -->
                         <v-autocomplete
                             v-model="formData.productColorId"
-                            :items="productColors"
-                            item-value="id"
+                            :items="productColorsForSelect"
+                            item-value="_normalizedId"
                             item-title="displayName"
                             label="Chọn biến thể màu sản phẩm"
                             :disabled="isEditing"
                             :rules="[rules.required]"
                             class="mb-4"
+                            return-object
+                            @update:modelValue="onColorSelected"
                         >
+                            <!-- Slot #item: KHÔNG override #title — để Vuetify tự dùng displayName -->
                             <template #item="{ props, item }">
-                                <v-list-item v-bind="props" class="variant-select-item">
+                                <v-list-item
+                                    v-bind="props"
+                                    :disabled="item.raw?.disabled"
+                                    :class="{ 'item-disabled': item.raw?.disabled }"
+                                    :subtitle="getItemSubtitle(item.raw)"
+                                >
                                     <template #prepend>
                                         <span
-                                            v-if="item?.colorCode"
                                             class="color-swatch-small"
-                                            :style="{ backgroundColor: item.colorCode }"
+                                            :class="item.raw?.colorCode ? '' : 'color-swatch-empty'"
+                                            :style="item.raw?.colorCode ? { backgroundColor: item.raw.colorCode } : {}"
                                         />
                                     </template>
-                                    <template #title>
-                                        <div>
-                                            <div class="font-weight-medium">{{ item?.productName || 'N/A' }}</div>
-                                            <div class="text-caption text-grey">
-                                                Màu: {{ item?.colorName || 'N/A' }} | Size: {{ item?.sizeName || '-' }}
-                                            </div>
-                                        </div>
+                                    <template #append>
+                                        <v-chip
+                                            v-if="item.raw?.outOfStock"
+                                            size="x-small"
+                                            color="error"
+                                            variant="tonal"
+                                            class="ml-2"
+                                        >Hết hàng</v-chip>
+                                        <v-chip
+                                            v-else-if="item.raw?.alreadyHasDiscount"
+                                            size="x-small"
+                                            color="warning"
+                                            variant="tonal"
+                                            class="ml-2"
+                                        >Đã có giảm giá</v-chip>
                                     </template>
                                 </v-list-item>
                             </template>
@@ -215,17 +230,27 @@
                             <template #selection="{ item }">
                                 <div class="selected-variant">
                                     <span
-                                        v-if="item?.colorCode"
                                         class="color-swatch-small"
-                                        :style="{ backgroundColor: item.colorCode }"
+                                        :class="item.raw?.colorCode ? '' : 'color-swatch-empty'"
+                                        :style="item.raw?.colorCode ? { backgroundColor: item.raw.colorCode } : {}"
                                     />
-                                    <span>{{ item?.productName }} - {{ item?.colorName }} ({{ item?.sizeName || '-' }})</span>
+                                    <span>{{ item.raw?.displayName || item.raw?.productName }}</span>
                                 </div>
                             </template>
                         </v-autocomplete>
 
+                        <!-- Warning: selected item has discount already -->
+                        <div v-if="selectedVariantAlreadyHasDiscount" class="duplicate-warning mb-4">
+                            <v-icon size="18" color="warning">mdi-alert-circle-outline</v-icon>
+                            <span>
+                                Biến thể <strong>{{ selectedVariantPreview?.productName }} – {{ selectedVariantPreview?.colorName }}</strong>
+                                đã có chương trình giảm giá. Vui lòng chọn biến thể khác hoặc
+                                <span class="warning-link" @click="goEditExistingDiscount">chỉnh sửa giảm giá hiện tại</span>.
+                            </span>
+                        </div>
+
                         <!-- Selected Variant Preview -->
-                        <div v-if="selectedVariantPreview" class="variant-preview-card mb-4">
+                        <div v-if="selectedVariantPreview && !selectedVariantAlreadyHasDiscount" class="variant-preview-card mb-4">
                             <div class="variant-preview-header">
                                 <v-icon size="20" color="primary">mdi-palette</v-icon>
                                 <span class="font-weight-bold">Thông tin biến thể đã chọn</span>
@@ -254,83 +279,87 @@
                             </div>
                         </div>
 
-                        <!-- Discount Type -->
-                        <v-select
-                            v-model="formData.discountType"
-                            :items="['percent', 'fixed']"
-                            label="Loại giảm giá"
-                            :rules="[rules.required]"
-                            class="mb-4"
-                        >
-                            <template v-slot:item="{ props, item }">
-                                <v-list-item v-bind="props">
-                                    <template v-slot:title>
-                                        {{ item.value === 'percent' ? 'Giảm giá theo phần trăm' : 'Giảm giá cố định' }}
-                                    </template>
-                                </v-list-item>
-                            </template>
+                        <!-- Row: Discount Type + Discount Value -->
+                        <div class="form-row-2col mb-4">
+                            <v-select
+                                v-model="formData.discountType"
+                                :items="discountTypeItems"
+                                item-value="value"
+                                item-title="title"
+                                label="Loại giảm giá"
+                                :rules="[rules.required]"
+                            ></v-select>
 
-                            <template v-slot:selection="{ item }">
-                                {{ item.value === 'percent' ? 'Giảm giá theo phần trăm' : 'Giảm giá cố định' }}
-                            </template>
-                        </v-select>
+                            <v-text-field
+                                v-model="formData.discountValue"
+                                inputmode="numeric"
+                                :label="`Giá trị giảm ${formData.discountType === 'percent' ? '(%)' : '(đ)'}`"
+                                :rules="discountValueRules"
+                                :hint="formData.discountType === 'percent' ? 'Nhập từ 1 đến 99' : 'Nhập số tiền giảm (VNĐ)'"
+                                persistent-hint
+                                @keypress="onlyPositiveInt"
+                            ></v-text-field>
+                        </div>
 
-                        <!-- Discount Value -->
-                        <v-text-field
-                            v-model.number="formData.discountValue"
-                            type="number"
-                            :label="`Giá trị giảm ${formData.discountType === 'percent' ? '(%)' : '(đ)'}`"
-                            :rules="[rules.required]"
-                            step="0.01"
-                            class="mb-4"
-                        ></v-text-field>
+                        <!-- Max Discount (percent only) + Quantity -->
+                        <div class="form-row-2col mb-4">
+                            <v-text-field
+                                v-if="formData.discountType === 'percent'"
+                                v-model="formData.maxDiscountValue"
+                                inputmode="numeric"
+                                label="Giảm tối đa (đ)"
+                                :rules="[rules.required, rules.positiveNumber]"
+                                hint="Số tiền giảm tối đa (VNĐ)"
+                                persistent-hint
+                                @keypress="onlyPositiveInt"
+                            ></v-text-field>
+                            <div v-else></div>
 
-                        <!-- Max Discount -->
-                        <v-text-field
-                            v-if="formData.discountType === 'percent'"
-                            v-model.number="formData.maxDiscountValue"
-                            type="number"
-                            label="Giảm tối đa (đ)"
-                            :rules="[rules.required]"
-                            step="1000"
-                            class="mb-4"
-                        ></v-text-field>
+                            <v-text-field
+                                v-model="formData.quantity"
+                                inputmode="numeric"
+                                label="Số lượng"
+                                :rules="[rules.required, rules.positiveNumber]"
+                                hint="Phải lớn hơn 0"
+                                persistent-hint
+                                @keypress="onlyPositiveInt"
+                            ></v-text-field>
+                        </div>
 
-                        <!-- Quantity -->
-                        <v-text-field
-                            v-model.number="formData.quantity"
-                            type="number"
-                            label="Số lượng"
-                            :rules="[rules.required]"
-                            class="mb-4"
-                        ></v-text-field>
+                        <!-- Row: Start Date + End Date -->
+                        <div class="form-row-2col mb-4">
+                            <v-text-field
+                                v-model="formData.startDate"
+                                type="date"
+                                label="Ngày bắt đầu"
+                                :rules="[rules.required]"
+                            ></v-text-field>
 
-                        <!-- Start Date -->
-                        <v-text-field
-                            v-model="formData.startDate"
-                            type="date"
-                            label="Ngày bắt đầu"
-                            :rules="[rules.required]"
-                            class="mb-4"
-                        ></v-text-field>
+                            <v-text-field
+                                v-model="formData.endDate"
+                                type="date"
+                                label="Ngày kết thúc"
+                                :rules="[rules.required, rules.endDateAfterStart]"
+                            ></v-text-field>
+                        </div>
 
-                        <!-- End Date -->
-                        <v-text-field
-                            v-model="formData.endDate"
-                            type="date"
-                            label="Ngày kết thúc"
-                            :rules="[rules.required]"
-                            class="mb-4"
-                        ></v-text-field>
+                        <!-- Row: Reason + Active -->
+                        <div class="form-row-2col mb-4">
+                            <v-select
+                                v-model="formData.reason"
+                                :items="reasons"
+                                label="Lý do giảm giá"
+                                :rules="[rules.required]"
+                            ></v-select>
 
-                        <!-- Reason -->
-                        <v-select
-                            v-model="formData.reason"
-                            :items="reasons"
-                            label="Lý do giảm giá"
-                            :rules="[rules.required]"
-                            class="mb-4"
-                        ></v-select>
+                            <div class="d-flex align-center">
+                                <v-switch
+                                    v-model="formData.active"
+                                    label="Kích hoạt"
+                                    color="primary"
+                                ></v-switch>
+                            </div>
+                        </div>
 
                         <!-- Description -->
                         <v-textarea
@@ -339,22 +368,20 @@
                             counter
                             maxlength="500"
                             :rules="[rules.required]"
+                            rows="3"
                             class="mb-4"
                         ></v-textarea>
-
-                        <!-- Active Status -->
-                        <v-switch
-                            v-model="formData.active"
-                            label="Kích hoạt"
-                            class="mb-4"
-                        ></v-switch>
                     </v-form>
                 </v-card-text>
 
                 <v-card-actions class="justify-end px-6 pb-6">
                     <v-btn @click="closeDialog" variant="outlined">Hủy</v-btn>
-
-                    <v-btn @click="saveDiscount" color="primary" :loading="isSaving">
+                    <v-btn
+                        @click="saveDiscount"
+                        color="primary"
+                        :loading="isSaving"
+                        :disabled="selectedVariantAlreadyHasDiscount && !isEditing"
+                    >
                         {{ isEditing ? 'Cập nhật' : 'Thêm' }}
                     </v-btn>
                 </v-card-actions>
@@ -362,20 +389,49 @@
         </v-dialog>
 
         <!-- Delete Confirmation Dialog -->
-        <v-dialog v-model="showDeleteDialog" max-width="400px">
+        <v-dialog v-model="showDeleteDialog" max-width="440px">
             <v-card>
-                <v-card-title>Xác nhận xóa</v-card-title>
+                <v-card-title class="pa-5 pb-2 d-flex align-center gap-2">
+                    <v-icon :color="deleteWillDeactivate ? 'warning' : 'error'" size="22">
+                        {{ deleteWillDeactivate ? 'mdi-alert-circle-outline' : 'mdi-trash-can-outline' }}
+                    </v-icon>
+                    {{ deleteWillDeactivate ? 'Không thể xóa' : 'Xác nhận xóa' }}
+                </v-card-title>
 
-                <v-card-text>
-                    Bạn chắc chắn muốn xóa giảm giá cho biến thể màu
-                    <strong>{{ discountToDelete?.productName }} - {{ discountToDelete?.colorName }}</strong>?
+                <v-card-text class="pa-5 pt-2">
+                    <!-- Trường hợp đã có người dùng: chỉ tắt trạng thái -->
+                    <template v-if="deleteWillDeactivate">
+                        <v-alert type="warning" variant="tonal" density="compact" class="mb-3">
+                            Giảm giá này đã được
+                            <strong>{{ discountToDelete?.quantityUsed }} lượt</strong> sử dụng.
+                            Không thể xóa vì ràng buộc dữ liệu.
+                        </v-alert>
+                        <p class="text-body-2 text-grey-darken-1">
+                            Hệ thống sẽ <strong>tắt kích hoạt</strong> giảm giá cho biến thể
+                            <strong>{{ discountToDelete?.productName }} – {{ discountToDelete?.colorName }}</strong>
+                            thay vì xóa, để giữ toàn vẹn dữ liệu đơn hàng cũ.
+                        </p>
+                    </template>
+
+                    <!-- Trường hợp chưa ai dùng: xóa bình thường -->
+                    <template v-else>
+                        <p class="text-body-2">
+                            Bạn chắc chắn muốn xóa giảm giá cho biến thể màu
+                            <strong>{{ discountToDelete?.productName }} – {{ discountToDelete?.colorName }}</strong>?
+                        </p>
+                        <p class="text-caption text-grey mt-1">Hành động này không thể hoàn tác.</p>
+                    </template>
                 </v-card-text>
 
-                <v-card-actions class="justify-end">
+                <v-card-actions class="justify-end pa-4 pt-0">
                     <v-btn @click="showDeleteDialog = false" variant="outlined">Hủy</v-btn>
-
-                    <v-btn @click="deleteDiscount" color="error" :loading="isDeleting">
-                        Xóa
+                    <v-btn
+                        @click="deleteDiscount"
+                        :color="deleteWillDeactivate ? 'warning' : 'error'"
+                        :loading="isDeleting"
+                        :prepend-icon="deleteWillDeactivate ? 'mdi-toggle-switch-off-outline' : 'mdi-trash-can-outline'"
+                    >
+                        {{ deleteWillDeactivate ? 'Tắt kích hoạt' : 'Xóa' }}
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -393,79 +449,180 @@ import {
 } from '@/api/productDiscountApi'
 import productColorApi from '@/api/productColorApi'
 
-// Refs
-const discounts = ref([])
-const productColors = ref([])
-const productColorMap = ref(new Map())
-const isLoading = ref(false)
-const isSaving = ref(false)
-const isDeleting = ref(false)
-const showDialog = ref(false)
-const showDeleteDialog = ref(false)
-const isEditing = ref(false)
-const errorMessage = ref('')
-const successMessage = ref('')
-const filterReason = ref(null)
-const filterStatus = ref(null)
-const discountToDelete = ref(null)
+// ─── Refs ────────────────────────────────────────────────────────────────────
+const discounts         = ref([])
+const productColors     = ref([])
+const productColorMap   = ref(new Map())
+const isLoading         = ref(false)
+const isSaving          = ref(false)
+const isDeleting        = ref(false)
+const showDialog        = ref(false)
+const showDeleteDialog  = ref(false)
+const isEditing         = ref(false)
+const filterReason      = ref(null)
+const filterStatus      = ref(null)
+const discountToDelete  = ref(null)
 const editingDiscountId = ref(null)
-const form = ref(null)
+const form              = ref(null)
 
-const reasons = ['slow-selling', 'seasonal', 'overstocked', 'clearance', 'other']
+// ─── Toast Notification ───────────────────────────────────────────────────────
+const snackbar      = ref(false)
+const toastMessage  = ref('')
+const snackbarColor = ref('success')
+const snackbarIcon  = ref('mdi-check-circle')
+
+const showMessage = (text, type = 'success') => {
+    toastMessage.value = text
+
+    snackbarColor.value =
+        type === 'error'   ? 'error'   :
+        type === 'warning' ? 'warning' : 'success'
+
+    snackbarIcon.value =
+        type === 'error'   ? 'mdi-close-circle'  :
+        type === 'warning' ? 'mdi-alert-circle'  : 'mdi-check-circle'
+
+    snackbar.value = true
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const reasons = ['Bán chậm', 'Theo mùa', 'Hàng tồn kho quá nhiều', 'Thanh lý', 'Khác']
 
 const statusOptions = [
-    { title: 'Hoạt động', value: 'active' },
-    { title: 'Tắt', value: 'inactive' }
+    { title: 'Hoạt động', value: 'active'   },
+    { title: 'Tắt',       value: 'inactive' }
+]
+
+const discountTypeItems = [
+    { title: 'Giảm giá theo phần trăm', value: 'percent' },
+    { title: 'Giảm giá cố định',        value: 'fixed'   }
 ]
 
 const getDefaultFormData = () => ({
-    productColorId: null,
-    discountType: null,
-    discountValue: null,
+    productColorId:   null,
+    discountType:     null,
+    discountValue:    null,
     maxDiscountValue: null,
-    quantity: null,
-    startDate: '',
-    endDate: '',
-    reason: null,
-    description: '',
-    active: true
+    quantity:         null,
+    startDate:        '',
+    endDate:          '',
+    reason:           null,
+    description:      '',
+    active:           true
 })
 
-// Form Data
 const formData = ref(getDefaultFormData())
 
-// Validation Rules: chỉ check trống
+// ─── Validation Rules ─────────────────────────────────────────────────────────
 const isEmpty = (v) => v === null || v === undefined || v === ''
 
 const rules = {
-    required: v => !isEmpty(v) || 'Không được để trống'
+    required: v => !isEmpty(v) || 'Không được để trống',
+
+    positiveNumber: v => {
+        if (isEmpty(v)) return true
+        return Number(v) > 0 || 'Phải lớn hơn 0'
+    },
+
+    endDateAfterStart: v => {
+        if (!formData.value.startDate || !v) return true
+        return v >= formData.value.startDate || 'Ngày kết thúc phải sau ngày bắt đầu'
+    }
 }
 
-// Computed Properties
-const filteredDiscounts = computed(() => {
-    return discounts.value.filter(d => {
+const discountValueRules = computed(() => {
+    const base = [rules.required, rules.positiveNumber]
+    if (formData.value.discountType === 'percent') {
+        base.push(v => Number(v) < 100 || 'Phần trăm giảm phải nhỏ hơn 100%')
+    }
+    return base
+})
+
+// ─── Computed ─────────────────────────────────────────────────────────────────
+const discountedColorIds = computed(() => new Set(
+    discounts.value
+        .filter(d => !isEditing.value || d.id !== editingDiscountId.value)
+        .map(d => Number(d.productColorId))
+))
+
+const productColorsForSelect = computed(() =>
+    productColors.value.map(pc => {
+        const outOfStock         = pc._stockQty <= 0
+        const alreadyHasDiscount = discountedColorIds.value.has(pc._normalizedId)
+        return {
+            ...pc,
+            outOfStock,
+            alreadyHasDiscount,
+            disabled: outOfStock || alreadyHasDiscount
+        }
+    })
+)
+
+const filteredDiscounts = computed(() =>
+    discounts.value.filter(d => {
         const reasonMatch = !filterReason.value || d.reason === filterReason.value
-        const statusMatch = !filterStatus.value || (filterStatus.value === 'active' ? d.active : !d.active)
+        const statusMatch = !filterStatus.value ||
+            (filterStatus.value === 'active' ? d.active : !d.active)
         return reasonMatch && statusMatch
     })
-})
+)
 
 const selectedVariantPreview = computed(() => {
-    if (!formData.value.productColorId) return null
-    return productColors.value.find(pc => 
-        Number.parseInt(pc.id ?? pc.productColorID, 10) === Number.parseInt(formData.value.productColorId, 10)
-    ) || null
+    const v = formData.value.productColorId
+    if (!v) return null
+    if (typeof v === 'object') return v
+    return productColors.value.find(pc => pc._normalizedId === Number(v)) || null
 })
 
-// Methods
+const selectedVariantAlreadyHasDiscount = computed(() => {
+    if (isEditing.value) return false
+    const preview = selectedVariantPreview.value
+    if (!preview) return false
+    return discountedColorIds.value.has(preview._normalizedId)
+})
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const resolveColorId = () => {
+    const v = formData.value.productColorId
+    if (!v) return null
+    return typeof v === 'object' ? v._normalizedId : Number(v)
+}
+
+const onColorSelected = (val) => {
+    formData.value.productColorId = val
+}
+
+const onlyPositiveInt = (e) => {
+    if (!/^\d$/.test(e.key)) e.preventDefault()
+}
+
+/** Tạo subtitle hiển thị bên dưới tên sản phẩm trong dropdown */
+const getItemSubtitle = (raw) => {
+    if (!raw) return ''
+    const parts = []
+    if (raw.colorName) parts.push(`Màu: ${raw.colorName}`)
+    if (raw.sizeName)  parts.push(`Size: ${raw.sizeName}`)
+    return parts.join(' | ') || ''
+}
+
+const goEditExistingDiscount = () => {
+    const preview = selectedVariantPreview.value
+    if (!preview) return
+    const existing = discounts.value.find(d => Number(d.productColorId) === preview._normalizedId)
+    if (existing) {
+        closeDialog()
+        openEditDialog(existing)
+    }
+}
+
+// ─── Data Loading ─────────────────────────────────────────────────────────────
 const loadDiscounts = async () => {
     isLoading.value = true
-
     try {
         const response = await getAllProductDiscounts()
         discounts.value = response.data || []
     } catch (error) {
-        errorMessage.value = 'Lỗi khi tải dữ liệu giảm giá'
+        showMessage('Lỗi khi tải dữ liệu giảm giá', 'error')
         console.error('Error loading discounts:', error)
     } finally {
         isLoading.value = false
@@ -475,19 +632,89 @@ const loadDiscounts = async () => {
 const loadProductColors = async () => {
     try {
         const response = await productColorApi.getAll()
+        const raw = response.data || []
 
-        productColors.value = (response.data || []).map(pc => ({
-            ...pc,
-            displayName: `${pc.productName || 'N/A'} - ${pc.colorName || 'N/A'} (${pc.colorCode || ''}) [${pc.sizeName || '-'}]`
-        }))
+        // Debug: log 1 item để xem cấu trúc thực tế từ API
+        if (raw.length > 0) {
+            console.log('[ProductColor] Sample keys:', Object.keys(raw[0]))
+            console.log('[ProductColor] Sample item:', JSON.stringify(raw[0], null, 2))
+        }
+
+        productColors.value = raw.map(pc => {
+            // ── ID ─────────────────────────────────────────────────────────
+            const nid = Number.parseInt(
+                pc.id ?? pc.productColorId ?? pc.productColorID ?? pc.variantId ?? pc.colorVariantId,
+                10
+            )
+
+            // ── Tên sản phẩm ───────────────────────────────────────────────
+            const productName =
+                pc.productName   ??
+                pc.product?.name ??
+                pc.name          ??
+                pc.productTitle  ??
+                '(Không có tên)'
+
+            // ── Tên màu ────────────────────────────────────────────────────
+            const colorName =
+                pc.colorName     ??
+                pc.color?.name   ??
+                pc.colour        ??
+                pc.colorLabel    ??
+                '(Không có màu)'
+
+            // ── Mã màu hex ─────────────────────────────────────────────────
+            const colorCode =
+                pc.colorCode     ??
+                pc.color?.code   ??
+                pc.color?.hex    ??
+                pc.hexCode       ??
+                null
+
+            // ── Tên size ───────────────────────────────────────────────────
+            const sizeName =
+                pc.sizeName      ??
+                pc.size?.name    ??
+                pc.sizeLabel     ??
+                null
+
+            // ── Tồn kho ────────────────────────────────────────────────────
+            // Mặc định 1 nếu không tìm thấy field, tránh tất cả thành "hết hàng"
+            const stockQty =
+                pc.stock             ??
+                pc.stockQuantity     ??
+                pc.quantity          ??
+                pc.inventoryQuantity ??
+                pc.remainingQuantity ??
+                pc.available         ??
+                1
+
+            // ── Ảnh ────────────────────────────────────────────────────────
+            const mainImage =
+                pc.mainImage     ??
+                pc.imageUrl      ??
+                pc.image         ??
+                pc.thumbnail     ??
+                (pc.images && pc.images[0]) ??
+                null
+
+            return {
+                ...pc,
+                _normalizedId: nid,
+                productName,
+                colorName,
+                colorCode,
+                sizeName,
+                _stockQty: Number(stockQty),
+                mainImage,
+                displayName: `${productName} - ${colorName} [${sizeName || '-'}]`
+            }
+        })
 
         productColorMap.value = new Map()
-
         productColors.value.forEach(pc => {
-            const id = Number.parseInt(pc.id ?? pc.productColorID, 10)
-
-            if (Number.isFinite(id)) {
-                productColorMap.value.set(id, pc.mainImage || null)
+            if (Number.isFinite(pc._normalizedId)) {
+                productColorMap.value.set(pc._normalizedId, pc.mainImage || null)
             }
         })
     } catch (error) {
@@ -495,69 +722,77 @@ const loadProductColors = async () => {
     }
 }
 
+// ─── Dialog Handlers ──────────────────────────────────────────────────────────
 const openCreateDialog = () => {
-    isEditing.value = false
+    isEditing.value         = false
     editingDiscountId.value = null
-    formData.value = getDefaultFormData()
-    showDialog.value = true
-
-    setTimeout(() => {
-        form.value?.resetValidation?.()
-    }, 0)
+    formData.value          = getDefaultFormData()
+    showDialog.value        = true
+    setTimeout(() => form.value?.resetValidation?.(), 0)
 }
 
 const openEditDialog = (discount) => {
-    isEditing.value = true
+    isEditing.value         = true
     editingDiscountId.value = discount.id
-
+    const colorObj = productColors.value.find(
+        pc => pc._normalizedId === Number(discount.productColorId)
+    ) || discount.productColorId
     formData.value = {
-        productColorId: discount.productColorId,
-        discountType: discount.discountType,
-        discountValue: discount.discountValue,
-        maxDiscountValue: discount.maxDiscountValue,
-        quantity: discount.quantity,
-        startDate: toInputDate(discount.startDate),
-        endDate: toInputDate(discount.endDate),
-        reason: discount.reason,
-        description: discount.description,
-        active: discount.active
+        productColorId:   colorObj,
+        discountType:     discount.discountType,
+        discountValue:    String(discount.discountValue),
+        maxDiscountValue: discount.maxDiscountValue ? String(discount.maxDiscountValue) : '',
+        quantity:         String(discount.quantity),
+        startDate:        toInputDate(discount.startDate),
+        endDate:          toInputDate(discount.endDate),
+        reason:           discount.reason,
+        description:      discount.description,
+        active:           discount.active
     }
-
     showDialog.value = true
-
-    setTimeout(() => {
-        form.value?.resetValidation?.()
-    }, 0)
+    setTimeout(() => form.value?.resetValidation?.(), 0)
 }
 
 const closeDialog = () => {
-    showDialog.value = false
-    isEditing.value = false
+    showDialog.value        = false
+    isEditing.value         = false
     editingDiscountId.value = null
     form.value?.resetValidation?.()
 }
 
+// ─── CRUD ─────────────────────────────────────────────────────────────────────
 const saveDiscount = async () => {
     if (!form.value) return
+
+    if (selectedVariantAlreadyHasDiscount.value) {
+        showMessage('Biến thể này đã có chương trình giảm giá. Vui lòng chọn biến thể khác.', 'warning')
+        return
+    }
 
     const result = await form.value.validate()
     if (!result.valid) return
 
     isSaving.value = true
-
     try {
-        if (isEditing.value) {
-            await updateProductDiscount(editingDiscountId.value, formData.value)
-            successMessage.value = 'Cập nhật giảm giá thành công'
-        } else {
-            await createProductDiscount(formData.value)
-            successMessage.value = 'Thêm giảm giá thành công'
+        const payload = {
+            ...formData.value,
+            productColorId:   resolveColorId(),
+            discountValue:    Number(formData.value.discountValue),
+            maxDiscountValue: formData.value.maxDiscountValue ? Number(formData.value.maxDiscountValue) : null,
+            quantity:         Number(formData.value.quantity)
         }
 
+        if (isEditing.value) {
+            await updateProductDiscount(editingDiscountId.value, payload)
+            showMessage('Cập nhật giảm giá thành công', 'success')
+        } else {
+            await createProductDiscount(payload)
+            showMessage('Thêm giảm giá thành công', 'success')
+        }
         closeDialog()
         await loadDiscounts()
     } catch (error) {
-        errorMessage.value = error.response?.data?.message || 'Lỗi khi lưu giảm giá'
+        showMessage(error.response?.data?.message || 'Lỗi khi lưu giảm giá', 'error')
         console.error('Error saving discount:', error)
     } finally {
         isSaving.value = false
@@ -569,49 +804,59 @@ const confirmDelete = (discount) => {
     showDeleteDialog.value = true
 }
 
+/** True nếu giảm giá đã được dùng → chỉ tắt trạng thái, không xóa */
+const deleteWillDeactivate = computed(() =>
+    Number(discountToDelete.value?.quantityUsed ?? 0) > 0
+)
+
 const deleteDiscount = async () => {
     if (!discountToDelete.value) return
-
     isDeleting.value = true
-
     try {
-        await deleteProductDiscount(discountToDelete.value.id)
-        successMessage.value = 'Xóa giảm giá thành công'
+        if (deleteWillDeactivate.value) {
+            // Đã có người dùng → chỉ tắt active, không xóa (tránh lỗi FK)
+            await updateProductDiscount(discountToDelete.value.id, {
+                ...discountToDelete.value,
+                active: false
+            })
+            showMessage(
+                `Đã tắt kích hoạt giảm giá "${discountToDelete.value.productName} – ${discountToDelete.value.colorName}" do đã có lượt sử dụng`,
+                'warning'
+            )
+        } else {
+            // Chưa ai dùng → xóa hẳn
+            await deleteProductDiscount(discountToDelete.value.id)
+            showMessage('Xóa giảm giá thành công', 'success')
+        }
         showDeleteDialog.value = false
         await loadDiscounts()
     } catch (error) {
-        errorMessage.value = 'Lỗi khi xóa giảm giá'
-        console.error('Error deleting discount:', error)
+        showMessage(
+            error.response?.data?.message || 'Lỗi khi thực hiện thao tác',
+            'error'
+        )
+        console.error('Error deleting/deactivating discount:', error)
     } finally {
         isDeleting.value = false
     }
 }
 
-// Utility Functions
-const toInputDate = (date) => {
-    if (!date) return ''
-    return String(date).split('T')[0]
-}
+// ─── Utility ──────────────────────────────────────────────────────────────────
+const toInputDate = (date) => (!date ? '' : String(date).split('T')[0])
 
-const formatDate = (date) => {
-    if (!date) return '-'
-    return new Date(date).toLocaleDateString('vi-VN')
-}
+const formatDate = (date) => (!date ? '-' : new Date(date).toLocaleDateString('vi-VN'))
 
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND',
-        maximumFractionDigits: 0
+const formatCurrency = (value) =>
+    new Intl.NumberFormat('vi-VN', {
+        style: 'currency', currency: 'VND', maximumFractionDigits: 0
     }).format(value || 0)
-}
 
 const getProductImage = (discount) => {
-    if (!discount || !discount.productColorId) return null
+    if (!discount?.productColorId) return null
     return productColorMap.value.get(Number.parseInt(discount.productColorId, 10)) || null
 }
 
-// Lifecycle
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {
     loadDiscounts()
     loadProductColors()
@@ -648,42 +893,19 @@ onMounted(() => {
     max-width: 300px;
 }
 
-.discount-table {
-    width: 100%;
-}
+.discount-table { width: 100%; }
+.discount-table thead { background-color: #f5f5f5; }
+.discount-table th { font-weight: 600; color: #333; padding: 12px; }
+.discount-table td { padding: 12px; border-bottom: 1px solid #e0e0e0; }
+.discount-table tbody tr:hover { background-color: #fafafa; }
 
-.discount-table thead {
-    background-color: #f5f5f5;
-}
-
-.discount-table th {
-    font-weight: 600;
-    color: #333;
-    padding: 12px;
-}
-
-.discount-table td {
-    padding: 12px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.discount-table tbody tr:hover {
-    background-color: #fafafa;
-}
-
-.product-cell {
-    font-size: 14px;
-}
-
-.image-cell {
-    text-align: center;
-    vertical-align: middle;
-}
+.product-cell  { font-size: 14px; }
+.image-cell    { text-align: center; vertical-align: middle; }
 
 .product-thumbnail {
     border-radius: 6px;
     border: 1px solid #ddd;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
 }
 
 .placeholder-image {
@@ -706,44 +928,14 @@ onMounted(() => {
     color: #999;
     text-align: center;
 }
+.no-data p { margin: 0; font-size: 14px; }
 
-.no-data p {
-    margin: 0;
-    font-size: 14px;
-}
+.gap-4 { gap: 1rem; }
+.text-grey    { color: #999; }
+.text-warning { color: #ff9800; }
 
-.gap-4 {
-    gap: 1rem;
-}
-
-.gap-2 {
-    gap: 0.5rem;
-}
-
-.text-grey {
-    color: #999;
-}
-
-.text-warning {
-    color: #ff9800;
-}
-
-/* Variant Cell Styles */
-.variant-cell {
-    font-size: 14px;
-    vertical-align: middle;
-}
-
-.size-badge {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* Variant Select Styles */
-.variant-select-item {
-    padding: 8px 0 !important;
-}
+.variant-cell { font-size: 14px; vertical-align: middle; }
+.size-badge   { display: flex; align-items: center; gap: 4px; }
 
 .color-swatch-small {
     display: inline-block;
@@ -755,13 +947,10 @@ onMounted(() => {
     flex-shrink: 0;
 }
 
-.selected-variant {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
+.color-swatch-empty { background-color: #e0e0e0; }
 
-/* Variant Preview Card */
+.selected-variant { display: flex; align-items: center; gap: 8px; }
+
 .variant-preview-card {
     padding: 16px;
     background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
@@ -784,24 +973,9 @@ onMounted(() => {
     gap: 12px;
 }
 
-.preview-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.preview-label {
-    font-size: 12px;
-    color: #666;
-    font-weight: 500;
-    text-transform: uppercase;
-}
-
-.preview-value {
-    font-size: 13px;
-    font-weight: 500;
-    color: #333;
-}
+.preview-item   { display: flex; flex-direction: column; gap: 4px; }
+.preview-label  { font-size: 12px; color: #666; font-weight: 500; text-transform: uppercase; }
+.preview-value  { font-size: 13px; font-weight: 500; color: #333; }
 
 .preview-value-color {
     display: flex;
@@ -817,5 +991,93 @@ onMounted(() => {
     height: 20px;
     border-radius: 50%;
     border: 2px solid #999;
+}
+
+.form-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+}
+
+:deep(.v-list-item--disabled),
+:deep(.item-disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.duplicate-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    background-color: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #5d4037;
+    line-height: 1.5;
+}
+
+.warning-link {
+    color: #e65100;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.warning-link:hover { color: #bf360c; }
+
+/* ── Toast Notification (sao từ trang trả hàng) ─────────────────────────── */
+:deep(.custom-snackbar) {
+    padding: 0 !important;
+    overflow: hidden;
+    border-radius: 12px !important;
+    background: white !important;
+    min-width: 320px;
+}
+
+.toast-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 14px 12px;
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toast-text {
+    color: #444;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.toast-progress {
+    height: 4px;
+    width: 100%;
+    animation: progress-animation 3s linear forwards;
+}
+
+.toast-progress.success { background: #1db954; }
+.toast-progress.error   { background: #ef5350; }
+.toast-progress.warning { background: #ff9800; }
+
+@keyframes progress-animation {
+    from { width: 100%; }
+    to   { width: 0%;   }
+}
+
+:deep(.v-snackbar__wrapper) {
+    animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0);     }
 }
 </style>
