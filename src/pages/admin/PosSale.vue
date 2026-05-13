@@ -81,7 +81,7 @@
                     <v-card-text>
                         <v-text-field v-model="productKeyword" label="Tìm sản phẩm (tên, mã sản phẩm, màu, hãng)"
                             variant="outlined" density="comfortable" prepend-inner-icon="mdi-magnify" clearable
-                            @input="searchProducts" />
+                            @update:model-value="handleProductSearch" @keyup.enter="loadProducts" />
 
                         <div class="text-caption text-grey mt-2">
                             Tìm theo: Tên sản phẩm, Mã sản phẩm, Màu, Hãng
@@ -442,6 +442,7 @@ const bankingDialog = ref(false)
 const bankingInfo = ref(null)
 const confirmingBankingPayment = ref(false)
 let customerSearchTimer = null
+let productSearchTimer = null
 
 const guest = ref({
     customerName: "",
@@ -887,8 +888,16 @@ async function loadProducts() {
     }
 }
 
-async function searchProducts() {
-    await loadProducts()
+function handleProductSearch(value) {
+    productKeyword.value = value || ""
+
+    if (productSearchTimer) {
+        clearTimeout(productSearchTimer)
+    }
+
+    productSearchTimer = setTimeout(() => {
+        loadProducts()
+    }, 300)
 }
 
 async function loadPromotions() {
