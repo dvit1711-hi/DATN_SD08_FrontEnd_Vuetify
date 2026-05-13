@@ -79,10 +79,10 @@
                     </v-card-title>
 
                     <v-card-text>
-                        <v-text-field v-model="productKeyword" label="Tìm sản phẩm" variant="outlined"
+                        <v-text-field v-model="productKeyword" label="Tìm sản phẩm (tên, mã sản phẩm, màu, hãng)" variant="outlined"
                             density="comfortable" prepend-inner-icon="mdi-magnify" @input="searchProducts" />
 
-                        <v-row>
+                        <v-row class="mt-4">
                             <v-col v-for="product in products" :key="getProductColorId(product)" cols="12" sm="6">
                                 <v-card variant="outlined" class="h-100">
                                     <v-img :src="product.imageUrl || defaultImage" height="180" cover />
