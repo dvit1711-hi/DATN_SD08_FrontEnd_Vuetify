@@ -72,6 +72,11 @@
                 </div>
 
                 <div class="detail-row">
+                  <span>Mã lấy hàng shipper:</span>
+                  <strong>{{ getDisplayShipPickupCode(selectedOrder) }}</strong>
+                </div>
+
+                <div class="detail-row">
                   <span>Loại đơn:</span>
                   <strong>{{ getOrderTypeLabel(selectedOrder) }}</strong>
                 </div>
@@ -847,6 +852,7 @@ const {
   formatDate,
   formatPrice,
   getDisplayOrderCode,
+  getDisplayShipPickupCode,
   getDisplayCustomer,
   getOrderTypeLabel,
   getPaymentStatusColor,

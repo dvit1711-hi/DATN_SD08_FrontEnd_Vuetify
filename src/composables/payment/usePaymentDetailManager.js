@@ -1393,6 +1393,16 @@ export function usePaymentDetailManager() {
     return stage === "COMPLETED";
   };
 
+  const getDisplayShipPickupCode = (order) => {
+    return (
+      order?.shipPickupCode ||
+      order?.shipperPickupCode ||
+      order?.pickupCode ||
+      order?.shippingPickupCode ||
+      "-"
+    );
+  };
+
   const buildInvoiceRows = (order) => {
     const items = getOrderItems(order);
 
@@ -1426,7 +1436,7 @@ export function usePaymentDetailManager() {
       .join("");
   };
 
-  const buildInvoiceHtml = (order) => {
+  const buildInvoiceHtml = (order, type = "shipping") => {
     const formatCurrency = (n) => {
       const value = Number(n || 0);
       return value.toLocaleString("vi-VN") + " đ";
@@ -1454,6 +1464,15 @@ export function usePaymentDetailManager() {
       ? new Date(order.orderDate).toLocaleString("vi-VN")
       : new Date().toLocaleString("vi-VN");
     const paymentStatus = order?.paymentStatus || "PAID";
+    const shipPickupCode = getDisplayShipPickupCode(order);
+    const shipQrCode =
+      shipPickupCode && shipPickupCode !== "-" ? shipPickupCode : orderCode;
+    const receiverPhone =
+      order?.customerPhone ||
+      order?.receiverPhone ||
+      order?.phoneNumber ||
+      order?.customer?.phone ||
+      "-";
 
     const barcodeBlock = `
             <div class="barcode-box">
@@ -1461,18 +1480,6 @@ export function usePaymentDetailManager() {
                 <div class="barcode-label">Mã hóa đơn: ${orderCode}</div>
             </div>
         `;
-
-    const generateOrderQR = (code) => {
-      if (!code) return "";
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(code)}`;
-      return `
-        <div class="qr-order-left">
-            <img src="${qrUrl}" />
-            <div class="qr-label">Quét mã đơn</div>
-            <div class="qr-code">${code}</div>
-        </div>
-    `;
-    };
 
     const getInvoiceItems = (orderData = {}) => {
       const candidates = [
@@ -1590,6 +1597,106 @@ export function usePaymentDetailManager() {
                 </tr>
             `;
 
+    const totalQuantity = invoiceItems.reduce(
+      (sum, item) => sum + getItemQuantity(item),
+      0,
+    );
+    const shippingContentRows = invoiceItems.length
+      ? invoiceItems
+          .map((item) => {
+            const variant = getItemVariant(item);
+            return `<div>+ ${getItemName(item)}${variant ? ` (${variant})` : ""} - SL: ${getItemQuantity(item)}</div>`;
+          })
+          .join("")
+      : "<div>Không có chi tiết sản phẩm</div>";
+
+    if (type === "shipping") {
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(shipQrCode)}`;
+      return `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <title>Phiếu giao hàng #${orderCode}</title>
+    <style>
+        @page { size: A5 portrait; margin: 8mm; }
+        body { margin:0; font-family: Arial, Helvetica, sans-serif; font-size:12px; color:#111; }
+        .ship-sheet { border:1px solid #111; min-height:100%; }
+        .ship-head { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #111; padding:8px 10px; gap:10px; }
+        .ship-logo { max-width:120px; max-height:58px; width:auto; height:auto; object-fit:contain; }
+        .ship-barcode-box { flex:1; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; }
+        .ship-barcode-box svg { width:160px; height:34px; display:block; }
+        .ship-barcode-label { margin-top:4px; font-size:10px; font-weight:400; color:#111; }
+        .ship-address { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid #111; }
+        .ship-col { padding:8px; min-height:86px; border-right:1px solid #111; }
+        .ship-col:last-child { border-right:none; }
+        .ship-label { font-weight:700; margin-bottom:4px; }
+        .ship-row { margin:2px 0; line-height:1.35; }
+        .ship-mid { display:grid; grid-template-columns:160px 1fr; border-bottom:1px solid #111; min-height:155px; }
+        .ship-qr { border-right:1px solid #111; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px; }
+        .ship-qr img { width:110px; height:110px; object-fit:contain; }
+        .ship-qr-code { margin-top:6px; font-size:11px; font-weight:700; text-align:center; }
+        .ship-content { padding:8px; line-height:1.35; }
+        .ship-content-title { font-weight:700; margin-bottom:6px; }
+        .ship-bottom { display:grid; grid-template-columns:1fr 1fr; min-height:120px; }
+        .ship-money { padding:10px; font-size:14px; font-weight:700; }
+        .ship-sign { border-left:1px solid #111; padding:10px; text-align:center; color:#333; }
+    </style>
+</head>
+<body>
+    <div class="ship-sheet">
+        <div class="ship-head">
+            <img class="ship-logo" src="${storeLogoUrl}" alt="${storeName}" />
+            <div class="ship-barcode-box">
+                <svg id="ship-barcode-order" width="160" height="34"></svg>
+                <div class="ship-barcode-label">Mã đơn: ${orderCode}</div>
+            </div>
+        </div>
+
+        <div class="ship-address">
+            <div class="ship-col">
+                <div class="ship-label">Từ:</div>
+                <div class="ship-row">Shop: ${storeName}</div>
+                <div class="ship-row">${storeAddress}</div>
+                <div class="ship-row">SĐT: ${storePhone}</div>
+            </div>
+            <div class="ship-col">
+                <div class="ship-label">Đến:</div>
+                <div class="ship-row">${customerName}</div>
+                <div class="ship-row">${shippingAddress}</div>
+                <div class="ship-row">SĐT: ${receiverPhone}</div>
+            </div>
+        </div>
+
+        <div class="ship-mid">
+            <div class="ship-qr">
+                <img src="${qrUrl}" />
+                <div class="ship-qr-code">${shipQrCode}</div>
+            </div>
+            <div class="ship-content">
+                <div class="ship-content-title">Nội dung hàng (Tổng SL sản phẩm: ${totalQuantity})</div>
+                ${shippingContentRows}
+                <div class="ship-row" style="margin-top:8px;"><b>Mã lấy hàng:</b> ${shipPickupCode}</div>
+                <div class="ship-row"><b>Mã đơn:</b> ${orderCode}</div>
+            </div>
+        </div>
+
+        <div class="ship-bottom">
+            <div class="ship-money">
+                Tiền thu người nhận:<br />
+                ${formatCurrency(order?.totalAmount ?? order?.total ?? invoiceTotal)}
+            </div>
+            <div class="ship-sign">
+                Chữ ký người nhận<br />
+                (Xác nhận hàng nguyên vẹn, không móp/méo)
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+`;
+    }
+
     return `
 <!DOCTYPE html>
 <html lang="vi">
@@ -1684,6 +1791,7 @@ export function usePaymentDetailManager() {
             </div>
             <div class="meta-col" style="text-align:right;">
                 <div><b>Mã hóa đơn:</b> ${invoiceCode}</div>
+                <div><b>Mã lấy hàng shipper:</b> ${shipPickupCode}</div>
                 <div><b>Ngày tạo:</b> ${orderDate}</div>
                 <div><b>Trạng thái:</b> ${paymentStatus}</div>
             </div>
@@ -1707,7 +1815,6 @@ export function usePaymentDetailManager() {
 
         <div class="bottom-area">
             <div class="left-note">
-                ${generateOrderQR(orderCode)}
                 ${bankInfoBlock}
             </div>
             <div class="summary">
@@ -1755,12 +1862,24 @@ export function usePaymentDetailManager() {
 
     printWindow.onload = () => {
       const barcodeEl = printWindow.document.getElementById("barcode-order");
+      const shipBarcodeEl =
+        printWindow.document.getElementById("ship-barcode-order");
 
       if (barcodeEl) {
         JsBarcode(barcodeEl, getDisplayOrderCode(order), {
           format: "CODE128",
           width: 1.2,
           height: 40,
+          displayValue: false,
+          margin: 0,
+        });
+      }
+
+      if (shipBarcodeEl) {
+        JsBarcode(shipBarcodeEl, getDisplayOrderCode(order), {
+          format: "CODE128",
+          width: 1.2,
+          height: 34,
           displayValue: false,
           margin: 0,
         });
@@ -2133,6 +2252,7 @@ export function usePaymentDetailManager() {
     formatDate,
     formatPrice,
     getDisplayOrderCode,
+    getDisplayShipPickupCode,
     getDisplayCustomer,
     getOrderTypeLabel,
     getPaymentStatusColor,
