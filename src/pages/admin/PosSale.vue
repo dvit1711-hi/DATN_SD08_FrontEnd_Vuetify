@@ -1334,9 +1334,9 @@ function getOrderCreatedAt(order) {
 
 function getReceiptStoreInfo() {
     return {
-        phone: "0123456789",
-        email: "fshoesweb@gmail.com",
-        address: "Địa chỉ cửa hàng của bạn",
+        phone: "0906076388",
+        email: "tienmnhat@gmail.com",
+        address: "160 Cao lỗ, Uy Nỗ, Đông Anh, Hà Nội",
         logoUrl: "/images/logo1.jpg",
     }
 }

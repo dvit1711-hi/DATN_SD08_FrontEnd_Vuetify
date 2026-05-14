@@ -1434,10 +1434,9 @@ export function usePaymentDetailManager() {
 
     const orderCode = getDisplayOrderCode(order);
     const storeLogoUrl = order.storeLogo || "/images/logo1.jpg";
-    const storeName = order.storeName || "DTVĐ";
-    const storePhone = order.storePhone || "0123456789";
-    const storeEmail = order.storeEmail || "fshoesweb@gmail.com";
-    const storeAddress = order.storeAddress || "Địa chỉ cửa hàng của bạn";
+    const storePhone = order.storePhone || "0906076388";
+    const storeEmail = order.storeEmail || "tienmnhat@gmail.com";
+    const storeAddress = order.storeAddress || "160 Cao lỗ, Uy Nỗ, Đông Anh, Hà Nội";
 
     const customerName =
       order?.customerName ||
@@ -1667,7 +1666,6 @@ export function usePaymentDetailManager() {
             </div>
 
             <div class="shop-info">
-                <div class="shop-name">${storeName}</div>
                 <div class="shop-line"><b>SĐT:</b> ${storePhone}</div>
                 <div class="shop-line"><b>Email:</b> ${storeEmail}</div>
                 <div class="shop-line">${storeAddress}</div>
