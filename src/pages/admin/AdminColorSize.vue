@@ -20,60 +20,33 @@
         <!-- Color -->
         <v-window-item value="colors">
           <v-card-text>
-            <v-btn
-              color="primary"
-              prepend-icon="mdi-plus"
-              class="mb-4"
-              @click="openColorDialog()"
-            >
+            <v-btn color="primary" prepend-icon="mdi-plus" class="mb-4" @click="openColorDialog()">
               Thêm Color
             </v-btn>
 
-            <v-data-table
-              :headers="colorHeaders"
-              :items="colors"
-              :loading="loadingColor"
-              class="elevation-1"
-            >
+            <v-data-table :headers="colorHeaders" :items="colors" :loading="loadingColor" class="elevation-1">
               <template #item.colorCode="{ item }">
                 <div class="d-flex align-center gap-2">
-                  <div
-                    :style="{ backgroundColor: item.colorCode }"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 4px;"
-                  />
+                  <div :style="{ backgroundColor: item.colorCode }"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 4px;" />
                   <span>{{ item.colorCode }}</span>
                 </div>
               </template>
 
               <template #item.status="{ item }">
-                <v-chip
-                  :color="item.status === 'ACTIVE' ? 'success' : 'grey'"
-                  size="small"
-                  variant="tonal"
-                >
+                <v-chip :color="item.status === 'ACTIVE' ? 'success' : 'grey'" size="small" variant="tonal">
                   {{ item.status }}
                 </v-chip>
               </template>
 
               <template #item.actions="{ item }">
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  color="warning"
-                  prepend-icon="mdi-pencil"
-                  class="me-2"
-                  @click="openColorDialog(item)"
-                >
+                <v-btn size="small" variant="tonal" color="warning" prepend-icon="mdi-pencil" class="me-2"
+                  @click="openColorDialog(item)">
                   Sửa
                 </v-btn>
 
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  color="error"
-                  prepend-icon="mdi-delete"
-                  @click="deleteColor(item.colorID)"
-                >
+                <v-btn size="small" variant="tonal" color="error" prepend-icon="mdi-delete"
+                  @click="deleteColor(item.colorID)">
                   Xóa
                 </v-btn>
               </template>
@@ -84,50 +57,25 @@
         <!-- Size -->
         <v-window-item value="sizes">
           <v-card-text>
-            <v-btn
-              color="primary"
-              prepend-icon="mdi-plus"
-              class="mb-4"
-              @click="openSizeDialog()"
-            >
+            <v-btn color="primary" prepend-icon="mdi-plus" class="mb-4" @click="openSizeDialog()">
               Thêm Size
             </v-btn>
 
-            <v-data-table
-              :headers="sizeHeaders"
-              :items="sizes"
-              :loading="loadingSize"
-              class="elevation-1"
-            >
+            <v-data-table :headers="sizeHeaders" :items="sizes" :loading="loadingSize" class="elevation-1">
               <template #item.status="{ item }">
-                <v-chip
-                  :color="item.status === 'ACTIVE' ? 'success' : 'grey'"
-                  size="small"
-                  variant="tonal"
-                >
+                <v-chip :color="item.status === 'ACTIVE' ? 'success' : 'grey'" size="small" variant="tonal">
                   {{ item.status }}
                 </v-chip>
               </template>
 
               <template #item.actions="{ item }">
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  color="warning"
-                  prepend-icon="mdi-pencil"
-                  class="me-2"
-                  @click="openSizeDialog(item)"
-                >
+                <v-btn size="small" variant="tonal" color="warning" prepend-icon="mdi-pencil" class="me-2"
+                  @click="openSizeDialog(item)">
                   Sửa
                 </v-btn>
 
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  color="error"
-                  prepend-icon="mdi-delete"
-                  @click="deleteSize(item.sizeID)"
-                >
+                <v-btn size="small" variant="tonal" color="error" prepend-icon="mdi-delete"
+                  @click="deleteSize(item.sizeID)">
                   Xóa
                 </v-btn>
               </template>
@@ -145,35 +93,19 @@
         </v-card-title>
 
         <v-card-text class="pt-4">
-          <v-text-field
-            v-model="editingColor.colorName"
-            label="Tên Color"
-            required
-            placeholder="Nhập tên màu"
-          />
+          <v-text-field v-model="editingColor.colorName" label="Tên Color" required placeholder="Nhập tên màu" />
 
           <div class="d-flex align-center gap-2 mt-4">
-            <v-color-picker
-              v-model="editingColor.colorCode"
-              width="240"
-              show-swatches
-            />
+            <v-color-picker v-model="editingColor.colorCode" width="240" show-swatches />
 
             <div class="d-flex flex-column gap-2">
-              <div
-                :style="{ backgroundColor: editingColor.colorCode }"
-                style="width: 80px; height: 80px; border: 1px solid #ccc; border-radius: 4px;"
-              />
+              <div :style="{ backgroundColor: editingColor.colorCode }"
+                style="width: 80px; height: 80px; border: 1px solid #ccc; border-radius: 4px;" />
               <span class="text-caption">{{ editingColor.colorCode }}</span>
             </div>
           </div>
 
-          <v-select
-            v-model="editingColor.status"
-            :items="statusOptions"
-            label="Trạng thái"
-            class="mt-4"
-          />
+          <v-select v-model="editingColor.status" :items="statusOptions" label="Trạng thái" class="mt-4" />
         </v-card-text>
 
         <v-card-actions>
@@ -192,27 +124,12 @@
         </v-card-title>
 
         <v-card-text class="pt-4">
-          <v-text-field
-            v-model="editingSize.sizeName"
-            label="Tên Size"
-            required
-            placeholder="Nhập tên kích thước"
-          />
+          <v-text-field v-model="editingSize.sizeName" label="Tên Size" required placeholder="Nhập tên kích thước" />
 
-          <v-textarea
-            v-model="editingSize.sizeDescription"
-            label="Mô Tả"
-            placeholder="Nhập mô tả (tùy chọn)"
-            rows="3"
-            class="mt-4"
-          />
+          <v-textarea v-model="editingSize.sizeDescription" label="Mô Tả" placeholder="Nhập mô tả (tùy chọn)" rows="3"
+            class="mt-4" />
 
-          <v-select
-            v-model="editingSize.status"
-            :items="statusOptions"
-            label="Trạng thái"
-            class="mt-3"
-          />
+          <v-select v-model="editingSize.status" :items="statusOptions" label="Trạng thái" class="mt-3" />
         </v-card-text>
 
         <v-card-actions>
@@ -462,5 +379,7 @@ onMounted(() => {
 <style scoped>
 .admin-container {
   padding: 20px;
+  background: #f1f1f1;
+  min-height: 100%;
 }
 </style>

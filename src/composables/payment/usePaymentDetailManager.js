@@ -1467,8 +1467,7 @@ export function usePaymentDetailManager() {
       : new Date().toLocaleString("vi-VN");
     const paymentStatus = order?.paymentStatus || "PAID";
     const shipPickupCode = getDisplayShipPickupCode(order);
-    const shipQrCode =
-      shipPickupCode && shipPickupCode !== "-" ? shipPickupCode : orderCode;
+    const shippingQrCode = orderCode;
     const receiverPhone =
       order?.customerPhone ||
       order?.receiverPhone ||
@@ -1611,9 +1610,15 @@ export function usePaymentDetailManager() {
           })
           .join("")
       : "<div>Không có chi tiết sản phẩm</div>";
+    const completedInvoiceQrBlock = `
+        <div class="qr-order-left">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(shippingQrCode)}" />
+            <div class="qr-code">${shippingQrCode}</div>
+        </div>
+    `;
 
     if (type === "shipping") {
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(shipQrCode)}`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(shippingQrCode)}`;
       return `
 <!DOCTYPE html>
 <html lang="vi">
@@ -1673,7 +1678,7 @@ export function usePaymentDetailManager() {
         <div class="ship-mid">
             <div class="ship-qr">
                 <img src="${qrUrl}" />
-                <div class="ship-qr-code">${shipQrCode}</div>
+                <div class="ship-qr-code">${shippingQrCode}</div>
             </div>
             <div class="ship-content">
                 <div class="ship-content-title">Nội dung hàng (Tổng SL sản phẩm: ${totalQuantity})</div>
@@ -1818,6 +1823,7 @@ export function usePaymentDetailManager() {
 
         <div class="bottom-area">
             <div class="left-note">
+                ${completedInvoiceQrBlock}
                 ${bankInfoBlock}
             </div>
             <div class="summary">

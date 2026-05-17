@@ -145,7 +145,7 @@
                                                     <td>{{ date }}</td>
                                                     <td class="text-right">
                                                         <v-chip size="x-small" color="primary" variant="tonal">{{ c
-                                                            }}</v-chip>
+                                                        }}</v-chip>
                                                     </td>
                                                 </tr>
                                                 <tr v-if="!Object.keys(recentOrdersByDay).length">
@@ -219,7 +219,7 @@
                                     <v-list-item-title class="text-body-2">{{ c.colorName }}</v-list-item-title>
                                     <template #append>
                                         <v-chip size="x-small" color="indigo" variant="tonal">{{ c.stockQuantity
-                                            }}</v-chip>
+                                        }}</v-chip>
                                     </template>
                                 </v-list-item>
                                 <v-list-item v-if="!stats.inventoryByColor?.length" class="px-0">
@@ -787,7 +787,7 @@ onMounted(loadStatistics)
 .filter-tabs {
     display: flex;
     gap: 4px;
-    background: #f1f5f9;
+    background: #f1f1f1;
     border-radius: 14px;
     padding: 4px;
 }
@@ -952,7 +952,7 @@ onMounted(loadStatistics)
 
 /* ── Inner boxes ── */
 .inner-box {
-    background: #f8faff;
+    background: #f1f1f1;
     border: 1px solid #e8edf5;
     border-radius: 16px;
     padding: 16px;
@@ -996,7 +996,7 @@ onMounted(loadStatistics)
 }
 
 .custom-table thead th {
-    background: #f8fafc;
+    background: #f1f1f1;
     color: #475569;
     font-weight: 700;
     font-size: 12px;

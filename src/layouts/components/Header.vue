@@ -20,11 +20,11 @@
         <div class="d-flex align-center gap-4">
 
           <router-link v-if="!isLoggedIn" :to="{ name: 'Register' }"
-            class="text-white text-decoration-none text-caption">
+            class="auth-link text-decoration-none text-caption">
             Đăng Ký
           </router-link>
 
-          <router-link v-if="!isLoggedIn" :to="{ name: 'Login' }" class="text-white text-decoration-none text-caption">
+          <router-link v-if="!isLoggedIn" :to="{ name: 'Login' }" class="auth-link text-decoration-none text-caption">
             Đăng Nhập
           </router-link>
         </div>
@@ -445,5 +445,18 @@ a:hover {
 .search-btn-header :deep(.v-icon) {
   color: #000 !important;
   font-size: 28px !important;
+}
+
+.auth-link {
+  color: #000 !important;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.auth-link:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #333 !important;
 }
 </style>

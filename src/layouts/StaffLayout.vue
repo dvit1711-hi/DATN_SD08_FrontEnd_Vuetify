@@ -150,7 +150,7 @@ onMounted(() => {
 }
 
 .layout-main {
-    background-color: rgb(var(--v-theme-background));
+    background-color: #f1f1f1;
     color: rgb(var(--v-theme-on-background));
 }
 
@@ -165,7 +165,7 @@ onMounted(() => {
 .page-content {
     flex: 1;
     min-width: 0;
-    background-color: rgb(var(--v-theme-background));
+    background-color: #f1f1f1;
     color: rgb(var(--v-theme-on-background));
 }
 

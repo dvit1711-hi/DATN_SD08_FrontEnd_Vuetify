@@ -1,11 +1,6 @@
 <template>
   <v-container fluid class="py-8">
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      timeout="2500"
-      location="top right"
-    >
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="2500" location="top right">
       {{ snackbar.text }}
     </v-snackbar>
 
@@ -16,13 +11,7 @@
       </p>
     </div>
 
-    <v-btn
-      color="primary"
-      size="large"
-      prepend-icon="mdi-plus"
-      class="mb-6"
-      @click="openCreateForm"
-    >
+    <v-btn color="primary" size="large" prepend-icon="mdi-plus" class="mb-6" @click="openCreateForm">
       Thêm sản phẩm
     </v-btn>
 
@@ -37,61 +26,27 @@
         <v-card-text class="pa-6">
           <v-row>
             <v-col cols="12">
-              <v-text-field
-                v-model="form.productName"
-                label="Tên sản phẩm"
-                variant="outlined"
-                hide-details
-              />
+              <v-text-field v-model="form.productName" label="Tên sản phẩm" variant="outlined" hide-details />
             </v-col>
 
             <v-col cols="12">
-              <v-textarea
-                v-model="form.description"
-                label="Mô tả"
-                variant="outlined"
-                rows="3"
-                hide-details
-              />
+              <v-textarea v-model="form.description" label="Mô tả" variant="outlined" rows="3" hide-details />
             </v-col>
 
             <v-col cols="12" md="6">
-              <v-select
-                v-model="form.brandID"
-                :items="brands"
-                item-title="name"
-                item-value="brandID"
-                label="Thương hiệu"
-                variant="outlined"
-                hide-details
-              />
+              <v-select v-model="form.brandID" :items="brands" item-title="name" item-value="brandID"
+                label="Thương hiệu" variant="outlined" hide-details />
             </v-col>
 
             <v-col cols="12" md="6">
-              <v-autocomplete
-                v-model="form.materialID"
-                v-model:search="materialSearch"
-                :items="filteredMaterials"
-                item-title="materialName"
-                item-value="materialID"
-                label="Chất liệu"
-                variant="outlined"
-                hide-details
-                clearable
-                no-filter
-                :menu-props="{ maxHeight: 260 }"
-                @update:model-value="handleMaterialChange"
-                @click:clear="clearMaterial"
-                @keydown.enter.prevent="handleMaterialEnter"
-              >
+              <v-autocomplete v-model="form.materialID" v-model:search="materialSearch" :items="filteredMaterials"
+                item-title="materialName" item-value="materialID" label="Chất liệu" variant="outlined" hide-details
+                clearable no-filter :menu-props="{ maxHeight: 260 }" @update:model-value="handleMaterialChange"
+                @click:clear="clearMaterial" @keydown.enter.prevent="handleMaterialEnter">
 
                 <template #no-data>
-                  <v-list-item
-                    v-if="canCreateMaterial"
-                    class="create-material-item"
-                    @mousedown.prevent
-                    @click="createQuickMaterial(materialSearch)"
-                  >
+                  <v-list-item v-if="canCreateMaterial" class="create-material-item" @mousedown.prevent
+                    @click="createQuickMaterial(materialSearch)">
                     <template #prepend>
                       <v-icon color="primary">mdi-plus-circle</v-icon>
                     </template>
@@ -109,13 +64,8 @@
             </v-col>
 
             <v-col cols="12" md="6">
-              <v-select
-                v-model="form.status"
-                :items="['ACTIVE', 'INACTIVE']"
-                label="Trạng thái"
-                variant="outlined"
-                hide-details
-              />
+              <v-select v-model="form.status" :items="['ACTIVE', 'INACTIVE']" label="Trạng thái" variant="outlined"
+                hide-details />
             </v-col>
           </v-row>
         </v-card-text>
@@ -133,12 +83,7 @@
 
     <v-card class="rounded-lg" elevation="0" border>
       <v-card-text class="pa-6">
-        <v-data-table
-          :headers="headers"
-          :items="products"
-          :items-per-page="10"
-          class="table-modern"
-        >
+        <v-data-table :headers="headers" :items="products" :items-per-page="10" class="table-modern">
           <template #item.productName="{ item }">
             <div class="font-weight-bold">{{ item.productName }}</div>
           </template>
@@ -170,44 +115,22 @@
           </template>
 
           <template #item.inStock="{ item }">
-            <v-chip
-              size="small"
-              :color="item.inStock ? 'success' : 'error'"
-              variant="flat"
-            >
+            <v-chip size="small" :color="item.inStock ? 'success' : 'error'" variant="flat">
               {{ item.inStock ? "Còn hàng" : "Hết hàng" }}
             </v-chip>
           </template>
 
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
-              <v-btn
-                icon
-                size="small"
-                variant="text"
-                color="primary"
-                @click="editProduct(item)"
-              >
+              <v-btn icon size="small" variant="text" color="primary" @click="editProduct(item)">
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
 
-              <v-btn
-                icon
-                size="small"
-                variant="text"
-                color="info"
-                @click="goToDetail(item.productID)"
-              >
+              <v-btn icon size="small" variant="text" color="info" @click="goToDetail(item.productID)">
                 <v-icon>mdi-eye</v-icon>
               </v-btn>
 
-              <v-btn
-                icon
-                size="small"
-                variant="text"
-                color="error"
-                @click="deleteProduct(item.productID)"
-              >
+              <v-btn icon size="small" variant="text" color="error" @click="deleteProduct(item.productID)">
                 <v-icon>mdi-delete</v-icon>
               </v-btn>
             </div>
@@ -468,8 +391,8 @@ const createQuickMaterial = async (name) => {
 
     showMessage(
       err?.response?.data?.message ||
-        err?.response?.data ||
-        "Không thể thêm chất liệu",
+      err?.response?.data ||
+      "Không thể thêm chất liệu",
       "error",
     );
   }
@@ -529,8 +452,8 @@ const saveProduct = async () => {
 
     showMessage(
       err?.response?.data?.message ||
-        err?.response?.data ||
-        "Không thể lưu sản phẩm",
+      err?.response?.data ||
+      "Không thể lưu sản phẩm",
       "error",
     );
   }
@@ -576,8 +499,8 @@ const deleteProduct = async (id) => {
 
     showMessage(
       err?.response?.data?.message ||
-        err?.response?.data ||
-        "Không thể xóa sản phẩm",
+      err?.response?.data ||
+      "Không thể xóa sản phẩm",
       "error",
     );
   }
@@ -593,7 +516,7 @@ const goToDetail = (productId) => {
 
 <style scoped>
 :deep(.bg-background) {
-  background-color: #f5deb3;
+  background-color: #f1f1f1;
 }
 
 .table-modern :deep(.v-table__wrapper) {
@@ -623,6 +546,7 @@ const goToDetail = (productId) => {
   color: #fb8c00;
   font-weight: 700;
 }
+
 .create-material-item {
   color: #fb8c00;
   font-weight: 700;

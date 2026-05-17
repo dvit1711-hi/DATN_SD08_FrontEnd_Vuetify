@@ -548,7 +548,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .return-page {
-  background: #f5f6f8;
+  background: #f1f1f1;
   min-height: 100%;
 }
 
@@ -567,7 +567,7 @@ onBeforeUnmount(() => {
 }
 
 .customer-info-box {
-  background: #f3f3f3;
+  background: #f1f1f1;
   border-radius: 10px;
   padding: 14px;
 }

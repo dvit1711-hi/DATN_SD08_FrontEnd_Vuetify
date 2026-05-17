@@ -20,50 +20,25 @@
         <!-- Brand -->
         <v-window-item value="brands">
           <v-card-text>
-            <v-btn
-              color="primary"
-              prepend-icon="mdi-plus"
-              class="mb-4"
-              @click="openBrandDialog()"
-            >
+            <v-btn color="primary" prepend-icon="mdi-plus" class="mb-4" @click="openBrandDialog()">
               Thêm Brand
             </v-btn>
 
-            <v-data-table
-              :headers="brandHeaders"
-              :items="brands"
-              :loading="loadingBrand"
-              class="elevation-1"
-            >
+            <v-data-table :headers="brandHeaders" :items="brands" :loading="loadingBrand" class="elevation-1">
               <template #item.status="{ item }">
-                <v-chip
-                  :color="item.status === 'ACTIVE' ? 'success' : 'grey'"
-                  size="small"
-                  variant="tonal"
-                >
+                <v-chip :color="item.status === 'ACTIVE' ? 'success' : 'grey'" size="small" variant="tonal">
                   {{ item.status }}
                 </v-chip>
               </template>
 
               <template #item.actions="{ item }">
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  color="warning"
-                  prepend-icon="mdi-pencil"
-                  class="me-2"
-                  @click="openBrandDialog(item)"
-                >
+                <v-btn size="small" variant="tonal" color="warning" prepend-icon="mdi-pencil" class="me-2"
+                  @click="openBrandDialog(item)">
                   Sửa
                 </v-btn>
 
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  color="error"
-                  prepend-icon="mdi-delete"
-                  @click="deleteBrand(item.brandID)"
-                >
+                <v-btn size="small" variant="tonal" color="error" prepend-icon="mdi-delete"
+                  @click="deleteBrand(item.brandID)">
                   Xóa
                 </v-btn>
               </template>
@@ -74,50 +49,25 @@
         <!-- Material -->
         <v-window-item value="materials">
           <v-card-text>
-            <v-btn
-              color="primary"
-              prepend-icon="mdi-plus"
-              class="mb-4"
-              @click="openMaterialDialog()"
-            >
+            <v-btn color="primary" prepend-icon="mdi-plus" class="mb-4" @click="openMaterialDialog()">
               Thêm Material
             </v-btn>
 
-            <v-data-table
-              :headers="materialHeaders"
-              :items="materials"
-              :loading="loadingMaterial"
-              class="elevation-1"
-            >
+            <v-data-table :headers="materialHeaders" :items="materials" :loading="loadingMaterial" class="elevation-1">
               <template #item.status="{ item }">
-                <v-chip
-                  :color="item.status === 'ACTIVE' ? 'success' : 'grey'"
-                  size="small"
-                  variant="tonal"
-                >
+                <v-chip :color="item.status === 'ACTIVE' ? 'success' : 'grey'" size="small" variant="tonal">
                   {{ item.status }}
                 </v-chip>
               </template>
 
               <template #item.actions="{ item }">
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  color="warning"
-                  prepend-icon="mdi-pencil"
-                  class="me-2"
-                  @click="openMaterialDialog(item)"
-                >
+                <v-btn size="small" variant="tonal" color="warning" prepend-icon="mdi-pencil" class="me-2"
+                  @click="openMaterialDialog(item)">
                   Sửa
                 </v-btn>
 
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  color="error"
-                  prepend-icon="mdi-delete"
-                  @click="deleteMaterial(item.materialID)"
-                >
+                <v-btn size="small" variant="tonal" color="error" prepend-icon="mdi-delete"
+                  @click="deleteMaterial(item.materialID)">
                   Xóa
                 </v-btn>
               </template>
@@ -135,19 +85,9 @@
         </v-card-title>
 
         <v-card-text class="pt-4">
-          <v-text-field
-            v-model="editingBrand.name"
-            label="Tên Brand"
-            required
-            placeholder="Nhập tên brand"
-          />
+          <v-text-field v-model="editingBrand.name" label="Tên Brand" required placeholder="Nhập tên brand" />
 
-          <v-select
-            v-model="editingBrand.status"
-            :items="statusOptions"
-            label="Trạng thái"
-            class="mt-3"
-          />
+          <v-select v-model="editingBrand.status" :items="statusOptions" label="Trạng thái" class="mt-3" />
         </v-card-text>
 
         <v-card-actions>
@@ -166,19 +106,10 @@
         </v-card-title>
 
         <v-card-text class="pt-4">
-          <v-text-field
-            v-model="editingMaterial.materialName"
-            label="Tên Material"
-            required
-            placeholder="Nhập tên chất liệu"
-          />
+          <v-text-field v-model="editingMaterial.materialName" label="Tên Material" required
+            placeholder="Nhập tên chất liệu" />
 
-          <v-select
-            v-model="editingMaterial.status"
-            :items="statusOptions"
-            label="Trạng thái"
-            class="mt-3"
-          />
+          <v-select v-model="editingMaterial.status" :items="statusOptions" label="Trạng thái" class="mt-3" />
         </v-card-text>
 
         <v-card-actions>
@@ -418,5 +349,7 @@ onMounted(() => {
 <style scoped>
 .admin-container {
   padding: 20px;
+  background: #f1f1f1;
+  min-height: 100%;
 }
 </style>

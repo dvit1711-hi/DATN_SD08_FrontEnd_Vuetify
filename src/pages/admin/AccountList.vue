@@ -241,7 +241,7 @@ const filteredAccounts = computed(() =>
 <style scoped>
 .account-page {
   padding: 28px 20px;
-  background: #f7f4ef;
+  background: #f1f1f1;
   min-height: 100%;
 }
 
@@ -281,7 +281,7 @@ const filteredAccounts = computed(() =>
 .table-card {
   border-radius: 18px !important;
   border: 1px solid rgba(190, 171, 135, 0.18) !important;
-  background: #fcfbf8;
+  background: #f1f1f1;
 }
 
 .filter-card {
