@@ -149,7 +149,7 @@
               :color="item.status === 'ACTIVE' ? 'success' : 'error'"
               variant="flat"
             >
-              {{ item.status === "ACTIVE" ? "Kích hoạt" : "Tắt" }}
+              {{ item.status === "ACTIVE" ? "Đang hoạt động" : "Tắt" }}
             </v-chip>
           </template>
 
