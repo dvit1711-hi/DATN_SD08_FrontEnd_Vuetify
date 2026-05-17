@@ -32,7 +32,8 @@
                                 </VCol>
 
                                 <VCol cols="12" md="6">
-                                    <VTextField label="Current Status" :model-value="account.statusName" readonly />
+                                    <VTextField label="Current Status" :model-value="getStatusText(account.statusName)"
+                                        readonly />
                                 </VCol>
 
                                 <VCol cols="12" md="6">
@@ -99,57 +100,71 @@ const getStatusTitleById = id => {
     return found?.title || ""
 }
 
-const getConfirmMessageByStatus = statusTitle => {
-    switch ((statusTitle || "").toLowerCase()) {
-        case "active":
-            return `Bạn có chắc muốn chuyển tài khoản "${account.value.username}" sang trạng thái Active không?`
-        case "inactive":
-            return `Bạn có chắc muốn chuyển tài khoản "${account.value.username}" sang trạng thái Inactive không?`
-        case "locked":
-            return `Bạn có chắc muốn khóa tài khoản "${account.value.username}" không?\n\nNgười dùng sẽ không thể đăng nhập sau khi bị khóa.`
-        case "banned":
-            return `Bạn có chắc muốn cấm tài khoản "${account.value.username}" không?`
-        case "pending":
-            return `Bạn có chắc muốn chuyển tài khoản "${account.value.username}" sang trạng thái Pending không?`
-        default:
-            return `Bạn có chắc muốn cập nhật trạng thái tài khoản "${account.value.username}" không?`
+const getStatusText = st => {
+    const statusMap = {
+        ACTIVE: "Đang hoạt động",
+        INACTIVE: "Không hoạt động",
+        LOCKED: "Bị khóa",
+        BANNED: "Bị cấm",
+        PENDING: "Chờ xác nhận",
     }
+    return statusMap[st] || st
+}
+
+const getStatusNameByEnglish = st => {
+    const nameMap = {
+        "Active": "Đang hoạt động",
+        "Inactive": "Không hoạt động",
+        "Locked": "Bị khóa",
+        "Banned": "Bị cấm",
+        "Pending": "Chờ xác nhận",
+    }
+    return nameMap[st] || st
+}
+
+const getConfirmMessageByStatus = statusTitle => {
+    const messages = {
+        "Đang hoạt động": `Bạn có chắc muốn kích hoạt tài khoản "${account.value.username}" không?`,
+        "Không hoạt động": `Bạn có chắc muốn vô hiệu hóa tài khoản "${account.value.username}" không?`,
+        "Bị khóa": `Bạn có chắc muốn khóa tài khoản "${account.value.username}" không?\n\nNgười dùng sẽ không thể đăng nhập sau khi bị khóa.`,
+        "Bị cấm": `Bạn có chắc muốn cấm tài khoản "${account.value.username}" không?`,
+        "Chờ xác nhận": `Bạn có chắc muốn đưa tài khoản "${account.value.username}" vào hàng chờ xác nhận không?`,
+    }
+    return messages[statusTitle] || `Bạn có chắc muốn cập nhật trạng thái tài khoản "${account.value.username}" không?`
 }
 
 const getSuccessMessageByStatus = statusTitle => {
-    switch ((statusTitle || "").toLowerCase()) {
-        case "active":
-            return "Cập nhật trạng thái sang Active thành công!"
-        case "inactive":
-            return "Cập nhật trạng thái sang Inactive thành công!"
-        case "locked":
-            return "Khóa tài khoản thành công!"
-        case "banned":
-            return "Cập nhật trạng thái sang Banned thành công!"
-        case "pending":
-            return "Cập nhật trạng thái sang Pending thành công!"
-        default:
-            return "Cập nhật trạng thái thành công!"
+    const messages = {
+        "Đang hoạt động": "Kích hoạt tài khoản thành công!",
+        "Không hoạt động": "Vô hiệu hóa tài khoản thành công!",
+        "Bị khóa": "Khóa tài khoản thành công!",
+        "Bị cấm": "Cấm tài khoản thành công!",
+        "Chờ xác nhận": "Cập nhật trạng thái sang chờ xác nhận thành công!",
     }
+    return messages[statusTitle] || "Cập nhật trạng thái thành công!"
 }
 
 const loadStatuses = async () => {
     try {
         const res = await accountApi.getStatuses()
 
-        statusOptions.value = (res.data || []).map(st => ({
-            title: st.statusName,
-            value: Number(st.id),
-        }))
+        statusOptions.value = (res.data || []).map(st => {
+            const statusName = st.statusName || st.name || ""
+            const viName = getStatusText(statusName) || getStatusNameByEnglish(statusName) || statusName
+            return {
+                title: viName,
+                value: Number(st.id),
+            }
+        })
     } catch (err) {
         console.error("Lỗi load status list:", err)
 
         statusOptions.value = [
-            { title: "Active", value: 1 },
-            { title: "Banned", value: 2 },
-            { title: "Inactive", value: 3 },
-            { title: "Locked", value: 4 },
-            { title: "Pending", value: 5 },
+            { title: "Đang hoạt động", value: 1 },
+            { title: "Bị cấm", value: 2 },
+            { title: "Không hoạt động", value: 3 },
+            { title: "Bị khóa", value: 4 },
+            { title: "Chờ xác nhận", value: 5 },
         ]
     }
 }
