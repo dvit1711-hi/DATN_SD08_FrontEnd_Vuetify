@@ -1,11 +1,11 @@
 <template>
-    <div class="auth-wrapper d-flex align-center justify-center pa-4">
-        <v-card class="auth-card rounded-lg" max-width="460" :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-6'"
-            elevation="0" border>
+    <div class="auth-wrapper d-flex align-center justify-start pa-4">
+        <v-card class="auth-card rounded-xl" max-width="420" :class="$vuetify.display.smAndUp ? 'pa-8' : 'pa-6'"
+            elevation="0">
             <v-card-item class="justify-center pb-2">
                 <div class="text-center">
-                    <h1 class="text-h4 font-weight-bold mb-2">Quên mật khẩu</h1>
-                    <p class="text-body-2 text-grey">
+                    <h1 class="text-h4 font-weight-bold mb-2 card-title">Quên mật khẩu</h1>
+                    <p class="text-body-2 card-subtitle">
                         Nhập email để nhận mã OTP và đặt lại mật khẩu
                     </p>
                 </div>
@@ -18,11 +18,11 @@
                             <v-text-field v-model="form.email" label="Email" type="email"
                                 placeholder="email@example.com" prepend-inner-icon="mdi-email" variant="outlined"
                                 :error="emailError" :error-messages="emailError ? 'Email không hợp lệ' : ''"
-                                hide-details="auto" required />
+                                hide-details="auto" class="glass-field" required />
                         </v-col>
 
-                        <v-col cols="12" class="pt-1">
-                            <v-btn class="otp-btn" block color="primary" variant="flat" size="large"
+                        <v-col cols="12" class="pt-4">
+                            <v-btn class="submit-btn" block variant="flat" size="large"
                                 :loading="sendingOtp" :disabled="!form.email || !!emailError" @click="sendOtp">
                                 {{ otpSent ? "Gửi lại mã OTP" : "Gửi mã OTP" }}
                             </v-btn>
@@ -43,7 +43,7 @@
                         <v-col cols="12" class="pt-4" v-if="otpSent">
                             <v-text-field v-model="form.otp" label="Mã OTP" placeholder="Nhập mã OTP đã gửi về email"
                                 prepend-inner-icon="mdi-shield-key" variant="outlined" maxlength="6" hide-details="auto"
-                                required />
+                                class="glass-field" required />
                         </v-col>
 
                         <v-col cols="12" class="pt-4" v-if="otpSent">
@@ -51,7 +51,7 @@
                                 :type="visible1 ? 'text' : 'password'" prepend-inner-icon="mdi-lock"
                                 :append-inner-icon="visible1 ? 'mdi-eye-off' : 'mdi-eye'"
                                 @click:append-inner="visible1 = !visible1" variant="outlined" hide-details="auto"
-                                required />
+                                class="glass-field" required />
                         </v-col>
 
                         <v-col cols="12" class="pt-4" v-if="otpSent">
@@ -60,19 +60,19 @@
                                 :append-inner-icon="visible2 ? 'mdi-eye-off' : 'mdi-eye'"
                                 @click:append-inner="visible2 = !visible2" :error="!!passwordError"
                                 :error-messages="passwordError ? passwordError : ''" variant="outlined"
-                                hide-details="auto" required />
+                                hide-details="auto" class="glass-field" required />
                         </v-col>
 
                         <v-col cols="12" class="pt-4" v-if="otpSent">
-                            <v-btn block color="primary" size="large" type="submit" :loading="resettingPassword"
-                                :disabled="!canSubmitReset">
+                            <v-btn block size="large" type="submit" :loading="resettingPassword"
+                                :disabled="!canSubmitReset" class="submit-btn">
                                 Đổi mật khẩu
                             </v-btn>
                         </v-col>
 
-                        <v-col cols="12" class="text-center mt-2">
-                            <span class="text-body-2">Bạn đã nhớ mật khẩu?</span>
-                            <router-link to="/login" class="text-primary text-decoration-none ms-1">
+                        <v-col cols="12" class="text-center mt-4">
+                            <span class="card-subtitle text-body-2">Bạn đã nhớ mật khẩu?</span>
+                            <router-link to="/login" class="forgot-link ms-1">
                                 Đăng nhập
                             </router-link>
                         </v-col>
@@ -224,92 +224,139 @@ const resetPassword = async () => {
 
 <style scoped>
 .auth-wrapper {
-    min-height: 100vh;
-    background: linear-gradient(135deg,
-            rgba(245, 222, 179, 0.1) 0%,
-            rgba(238, 216, 174, 0.1) 100%);
+  min-height: 100vh;
+  background-image: url('/images/AnhNen.png');
+  background-size: cover;
+  background-position: center right;
+  background-repeat: no-repeat;
+  padding-left: 20vw !important;
 }
 
-:deep(.auth-card) {
-    border-radius: 8px !important;
+.auth-card {
+  background: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 20px !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  width: 100%;
 }
 
-.otp-btn {
-    min-height: 44px;
+.card-title {
+  color: #ffffff !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.5px;
 }
 
+.card-subtitle {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Glass input fields */
+:deep(.glass-field .v-field) {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 10px !important;
+}
+
+:deep(.glass-field .v-field__outline) {
+  --v-field-border-opacity: 0.4;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+:deep(.glass-field .v-field__outline__start),
+:deep(.glass-field .v-field__outline__end),
+:deep(.glass-field .v-field__outline__notch) {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+:deep(.glass-field .v-field--focused .v-field__outline__start),
+:deep(.glass-field .v-field--focused .v-field__outline__end),
+:deep(.glass-field .v-field--focused .v-field__outline__notch) {
+  border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+:deep(.glass-field input),
+:deep(.glass-field .v-field__input) {
+  color: #ffffff !important;
+  caret-color: #ffffff;
+}
+
+:deep(.glass-field input::placeholder) {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+:deep(.glass-field .v-label) {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+:deep(.glass-field .v-field--focused .v-label) {
+  color: #ffffff !important;
+}
+
+:deep(.glass-field .v-icon) {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Submit button */
+.submit-btn {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #1a1a2e !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+  border-radius: 10px !important;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.submit-btn:hover {
+  background: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Success/Error boxes */
 .success-box,
 .error-box {
-    font-size: 14px;
-    border-radius: 8px;
-    padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 
 .success-box {
-    color: #8b4513;
-    background: rgba(139, 69, 19, 0.08);
-    border: 1px solid rgba(139, 69, 19, 0.15);
+  color: #8b4513;
+  background: rgba(139, 69, 19, 0.08);
+  border: 1px solid rgba(139, 69, 19, 0.15);
 }
 
 .error-box {
-    color: #b42318;
-    background: rgba(180, 35, 24, 0.08);
-    border: 1px solid rgba(180, 35, 24, 0.15);
+  color: #b42318;
+  background: rgba(180, 35, 24, 0.08);
+  border: 1px solid rgba(180, 35, 24, 0.15);
 }
 
-:deep(.v-text-field__input) {
-    color: #000000 !important;
+/* Links */
+.forgot-link {
+  color: #ffffff !important;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: opacity 0.2s;
 }
 
-:deep(.v-text-field--focused .v-text-field__input) {
-    color: #000000 !important;
+.forgot-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
 }
 
-:deep(.v-field__input) {
-    color: #000000 !important;
-}
-
-:deep(.v-label) {
-    color: #333333 !important;
-}
-
-:deep(.v-field--focused .v-label) {
-    color: #000000 !important;
-}
-
-:deep(.v-input__details) {
-    color: #000000 !important;
-}
-
-:deep(a) {
-    color: #000000 !important;
-}
-
-:deep(a:hover) {
-    color: #8b4513 !important;
-}
-
-:deep(.v-btn--color-primary) {
-    background-color: #8b4513 !important;
-}
-
-:deep(.v-btn) {
-    color: white !important;
-}
-
-:deep(.router-link) {
-    color: #000000 !important;
-}
-
-:deep(.router-link:hover) {
-    color: #8b4513 !important;
-}
-
-:deep(.text-h4) {
-    color: #000000 !important;
-}
-
-:deep(.text-body-2) {
-    color: #333333 !important;
+/* Responsive */
+@media (max-width: 600px) {
+  .auth-wrapper {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    justify-content: center !important;
+    background-position: center center;
+  }
 }
 </style>

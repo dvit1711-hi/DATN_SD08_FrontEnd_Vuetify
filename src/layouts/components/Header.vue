@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Top Navigation Bar -->
-    <v-toolbar color="#cdba96" dark height="36" class="px-8">
+    <v-toolbar color="#2F3640" height="36" class="px-8">
       <div class="d-flex align-center" style="width: 100%; justify-content: space-between">
         <div class="d-flex align-center gap-4">
           <!-- Kênh Người Bán - Chỉ hiển thị khi là Admin -->
@@ -32,12 +32,12 @@
     </v-toolbar>
 
     <!-- Main Header -->
-    <v-toolbar color="#cdba96" dark height="80" class="px-8">
+    <v-toolbar color="#2F3640" height="80" class="px-8">
       <div class="d-flex align-center" style="width: 100%; justify-content: space-between">
         <!-- Logo -->
         <router-link :to="{ name: 'Home' }" class="d-flex align-center gap-3 text-decoration-none">
           <img src="/images/logo2.png" alt="DTVD" class="logo-image" />
-          <span class="font-weight-bold text-dark" style="font-size: 28px; letter-spacing: 1px">
+          <span class="font-weight-bold" style="font-size: 28px; letter-spacing: 1px; color: white">
             Baseball Cap Shop
           </span>
         </router-link>
@@ -47,7 +47,7 @@
           <div class="search-bar-header">
             <v-text-field v-model="searchQuery" placeholder="Tìm kiếm" variant="solo" flat hide-details
               class="search-input-header" />
-            <v-btn icon="mdi-magnify" variant="flat" color="black" size="x-large" class="search-btn-header"
+            <v-btn icon="mdi-magnify" variant="flat" color="white" size="x-large" class="search-btn-header"
               @click="handleSearch" />
           </div>
         </div>
@@ -57,17 +57,17 @@
           <router-link :to="{ name: 'Cart' }" class="d-flex flex-column align-center text-decoration-none gap-1"
             style="color: white">
             <v-badge color="red" :content="cartCount" offset-x="-8" offset-y="8">
-              <v-icon size="28" style="color: #000000">mdi-shopping-outline</v-icon>
+              <v-icon size="28" style="color: white">mdi-shopping-outline</v-icon>
             </v-badge>
-            <span class="text-caption" style="color: #000000">Giỏ Hàng</span>
+            <span class="text-caption" style="color: white">Giỏ Hàng</span>
           </router-link>
 
           <v-menu offset-y v-if="isLoggedIn">
             <template v-slot:activator="{ props }">
               <div v-bind="props" class="d-flex align-center gap-2 cursor-pointer">
                 <v-avatar v-if="userAvatar" size="32" :image="userAvatar" />
-                <v-icon v-else size="32" style="color: #000000">mdi-account-circle</v-icon>
-                <span class="text-caption" style="color: #000000">{{
+                <v-icon v-else size="32" style="color: white">mdi-account-circle</v-icon>
+                <span class="text-caption" style="color: white">{{
                   username
                 }}</span>
               </div>
@@ -373,18 +373,18 @@ a:hover {
 
 .top-action-link {
   cursor: pointer;
-  color: #000000;
+  color: white;
   padding: 4px 8px;
   border-radius: 999px;
 }
 
 .top-action-link:hover,
 .top-action-btn:hover {
-  background-color: rgba(255, 255, 255, 0.25);
+  background-color: #1F2937;
 }
 
 .top-action-btn {
-  color: #000000 !important;
+  color: white !important;
   text-transform: none;
 }
 
@@ -392,6 +392,17 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.auth-link {
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.auth-link:hover {
+  background-color: #1F2937;
 }
 
 .search-input-header {

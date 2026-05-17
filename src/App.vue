@@ -68,4 +68,16 @@
 :deep(p) {
   color: #000000;
 }
+.v-field--focused .v-field__outline {
+  color: transparent !important;
+}
+
+.v-field--focused {
+  box-shadow: none !important;
+}
+
+.v-field__outline::before,
+.v-field__outline::after {
+  border: none !important;
+}
 </style>
