@@ -98,7 +98,7 @@ const headers = [
   { title: "Tài khoản", key: "user" },
   { title: "Email", key: "email" },
   { title: "Điện thoại", key: "phone" },
-  { title: "Vai trò", key: "role" },
+  { title: "Vai trò", key: "roles" },
   { title: "Trạng thái", key: "status", width: "140px" },
   { title: "Ngày tạo", key: "createDate", width: "140px" },
   { title: "Thao tác", key: "actions", width: "110px", sortable: false },
@@ -147,7 +147,7 @@ onMounted(async () => {
       createDate: acc.createDate || "",
       statusId: acc.status?.id || acc.statusID || acc.statusId || null,
       statusName: normalizeStatusName(acc.status?.statusName || acc.statusName),
-      role: normalizeRoles(acc),
+      roles: normalizeRoles(acc),
     }))
   } catch (err) {
     console.error("Lỗi tải account:", err)
@@ -176,25 +176,34 @@ const handleImgError = e => {
 }
 
 const roleColor = role => {
-  switch (role) {
-    case "ROLE_ADMIN":
+  const cleanRole = cleanRoleName(role)
+  switch (cleanRole) {
+    case "admin":
       return "error"
-    case "ROLE_STAFF":
+    case "staff":
       return "primary"
-    case "ROLE_USER":
+    case "user":
       return "secondary"
     default:
       return "grey"
   }
 }
 
-const roleText = role => {
-  const roleMap = {
-    ROLE_ADMIN: "Admin",
-    ROLE_STAFF: "Staff",
-    ROLE_USER: "User",
+const cleanRoleName = role => {
+  if (typeof role === 'string') {
+    return role.replace(/^ROLE_/, '').toLowerCase()
   }
-  return roleMap[role] || role
+  return role
+}
+
+const roleText = role => {
+  const cleanRole = cleanRoleName(role)
+  const roleMap = {
+    admin: "Quản lý",
+    staff: "Nhân viên",
+    user: "Người dùng",
+  }
+  return roleMap[cleanRole] || cleanRole
 }
 
 const statusColor = st => {
@@ -216,11 +225,11 @@ const statusColor = st => {
 
 const getStatusText = st => {
   const statusMap = {
-    ACTIVE: "Kích hoạt",
-    INACTIVE: "Không kích hoạt",
-    LOCKED: "Khóa",
-    BANNED: "Cấm",
-    PENDING: "Chờ duyệt",
+    ACTIVE: "Đang hoạt động",
+    INACTIVE: "Không hoạt động",
+    LOCKED: "Bị khóa",
+    BANNED: "Bị cấm",
+    PENDING: "Chờ xác nhận",
   }
   return statusMap[st] || st
 }

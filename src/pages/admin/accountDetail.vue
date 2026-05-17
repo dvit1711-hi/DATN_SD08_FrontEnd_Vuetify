@@ -15,7 +15,7 @@
               </VAvatar>
 
               <VChip :color="statusColor(account.statusName)" variant="flat">
-                {{ account.statusName }}
+                {{ getStatusText(account.statusName) }}
               </VChip>
             </div>
           </VCol>
@@ -43,14 +43,14 @@
               </VCol>
 
               <VCol cols="12" md="6">
-                <VTextField label="Status" :model-value="account.statusName" readonly />
+                <VTextField label="Status" :model-value="getStatusText(account.statusName)" readonly />
               </VCol>
 
               <VCol cols="12">
                 <div class="mb-2 font-weight-medium">Roles</div>
                 <div class="d-flex flex-wrap gap-2">
                   <VChip v-for="r in account.roles" :key="r" color="primary" variant="tonal">
-                    {{ r }}
+                    {{ roleTextDisplay(r) }}
                   </VChip>
                 </div>
               </VCol>
@@ -96,9 +96,7 @@ const loadAccount = async () => {
       createDate: acc.createDate || "",
       statusId: acc.status?.id || acc.statusID || acc.statusId || null,
       statusName: acc.status?.statusName || acc.statusName || "UNKNOWN",
-      roles: Array.isArray(acc.roles)
-        ? acc.roles.map(r => r.roleName || r.role?.roleName || r)
-        : [],
+      roles: formatRoles(acc.roles),
     }
   } catch (err) {
     console.error("Lỗi load account detail:", err)
@@ -126,8 +124,62 @@ const statusColor = st => {
   }
 }
 
+const getStatusText = st => {
+  const statusMap = {
+    ACTIVE: "Đang hoạt động",
+    INACTIVE: "Không hoạt động",
+    LOCKED: "Bị khóa",
+    BANNED: "Bị cấm",
+    PENDING: "Chờ xác nhận",
+  }
+  return statusMap[st] || st
+}
+
 const goBack = () => {
   router.push("/admin/accounts")
+}
+
+const formatRoles = (roles) => {
+  if (!roles) return []
+  
+  // Nếu là string (ví dụ "['ROLE_ADMIN']")
+  if (typeof roles === 'string') {
+    try {
+      const parsed = JSON.parse(roles.replace(/'/g, '"'))
+      return Array.isArray(parsed) 
+        ? parsed.map(r => cleanRoleName(r))
+        : [cleanRoleName(roles)]
+    } catch (e) {
+      return [cleanRoleName(roles)]
+    }
+  }
+  
+  // Nếu là array
+  if (Array.isArray(roles)) {
+    return roles.map(r => {
+      const roleName = r.roleName || r.role?.roleName || r
+      return cleanRoleName(roleName)
+    })
+  }
+  
+  return [cleanRoleName(roles)]
+}
+
+const cleanRoleName = (roleName) => {
+  if (typeof roleName === 'string') {
+    return roleName.replace(/^ROLE_/, '').toLowerCase()
+  }
+  return roleName
+}
+
+const roleTextDisplay = (role) => {
+  const cleanRole = cleanRoleName(role)
+  const roleMap = {
+    admin: "Quản lý",
+    staff: "Nhân viên",
+    user: "Người dùng",
+  }
+  return roleMap[cleanRole] || cleanRole
 }
 
 onMounted(loadAccount)
