@@ -19,47 +19,24 @@
       <v-card-text class="pa-6">
         <v-row class="mb-6">
           <v-col cols="12" md="5">
-            <v-text-field
-              v-model="search"
-              label="Tìm theo mã hoặc tên chương trình"
-              variant="outlined"
-              density="comfortable"
-              prepend-inner-icon="mdi-magnify"
-              clearable
-              hide-details
-            />
+            <v-text-field v-model="search" label="Tìm theo mã hoặc tên chương trình" variant="outlined"
+              density="comfortable" prepend-inner-icon="mdi-magnify" clearable hide-details />
           </v-col>
 
           <v-col cols="12" md="3">
-            <v-select
-              v-model="statusFilter"
-              :items="statusOptions"
-              label="Lọc trạng thái"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-            />
+            <v-select v-model="statusFilter" :items="statusOptions" label="Lọc trạng thái" variant="outlined"
+              density="comfortable" hide-details />
           </v-col>
         </v-row>
 
         <!-- Table -->
-        <v-data-table
-          :headers="headers"
-          :items="filteredDiscounts"
-          :items-per-page="5"
-          class="table-modern"
-          border
-        >
+        <v-data-table :headers="headers" :items="filteredDiscounts" :items-per-page="5" class="table-modern" border>
           <template #item.couponCode="{ item }">
             <div class="font-weight-bold text-primary">{{ item.couponCode }}</div>
           </template>
 
           <template #item.discountType="{ item }">
-            <v-chip 
-              size="small" 
-              variant="tonal"
-              :color="item.discountType === 'percent' ? 'secondary' : 'accent'"
-            >
+            <v-chip size="small" variant="tonal" :color="item.discountType === 'percent' ? 'secondary' : 'accent'">
               {{ item.discountType === 'percent' ? 'Phần trăm' : 'Số tiền' }}
             </v-chip>
           </template>
@@ -88,34 +65,18 @@
           </template>
 
           <template #item.status="{ item }">
-            <v-chip
-              size="small"
-              :color="getStatusColor(item)"
-              variant="flat"
-            >
+            <v-chip size="small" :color="getStatusColor(item)" variant="flat">
               {{ getStatusText(item) }}
             </v-chip>
           </template>
 
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
-              <v-btn 
-                icon 
-                size="small" 
-                variant="text" 
-                color="primary" 
-                @click="openEditDialog(item)"
-              >
+              <v-btn icon size="small" variant="text" color="primary" @click="openEditDialog(item)">
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
 
-              <v-btn 
-                icon 
-                size="small" 
-                variant="text" 
-                color="error" 
-                @click="removeDiscount(item.id)"
-              >
+              <v-btn icon size="small" variant="text" color="error" @click="removeDiscount(item.id)">
                 <v-icon>mdi-delete</v-icon>
               </v-btn>
             </div>
@@ -136,106 +97,56 @@
         <v-card-text class="pa-6">
           <v-form ref="formRef" validate-on="submit" @submit.prevent="saveDiscount">
             <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="form.couponCode"
-                label="Mã giảm giá"
-                variant="outlined"
-                :rules="validationRules.required"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model="form.couponCode" label="Mã giảm giá" variant="outlined"
+                  :rules="validationRules.required" />
+              </v-col>
 
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="form.name"
-                label="Tên chương trình"
-                variant="outlined"
-                :rules="validationRules.required"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model="form.name" label="Tên chương trình" variant="outlined"
+                  :rules="validationRules.required" />
+              </v-col>
 
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="form.discountType"
-                :items="discountTypeOptions"
-                item-title="label"
-                item-value="value"
-                label="Loại giảm giá"
-                variant="outlined"
-                :rules="validationRules.required"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-select v-model="form.discountType" :items="discountTypeOptions" item-title="label" item-value="value"
+                  label="Loại giảm giá" variant="outlined" :rules="validationRules.required" />
+              </v-col>
 
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model.number="form.discountValue"
-                type="number"
-                label="Giá trị giảm"
-                variant="outlined"
-                :rules="validationRules.discountValue"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model.number="form.discountValue" type="number" label="Giá trị giảm" variant="outlined"
+                  :rules="validationRules.discountValue" />
+              </v-col>
 
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model.number="form.minOrderValue"
-                type="number"
-                label="Đơn tối thiểu"
-                variant="outlined"
-                :rules="validationRules.minOrderValue"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model.number="form.minOrderValue" type="number" label="Đơn tối thiểu" variant="outlined"
+                  :rules="validationRules.minOrderValue" />
+              </v-col>
 
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model.number="form.maxDiscountValue"
-                type="number"
-                label="Giảm tối đa"
-                variant="outlined"
-                :disabled="form.discountType === 'fixed'"
-                :rules="validationRules.maxDiscountValue"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model.number="form.maxDiscountValue" type="number" label="Giảm tối đa"
+                  variant="outlined" :disabled="form.discountType === 'fixed'"
+                  :rules="validationRules.maxDiscountValue" />
+              </v-col>
 
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model.number="form.quantity"
-                type="number"
-                label="Số lượng"
-                variant="outlined"
-                :rules="validationRules.minQuantity"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model.number="form.quantity" type="number" label="Số lượng" variant="outlined"
+                  :rules="validationRules.minQuantity" />
+              </v-col>
 
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="form.startDate"
-                label="Ngày bắt đầu"
-                type="date"
-                variant="outlined"
-                :rules="validationRules.startDate"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model="form.startDate" label="Ngày bắt đầu" type="date" variant="outlined"
+                  :rules="validationRules.startDate" />
+              </v-col>
 
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="form.endDate"
-                label="Ngày kết thúc"
-                type="date"
-                variant="outlined"
-                :rules="validationRules.endDate"
-              />
-            </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model="form.endDate" label="Ngày kết thúc" type="date" variant="outlined"
+                  :rules="validationRules.endDate" />
+              </v-col>
 
-            <v-col cols="12">
-              <v-textarea
-                v-model="form.description"
-                label="Mô tả (tùy chọn)"
-                variant="outlined"
-                rows="3"
-                hide-details="auto"
-              />
-            </v-col>
+              <v-col cols="12">
+                <v-textarea v-model="form.description" label="Mô tả (tùy chọn)" variant="outlined" rows="3"
+                  hide-details="auto" />
+              </v-col>
             </v-row>
           </v-form>
         </v-card-text>
@@ -295,12 +206,8 @@
 
         <v-card-actions class="justify-end pa-4 pt-0">
           <v-btn @click="showDeleteDialog = false" variant="outlined">Hủy</v-btn>
-          <v-btn
-            @click="deleteDiscount"
-            :color="deleteWillDeactivate ? 'warning' : 'error'"
-            :loading="isDeleting"
-            :prepend-icon="deleteWillDeactivate ? 'mdi-toggle-switch-off-outline' : 'mdi-trash-can-outline'"
-          >
+          <v-btn @click="deleteDiscount" :color="deleteWillDeactivate ? 'warning' : 'error'" :loading="isDeleting"
+            :prepend-icon="deleteWillDeactivate ? 'mdi-toggle-switch-off-outline' : 'mdi-trash-can-outline'">
             {{ deleteWillDeactivate ? 'Tắt kích hoạt' : 'Xóa' }}
           </v-btn>
         </v-card-actions>
@@ -345,12 +252,12 @@ const showMessage = (text, type = 'success') => {
   toastMessage.value = text
 
   snackbarColor.value =
-    type === 'error'   ? 'error'   :
-    type === 'warning' ? 'warning' : 'success'
+    type === 'error' ? 'error' :
+      type === 'warning' ? 'warning' : 'success'
 
   snackbarIcon.value =
-    type === 'error'   ? 'mdi-close-circle'  :
-    type === 'warning' ? 'mdi-alert-circle'  : 'mdi-check-circle'
+    type === 'error' ? 'mdi-close-circle' :
+      type === 'warning' ? 'mdi-alert-circle' : 'mdi-check-circle'
 
   snackbar.value = true
 }
@@ -650,7 +557,7 @@ const saveDiscount = async () => {
       await createDiscountCoupon(sanitizedData)
       showMessage('Thêm mã giảm giá thành công', 'success')
     }
-    
+
     closeDialog()
     await loadDiscounts()
   } catch (error) {
@@ -682,7 +589,7 @@ const removeDiscount = async (id) => {
 
 const deleteDiscount = async () => {
   if (!discountToDelete.value) return
-  
+
   isDeleting.value = true
   try {
     if (deleteWillDeactivate.value) {
@@ -720,7 +627,7 @@ const deleteDiscount = async () => {
 }
 
 :deep(.bg-background) {
-  background-color: #F5DEB3;
+  background-color: #f1f1f1;
 }
 
 .table-modern :deep(.v-table__wrapper) {
@@ -795,6 +702,7 @@ const deleteDiscount = async () => {
   from {
     width: 100%;
   }
+
   to {
     width: 0%;
   }
@@ -809,6 +717,7 @@ const deleteDiscount = async () => {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
