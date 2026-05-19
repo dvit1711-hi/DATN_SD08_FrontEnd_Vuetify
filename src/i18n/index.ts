@@ -43,14 +43,18 @@ const messages = {
       viewAll: 'Xem tất cả',
 
       adminHome: 'Home',
-      productList: 'Danh sách sản phẩm',
+      productList: 'Quản lý sản phẩm',
       accountList: 'Danh sách tài khoản',
-      discountManager: 'Discount Manager',
+      discountManager: 'Quản lý giảm giá',
       discountProduct: 'Giảm giá biến thể màu',
       statistics: 'Thống kê',
       paymentConfirm: 'Xác nhận thanh toán',
-      brandMaterial: 'Brand & Material',
-      colorSize: 'Color & Size',
+
+      brand: 'Thương hiệu',
+      material: 'Chất liệu',
+      color: 'Màu sắc',
+      size: 'Kích thước',
+
       posSale: 'Bán hàng tại quầy',
       staffReport: 'Báo cáo nhân viên',
       myReport: 'Báo cáo của tôi',
@@ -104,8 +108,12 @@ const messages = {
       discountProduct: 'Variant Discount',
       statistics: 'Statistics',
       paymentConfirm: 'Payment Confirmation',
-      brandMaterial: 'Brand & Material',
-      colorSize: 'Color & Size',
+
+      brand: 'Brand',
+      material: 'Material',
+      color: 'Color',
+      size: 'Size',
+      
       posSale: 'POS Sale',
       staffReport: 'Staff Report',
       myReport: 'My Report',
