@@ -52,7 +52,7 @@
 
       <v-row>
         <v-col
-          v-for="p in filteredProducts"
+          v-for="p in paginatedProducts"
           :key="p.productID"
           cols="12"
           sm="6"
@@ -74,7 +74,6 @@
         v-if="filteredProducts.length > 0 && totalPages > 1"
         class="pagination-wrap mt-8"
       >
-        <div class="pagination-summary">Tổng {{ totalPages }} trang</div>
 
         <v-pagination
           v-model="currentPage"
