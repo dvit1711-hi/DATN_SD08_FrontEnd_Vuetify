@@ -114,12 +114,6 @@
             {{ item.totalStock ?? 0 }}
           </template>
 
-          <template #item.inStock="{ item }">
-            <v-chip size="small" :color="item.inStock ? 'success' : 'error'" variant="flat">
-              {{ item.inStock ? "Còn hàng" : "Hết hàng" }}
-            </v-chip>
-          </template>
-
           <template #item.actions="{ item }">
             <div class="d-flex gap-2">
               <v-btn icon size="small" variant="text" color="primary" @click="editProduct(item)">
@@ -183,7 +177,6 @@ const headers = [
   { title: "Chất liệu", key: "materialName" },
   { title: "Số biến thể", key: "variantCount", width: "120px" },
   { title: "Tổng tồn kho", key: "totalStock", width: "120px" },
-  { title: "Kho", key: "inStock", width: "120px" },
   { title: "Trạng thái", key: "status", width: "120px" },
   { title: "Thao tác", key: "actions", width: "150px", sortable: false },
 ];
@@ -399,10 +392,8 @@ const createQuickMaterial = async (name) => {
 };
 
 const openCreateForm = () => {
-  form.value = defaultForm();
-  materialSearch.value = "";
-  showAddForm.value = true;
-};
+  router.push({ name: 'AdminProductCreate' })
+}
 
 const saveProduct = async () => {
   if (!form.value.productName || form.value.productName.trim() === "") {

@@ -36,6 +36,7 @@ import AdminBrand from '@/pages/admin/AdminBrand.vue'
 import AdminMaterial from '@/pages/admin/AdminMaterial.vue'
 import AdminColor from '@/pages/admin/AdminColor.vue'
 import AdminSize from '@/pages/admin/AdminSize.vue'
+import ProductCreate from '@/pages/admin/product/ProductCreate.vue'
 
 function getRoles(): string[] {
   const roles = localStorage.getItem('roles')
@@ -114,6 +115,7 @@ const router = createRouter({
         { path: 'pos', component: PosSale, name: 'AdminPosSale', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'reports/staff', component: AdminStaffReport, name: 'AdminStaffReport', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
         { path: 'returns', component: AdminReturnOrder, name: 'AdminReturnOrder', meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] } },
+        { path: '/products/create' , component: ProductCreate, name: 'AdminProductCreate'}
         
       ]
     },
