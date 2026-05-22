@@ -47,7 +47,7 @@
                             prepend-icon="mdi-chart-line" />
 
                             <v-list-item
-              :to="{ name: 'AdminReturnOrder' }"
+              :to="{ name: 'StaffReturnOrder' }"
               title="Trả hàng"
               prepend-icon="mdi-keyboard-return"
               active-color="primary"
