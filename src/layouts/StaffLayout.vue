@@ -30,6 +30,7 @@
                             <v-divider />
                             <v-list-item :title="t('common.logout')" @click="handleLogout" />
                         </v-list>
+
                     </v-menu>
                 </div>
             </div>
@@ -45,10 +46,17 @@
                         <v-list-item :to="{ name: 'StaffReport' }" :title="t('common.myReport')"
                             prepend-icon="mdi-chart-line" />
 
+                            <v-list-item
+              :to="{ name: 'AdminReturnOrder' }"
+              title="Trả hàng"
+              prepend-icon="mdi-keyboard-return"
+              active-color="primary"
+            />
                         <v-divider class="my-2" />
 
                         <v-list-item :to="{ name: 'Home' }" :title="t('common.backToStore')" prepend-icon="mdi-store"
                             active-color="primary" />
+                        
                     </v-list>
                 </v-navigation-drawer>
 
