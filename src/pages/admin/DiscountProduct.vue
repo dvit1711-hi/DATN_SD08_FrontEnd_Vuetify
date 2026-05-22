@@ -180,7 +180,6 @@
                 <v-card-text class="pt-4 px-6">
                     <v-form ref="form" validate-on="submit" @submit.prevent="saveDiscount">
                         <!-- Product Color Selection -->
-                        <!-- Dùng :item-props để truyền disabled vào từng item, tránh dùng slot #item override title -->
                         <v-autocomplete
                             v-model="formData.productColorId"
                             :items="productColorsForSelect"
@@ -193,7 +192,6 @@
                             return-object
                             @update:modelValue="onColorSelected"
                         >
-                            <!-- Slot #item: KHÔNG override #title — để Vuetify tự dùng displayName -->
                             <template #item="{ props, item }">
                                 <v-list-item
                                     v-bind="props"
@@ -202,10 +200,10 @@
                                     :subtitle="getItemSubtitle(item.raw)"
                                 >
                                     <template #prepend>
+                                        <!-- FIX: Dùng normalizeColorCode để đảm bảo luôn có màu hợp lệ -->
                                         <span
                                             class="color-swatch-small"
-                                            :class="item.raw?.colorCode ? '' : 'color-swatch-empty'"
-                                            :style="item.raw?.colorCode ? { backgroundColor: item.raw.colorCode } : {}"
+                                            :style="getSwatchStyle(item.raw?.colorCode)"
                                         />
                                     </template>
                                     <template #append>
@@ -229,10 +227,10 @@
 
                             <template #selection="{ item }">
                                 <div class="selected-variant">
+                                    <!-- FIX: Dùng getSwatchStyle thay vì check colorCode trực tiếp -->
                                     <span
                                         class="color-swatch-small"
-                                        :class="item.raw?.colorCode ? '' : 'color-swatch-empty'"
-                                        :style="item.raw?.colorCode ? { backgroundColor: item.raw.colorCode } : {}"
+                                        :style="getSwatchStyle(item.raw?.colorCode)"
                                     />
                                     <span>{{ item.raw?.displayName || item.raw?.productName }}</span>
                                 </div>
@@ -263,9 +261,10 @@
                                 <div class="preview-item">
                                     <span class="preview-label">Màu:</span>
                                     <div class="preview-value-color">
+                                        <!-- FIX: Dùng getSwatchStyle cho preview card -->
                                         <span
                                             class="color-swatch-preview"
-                                            :style="{ backgroundColor: selectedVariantPreview.colorCode }"
+                                            :style="getSwatchStyle(selectedVariantPreview.colorCode, true)"
                                         />
                                         <span>{{ selectedVariantPreview.colorName }}</span>
                                     </div>
@@ -399,7 +398,6 @@
                 </v-card-title>
 
                 <v-card-text class="pa-5 pt-2">
-                    <!-- Trường hợp đã có người dùng: chỉ tắt trạng thái -->
                     <template v-if="deleteWillDeactivate">
                         <v-alert type="warning" variant="tonal" density="compact" class="mb-3">
                             Giảm giá này đã được
@@ -413,7 +411,6 @@
                         </p>
                     </template>
 
-                    <!-- Trường hợp chưa ai dùng: xóa bình thường -->
                     <template v-else>
                         <p class="text-body-2">
                             Bạn chắc chắn muốn xóa giảm giá cho biến thể màu
@@ -473,15 +470,12 @@ const snackbarIcon  = ref('mdi-check-circle')
 
 const showMessage = (text, type = 'success') => {
     toastMessage.value = text
-
     snackbarColor.value =
         type === 'error'   ? 'error'   :
         type === 'warning' ? 'warning' : 'success'
-
     snackbarIcon.value =
         type === 'error'   ? 'mdi-close-circle'  :
         type === 'warning' ? 'mdi-alert-circle'  : 'mdi-check-circle'
-
     snackbar.value = true
 }
 
@@ -518,12 +512,10 @@ const isEmpty = (v) => v === null || v === undefined || v === ''
 
 const rules = {
     required: v => !isEmpty(v) || 'Không được để trống',
-
     positiveNumber: v => {
         if (isEmpty(v)) return true
         return Number(v) > 0 || 'Phải lớn hơn 0'
     },
-
     endDateAfterStart: v => {
         if (!formData.value.startDate || !v) return true
         return v >= formData.value.startDate || 'Ngày kết thúc phải sau ngày bắt đầu'
@@ -537,6 +529,41 @@ const discountValueRules = computed(() => {
     }
     return base
 })
+
+// ─── FIX: Helper normalize colorCode → luôn trả về CSS color hợp lệ ──────────
+/**
+ * Chuẩn hóa colorCode từ API thành CSS color hợp lệ.
+ * Xử lý các trường hợp:
+ *   - null / undefined      → fallback '#e0e0e0'
+ *   - '#FF0000'             → giữ nguyên
+ *   - 'FF0000' (không có #) → thêm '#'
+ *   - 'red', 'blue'...      → CSS named color, dùng trực tiếp
+ *   - 'rgb(255,0,0)'        → CSS rgb(), dùng trực tiếp
+ */
+const normalizeColorCode = (raw) => {
+    if (!raw) return null
+    const str = String(raw).trim()
+    if (!str) return null
+    // Đã có # hoặc là tên màu CSS / rgb() / hsl() → dùng thẳng
+    if (str.startsWith('#') || str.startsWith('rgb') || str.startsWith('hsl')) return str
+    // Là chuỗi hex 3 hoặc 6 ký tự không có #
+    if (/^[0-9A-Fa-f]{3}$|^[0-9A-Fa-f]{6}$/.test(str)) return '#' + str
+    // Tên màu CSS hoặc giá trị khác → trả về nguyên để browser tự xử lý
+    return str
+}
+
+/**
+ * Trả về inline style object cho color swatch.
+ * isPreview = true → dùng cho preview card (border-radius 50%)
+ */
+const getSwatchStyle = (rawColorCode, isPreview = false) => {
+    const color = normalizeColorCode(rawColorCode)
+    return {
+        backgroundColor: color || '#e0e0e0',
+        border: color ? '1.5px solid rgba(0,0,0,0.18)' : '1.5px dashed #bbb',
+        ...(isPreview ? {} : {})
+    }
+}
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 const discountedColorIds = computed(() => new Set(
@@ -596,7 +623,6 @@ const onlyPositiveInt = (e) => {
     if (!/^\d$/.test(e.key)) e.preventDefault()
 }
 
-/** Tạo subtitle hiển thị bên dưới tên sản phẩm trong dropdown */
 const getItemSubtitle = (raw) => {
     if (!raw) return ''
     const parts = []
@@ -634,20 +660,19 @@ const loadProductColors = async () => {
         const response = await productColorApi.getAll()
         const raw = response.data || []
 
-        // Debug: log 1 item để xem cấu trúc thực tế từ API
         if (raw.length > 0) {
             console.log('[ProductColor] Sample keys:', Object.keys(raw[0]))
             console.log('[ProductColor] Sample item:', JSON.stringify(raw[0], null, 2))
         }
 
         productColors.value = raw.map(pc => {
-            // ── ID ─────────────────────────────────────────────────────────
+            // ── ID ────────────────────────────────────────────────────────────
             const nid = Number.parseInt(
                 pc.id ?? pc.productColorId ?? pc.productColorID ?? pc.variantId ?? pc.colorVariantId,
                 10
             )
 
-            // ── Tên sản phẩm ───────────────────────────────────────────────
+            // ── Tên sản phẩm ─────────────────────────────────────────────────
             const productName =
                 pc.productName   ??
                 pc.product?.name ??
@@ -655,7 +680,7 @@ const loadProductColors = async () => {
                 pc.productTitle  ??
                 '(Không có tên)'
 
-            // ── Tên màu ────────────────────────────────────────────────────
+            // ── Tên màu ──────────────────────────────────────────────────────
             const colorName =
                 pc.colorName     ??
                 pc.color?.name   ??
@@ -663,23 +688,27 @@ const loadProductColors = async () => {
                 pc.colorLabel    ??
                 '(Không có màu)'
 
-            // ── Mã màu hex ─────────────────────────────────────────────────
-            const colorCode =
-                pc.colorCode     ??
-                pc.color?.code   ??
-                pc.color?.hex    ??
-                pc.hexCode       ??
+            // ── FIX: Mã màu hex — normalize ngay tại đây ─────────────────────
+            // Thử nhiều field tên có thể từ API, sau đó chuẩn hóa về CSS hợp lệ
+            const rawCode =
+                pc.colorCode        ??
+                pc.color?.code      ??
+                pc.color?.hex       ??
+                pc.color?.colorCode ??
+                pc.hexCode          ??
+                pc.colorHex         ??
+                pc.hex              ??
                 null
+            const colorCode = normalizeColorCode(rawCode)
 
-            // ── Tên size ───────────────────────────────────────────────────
+            // ── Tên size ─────────────────────────────────────────────────────
             const sizeName =
                 pc.sizeName      ??
                 pc.size?.name    ??
                 pc.sizeLabel     ??
                 null
 
-            // ── Tồn kho ────────────────────────────────────────────────────
-            // Mặc định 1 nếu không tìm thấy field, tránh tất cả thành "hết hàng"
+            // ── Tồn kho ──────────────────────────────────────────────────────
             const stockQty =
                 pc.stock             ??
                 pc.stockQuantity     ??
@@ -689,7 +718,7 @@ const loadProductColors = async () => {
                 pc.available         ??
                 1
 
-            // ── Ảnh ────────────────────────────────────────────────────────
+            // ── Ảnh ──────────────────────────────────────────────────────────
             const mainImage =
                 pc.mainImage     ??
                 pc.imageUrl      ??
@@ -703,7 +732,7 @@ const loadProductColors = async () => {
                 _normalizedId: nid,
                 productName,
                 colorName,
-                colorCode,
+                colorCode,   // đã được normalize, luôn là CSS hợp lệ hoặc null
                 sizeName,
                 _stockQty: Number(stockQty),
                 mainImage,
@@ -804,7 +833,6 @@ const confirmDelete = (discount) => {
     showDeleteDialog.value = true
 }
 
-/** True nếu giảm giá đã được dùng → chỉ tắt trạng thái, không xóa */
 const deleteWillDeactivate = computed(() =>
     Number(discountToDelete.value?.quantityUsed ?? 0) > 0
 )
@@ -814,7 +842,6 @@ const deleteDiscount = async () => {
     isDeleting.value = true
     try {
         if (deleteWillDeactivate.value) {
-            // Đã có người dùng → chỉ tắt active, không xóa (tránh lỗi FK)
             await updateProductDiscount(discountToDelete.value.id, {
                 ...discountToDelete.value,
                 active: false
@@ -824,7 +851,6 @@ const deleteDiscount = async () => {
                 'warning'
             )
         } else {
-            // Chưa ai dùng → xóa hẳn
             await deleteProductDiscount(discountToDelete.value.id)
             showMessage('Xóa giảm giá thành công', 'success')
         }
@@ -937,17 +963,16 @@ onMounted(() => {
 .variant-cell { font-size: 14px; vertical-align: middle; }
 .size-badge   { display: flex; align-items: center; gap: 4px; }
 
+/* ── FIX: color-swatch-small không còn dùng class riêng cho empty/filled
+   Màu nền được set hoàn toàn qua inline style từ getSwatchStyle() ─────────── */
 .color-swatch-small {
     display: inline-block;
     width: 18px;
     height: 18px;
     border-radius: 4px;
-    border: 1px solid #999;
-    margin-right: 8px;
     flex-shrink: 0;
+    /* border và backgroundColor được set qua getSwatchStyle() */
 }
-
-.color-swatch-empty { background-color: #e0e0e0; }
 
 .selected-variant { display: flex; align-items: center; gap: 8px; }
 
@@ -985,12 +1010,13 @@ onMounted(() => {
     font-weight: 500;
 }
 
+/* ── FIX: color-swatch-preview — border và backgroundColor set qua getSwatchStyle() */
 .color-swatch-preview {
     display: inline-block;
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid #999;
+    flex-shrink: 0;
 }
 
 .form-row-2col {
@@ -1029,7 +1055,7 @@ onMounted(() => {
 
 .warning-link:hover { color: #bf360c; }
 
-/* ── Toast Notification (sao từ trang trả hàng) ─────────────────────────── */
+/* ── Toast Notification ──────────────────────────────────────────────────── */
 :deep(.custom-snackbar) {
     padding: 0 !important;
     overflow: hidden;
