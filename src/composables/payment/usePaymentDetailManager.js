@@ -1122,8 +1122,6 @@ export function usePaymentDetailManager() {
         token,
       );
 
-      // Trong revertOrderStatus, phần xử lý sau khi gọi API thành công:
-
       const responseOrderStatus = String(
         response?.data?.orderStatus ||
           response?.data?.status ||
@@ -1149,10 +1147,8 @@ export function usePaymentDetailManager() {
           clearUiDelivered(order.orderId);
           clearUiShippingStarted(order.orderId);
         } else if (responseOrderStatus === "CONFIRMED") {
-          // ✅ Revert từ SHIPPING về CONFIRMED = Chờ giao hàng
-          // Xóa trạng thái đang giao, giữ lại shipping started nếu cần
           clearUiDelivered(order.orderId);
-          clearUiShippingStarted(order.orderId); // reset để nút "Bắt đầu giao" hiện lại
+          clearUiShippingStarted(order.orderId);
         } else if (responseOrderStatus === "SHIPPING") {
           if (previousStage === "WAIT_COMPLETE") {
             markUiDelivered(order.orderId);
@@ -1438,17 +1434,17 @@ export function usePaymentDetailManager() {
 
   const buildInvoiceHtml = (order, type = "shipping") => {
     const formatCurrency = (n) => {
-      const value = Number(n || 0);
+      const value = Number(n ?? 0);
       return value.toLocaleString("vi-VN") + " đ";
     };
 
     const orderCode = getDisplayOrderCode(order);
     const storeLogoUrl = order.storeLogo || "/images/logo1.jpg";
-    const storeName = order.storeName || "DTVĐ";
     const storePhone = order.storePhone || "0906076388";
     const storeEmail = order.storeEmail || "tienmnhat@gmail.com";
     const storeAddress =
       order.storeAddress || "160 Cao Lỗ, Uy Nỗ, Đông Anh, Hà Nội";
+    const storeName = order.storeName || "STORE";
 
     const customerName =
       order?.customerName ||
@@ -1540,19 +1536,26 @@ export function usePaymentDetailManager() {
     };
 
     const invoiceItems = getInvoiceItems(order);
-    const invoiceTotal = Number(
-      order?.totalAmount ??
-        order?.total ??
-        order?.grandTotal ??
-        order?.orderTotal ??
-        invoiceItems.reduce((sum, item) => sum + getItemTotal(item), 0),
-    );
-    const invoiceCode =
-      order?.orderId ||
-      order?.id ||
-      order?.orderCode ||
-      order?.trackingCode ||
-      "-";
+const invoiceCode = order?.orderId || order?.id || order?.orderCode || order?.trackingCode || "-";
+
+// ✅ subTotal = tổng tiền hàng tính từ items (trước giảm giá)
+const subTotal = invoiceItems.reduce((sum, item) => sum + getItemTotal(item), 0);
+
+// ✅ discountAmount và shippingFee từ backend dùng ?? tránh falsy 0
+const discountAmount = Number(order?.discountAmount ?? order?.discount ?? 0);
+const shippingFee = Number(
+  order?.shippingFee ??
+  order?.deliveryFee ??
+  order?.shippingCost ??
+  order?.transportFee ??
+  order?.shipCost ??
+  order?.delivery_fee ??
+  order?.shipping_fee ??
+  0
+);
+
+// ✅ grandTotal = tổng thực tế phải trả (từ backend)
+const grandTotal = Number(order?.totalAmount ?? order?.total ?? (subTotal - discountAmount + shippingFee));
 
     const bankInfoBlock =
       order?.bankName ||
@@ -1691,7 +1694,7 @@ export function usePaymentDetailManager() {
         <div class="ship-bottom">
             <div class="ship-money">
                 Tiền thu người nhận:<br />
-                ${formatCurrency(order?.totalAmount ?? order?.total ?? invoiceTotal)}
+                ${formatCurrency(grandTotal)}
             </div>
             <div class="ship-sign">
                 Chữ ký người nhận<br />
@@ -1780,7 +1783,6 @@ export function usePaymentDetailManager() {
             </div>
 
             <div class="shop-info">
-                <div class="shop-name">${storeName}</div>
                 <div class="shop-line"><b>SĐT:</b> ${storePhone}</div>
                 <div class="shop-line"><b>Email:</b> ${storeEmail}</div>
                 <div class="shop-line">${storeAddress}</div>
@@ -1829,19 +1831,19 @@ export function usePaymentDetailManager() {
             <div class="summary">
                 <div class="summary-row">
                     <span>Tổng tiền hàng:</span>
-                    <strong>${formatCurrency(invoiceTotal)}</strong>
+                    <strong>${formatCurrency(subTotal)}</strong>
                 </div>
                 <div class="summary-row">
                     <span>Giảm giá:</span>
-                    <strong>${formatCurrency(order.discountAmount || order.discount || 0)}</strong>
+                    <strong>${formatCurrency(discountAmount)}</strong>
                 </div>
                 <div class="summary-row">
                     <span>Phí giao hàng:</span>
-                    <strong>${formatCurrency(order.deliveryFee || order.shippingFee || 0)}</strong>
+                    <strong>${formatCurrency(shippingFee)}</strong>
                 </div>
                 <div class="summary-row total">
                     <span>Tổng tiền cần thanh toán:</span>
-                    <strong>${formatCurrency(order?.totalAmount ?? order?.total ?? invoiceTotal)}</strong>
+                    <strong>${formatCurrency(grandTotal)}</strong>
                 </div>
             </div>
         </div>
@@ -2184,12 +2186,14 @@ export function usePaymentDetailManager() {
 
     return quantity * price;
   };
+
   const initPaymentDetail = async () => {
     reloadIdSets();
     orderEditHistoryMap.value = loadMap(ORDER_EDIT_HISTORY_KEY);
     orderTimelineMap.value = loadMap(ORDER_TIMELINE_KEY);
     await loadOrderDetail();
   };
+
   const openEditHistoryDialog = () => {
     editHistoryDialog.value = true;
   };
