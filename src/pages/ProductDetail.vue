@@ -19,7 +19,7 @@
               @click="mainImage = img.imageUrl"
             >
               <img
-                :src="img.imageUrl"
+                :src="img.imageUrl || '/images/koCoAnh.png'"
                 :alt="product.productName"
                 class="gallery-thumb-img"
               />
@@ -37,7 +37,7 @@
               mdi-chevron-left
             </v-icon>
 
-            <v-img :src="mainImage" class="gallery-main-image" contain />
+            <v-img :src="mainImage || '/images/koCoAnh.png'" class="gallery-main-image" contain />
 
             <v-icon
               v-if="images.length > 1"
@@ -351,26 +351,30 @@ function applySelectedVariant(variant) {
         images.value = Array.isArray(colorData?.images) ? colorData.images : [];
         
         const main = images.value.find((img) => img?.isMain);
-        mainImage.value = main?.imageUrl || images.value[0]?.imageUrl || "";
+        mainImage.value = main?.imageUrl || images.value[0]?.imageUrl || "/images/koCoAnh.png";
       })
       .catch((error) => {
         console.error("Failed to load color variant images:", error);
         images.value = [];
-        mainImage.value = "";
+        mainImage.value = "/images/koCoAnh.png";
       });
     
-    // Set main image to empty initially until images are loaded
-    mainImage.value = "";
+    // Set main image to fallback initially until images are loaded
+    mainImage.value = "/images/koCoAnh.png";
   } else {
     images.value = [];
-    mainImage.value = "";
+    mainImage.value = "/images/koCoAnh.png";
   }
 
+  // Ensure mainImage is set (after potential API call)
   const main = images.value.find((img) => img?.isMain);
   if (main?.imageUrl) {
     mainImage.value = main.imageUrl;
   } else if (images.value.length > 0) {
-    mainImage.value = images.value[0]?.imageUrl || "";
+    mainImage.value = images.value[0]?.imageUrl || "/images/koCoAnh.png";
+  } else {
+    // If no images at all, always use fallback
+    mainImage.value = "/images/koCoAnh.png";
   }
 
   if (quantity.value < 1) quantity.value = 1;
@@ -452,9 +456,12 @@ onMounted(async () => {
 
       selectedColorId.value = initialVariant.colorID;
       applySelectedVariant(initialVariant);
+    } else {
+      mainImage.value = "/images/koCoAnh.png";
     }
   } catch (error) {
     console.error(error);
+    mainImage.value = "/images/koCoAnh.png";
   }
 });
 
@@ -473,6 +480,8 @@ watch(
     if (matchedVariant) {
       selectedColorId.value = matchedVariant.colorID;
       applySelectedVariant(matchedVariant);
+    } else {
+      mainImage.value = "/images/koCoAnh.png";
     }
   },
 );
@@ -780,7 +789,7 @@ function showPrevImage() {
   const prevIndex =
     currentIndex <= 0 ? images.value.length - 1 : currentIndex - 1;
 
-  mainImage.value = images.value[prevIndex]?.imageUrl || "";
+  mainImage.value = images.value[prevIndex]?.imageUrl || "/images/koCoAnh.png";
 }
 
 function showNextImage() {
@@ -792,7 +801,7 @@ function showNextImage() {
   const nextIndex =
     currentIndex >= images.value.length - 1 ? 0 : currentIndex + 1;
 
-  mainImage.value = images.value[nextIndex]?.imageUrl || "";
+  mainImage.value = images.value[nextIndex]?.imageUrl || "/images/koCoAnh.png";
 }
 </script>
 

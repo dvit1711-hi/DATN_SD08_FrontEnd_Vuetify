@@ -467,7 +467,7 @@ const quickAddDiscountedPrice = computed(() => {
 watch(quickAddSelectedVariant, (variant) => {
   const mainImage = getMainImage(variant?.images || []);
   quickAddPreviewImage.value =
-    mainImage || quickAddProduct.value?.displayImage || "";
+    mainImage || quickAddProduct.value?.displayImage || "/images/koCoAnh.png";
   clampQuickAddQuantity();
 });
 
@@ -697,7 +697,7 @@ function getMainImage(images = []) {
   return (
     images.find((img) => Boolean(img?.isMain))?.imageUrl ||
     images[0]?.imageUrl ||
-    ""
+    "/images/koCoAnh.png"
   );
 }
 
@@ -817,7 +817,7 @@ async function openQuickAddDialog(product) {
   quickAddSelectedColorId.value = null;
   quickAddSelectedSizeId.value = null;
   quickAddQuantity.value = 1;
-  quickAddPreviewImage.value = product?.displayImage || "";
+  quickAddPreviewImage.value = product?.displayImage || "/images/koCoAnh.png";
 
   try {
     const res = await productApi.getDetail(product.productID);
@@ -839,7 +839,7 @@ async function openQuickAddDialog(product) {
     quickAddSelectedColorId.value = Number(defaultVariant.colorID);
     quickAddSelectedSizeId.value = Number(defaultVariant.sizeID);
     quickAddPreviewImage.value =
-      getMainImage(defaultVariant.images || []) || product.displayImage || "";
+      getMainImage(defaultVariant.images || []) || product.displayImage || "/images/koCoAnh.png";
 
     clampQuickAddQuantity();
   } catch (error) {

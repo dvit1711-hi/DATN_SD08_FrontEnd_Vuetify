@@ -131,9 +131,9 @@ const displayColors = computed(() => {
 
 const currentImage = computed(() => {
   if (isHovering.value) {
-    return props.product?.hoverImage || props.product?.displayImage || ""
+    return props.product?.hoverImage || props.product?.displayImage || "/images/koCoAnh.png"
   }
-  return props.product?.displayImage || ""
+  return props.product?.displayImage || "/images/koCoAnh.png"
 })
 
 function formatPrice(price) {

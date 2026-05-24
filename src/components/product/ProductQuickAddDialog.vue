@@ -23,7 +23,7 @@
           <v-col cols="12" md="6" class="quick-add-left">
             <div class="quick-add-main-image-wrap">
               <v-img
-                :src="previewImage || product?.displayImage"
+                :src="previewImage || product?.displayImage || '/images/koCoAnh.png'"
                 :alt="detail.productName"
                 height="420"
                 cover
@@ -39,7 +39,7 @@
                 :class="{ active: previewImage === img.imageUrl }"
                 @click="$emit('update-preview-image', img.imageUrl)"
               >
-                <img :src="img.imageUrl" :alt="detail.productName" />
+                <img :src="img.imageUrl || '/images/koCoAnh.png'" :alt="detail.productName" />
               </button>
             </div>
           </v-col>
