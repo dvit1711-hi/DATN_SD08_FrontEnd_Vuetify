@@ -93,15 +93,18 @@
                 <div class="field">
                   <label class="field-label">Số nhà</label>
                   <input v-model="newAddressForm.unitNumber" class="field-input" placeholder="VD: 123A" />
+                  <p v-if="addressFormErrors.unitNumber" class="field-error">{{ addressFormErrors.unitNumber }}</p>
                 </div>
                 <div class="field">
                   <label class="field-label">Số đường</label>
                   <input v-model="newAddressForm.streetNumber" class="field-input" placeholder="VD: 456" />
+                  <p v-if="addressFormErrors.streetNumber" class="field-error">{{ addressFormErrors.streetNumber }}</p>
                 </div>
               </div>
               <div class="field">
                 <label class="field-label">Tên đường</label>
                 <input v-model="newAddressForm.addressLine1" class="field-input" placeholder="VD: Phố Huế" />
+                <p v-if="addressFormErrors.addressLine1" class="field-error">{{ addressFormErrors.addressLine1 }}</p>
               </div>
               <div class="field-grid three">
                 <div class="field">
@@ -158,9 +161,11 @@
                   </select>
                 </div>
               </div>
+              <p v-if="addressFormErrors.dropdowns" class="field-error">{{ addressFormErrors.dropdowns }}</p>
               <div class="field">
                 <label class="field-label">Mã bưu chính</label>
                 <input v-model="newAddressForm.postalCode" class="field-input" placeholder="Không bắt buộc" />
+                <p v-if="addressFormErrors.postalCode" class="field-error">{{ addressFormErrors.postalCode }}</p>
               </div>
               <button
                 class="btn-save-address"
@@ -481,6 +486,7 @@ import cartApi from '@/api/cartApi'
 import { getAllDiscountCoupons } from '@/api/discountApi'
 import userDiscountCouponApi from '@/api/userDiscountCouponApi'
 import paymentApi from '@/api/paymentApi'
+import { validateNewAddress, getFirstErrorMessage } from '@/utils/addressValidation'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -496,6 +502,7 @@ const savedAddresses = ref([])
 const selectedAddressId = ref(null)
 const addressMode = ref('saved')
 const newAddressForm = ref({ unitNumber: '', streetNumber: '', addressLine1: '', postalCode: '' })
+const addressFormErrors = ref({})
 const isLoadingSavedAddresses = ref(false)
 const isSavingNewAddress = ref(false)
 const couponCode = ref('')
@@ -768,21 +775,30 @@ const saveNewAddress = async () => {
   const accountId = Number.parseInt(userStore.accountId, 10)
   if (!Number.isFinite(accountId) || accountId <= 0)
     return notify('Không xác định được tài khoản', 'error')
+  
   const provinceName =
     ghnProvinces.value.find((x) => Number(x.provinceId) === Number(shippingInput.value.provinceId))?.provinceName || ''
   const districtName =
     ghnDistricts.value.find((x) => Number(x.districtId) === Number(shippingInput.value.toDistrictId))?.districtName || ''
   const wardName =
     ghnWards.value.find((x) => String(x.wardCode) === String(shippingInput.value.toWardCode))?.wardName || ''
-  if (
-    !newAddressForm.value.unitNumber ||
-    !newAddressForm.value.streetNumber ||
-    !newAddressForm.value.addressLine1 ||
-    !provinceName ||
-    !districtName ||
-    !wardName
-  )
-    return notify('Vui lòng nhập đủ thông tin địa chỉ', 'warning')
+  
+  // Validate the form before saving
+  const validationResult = validateNewAddress(newAddressForm.value, {
+    province: provinceName,
+    district: districtName,
+    ward: wardName
+  })
+  
+  if (!validationResult.valid) {
+    addressFormErrors.value = validationResult.errors
+    const errorMsg = getFirstErrorMessage(validationResult.errors)
+    notify(errorMsg, 'warning')
+    return
+  }
+  
+  addressFormErrors.value = {}
+  
   isSavingNewAddress.value = true
   try {
     await addressApi.create(
@@ -1324,6 +1340,13 @@ onBeforeUnmount(() => cleanupUnpaidQuickBuyItem())
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 28px;
+}
+.field-error {
+  font-size: 11px;
+  color: #d32f2f;
+  margin: 2px 0 0 0;
+  padding: 0;
+  line-height: 1.3;
 }
 
 /* ── Address Preview ── */

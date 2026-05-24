@@ -30,7 +30,7 @@
                 <VDivider />
 
                 <VCardText>
-                    <VForm class="mt-6" @submit.prevent="saveChanges">
+                    <VForm ref="form_ref" class="mt-6" @submit.prevent="saveChanges">
                         <VRow>
                             <VCol md="6" cols="12">
                                 <VTextField label="Tên đăng nhập" v-model="form.username" />
@@ -42,19 +42,43 @@
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Số điện thoại" v-model="form.phoneNumber" />
+                                <VTextField 
+                                    label="Số điện thoại" 
+                                    v-model="form.phoneNumber"
+                                    :error="!!formErrors.phoneNumber"
+                                    :error-messages="formErrors.phoneNumber ? [formErrors.phoneNumber] : []"
+                                    :rules="[v => !!v || 'Số điện thoại không được để trống']"
+                                />
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Số căn / số nhà" v-model="form.unitNumber" />
+                                <VTextField 
+                                    label="Số căn / số nhà" 
+                                    v-model="form.unitNumber"
+                                    :error="!!formErrors.unitNumber"
+                                    :error-messages="formErrors.unitNumber ? [formErrors.unitNumber] : []"
+                                    :rules="[v => !!v || 'Số nhà không được để trống']"
+                                />
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Số đường" v-model="form.streetNumber" />
+                                <VTextField 
+                                    label="Số đường" 
+                                    v-model="form.streetNumber"
+                                    :error="!!formErrors.streetNumber"
+                                    :error-messages="formErrors.streetNumber ? [formErrors.streetNumber] : []"
+                                    :rules="[v => !!v || 'Số đường không được để trống']"
+                                />
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Tên đường" v-model="form.addressLine1" />
+                                <VTextField 
+                                    label="Tên đường" 
+                                    v-model="form.addressLine1"
+                                    :error="!!formErrors.addressLine1"
+                                    :error-messages="formErrors.addressLine1 ? [formErrors.addressLine1] : []"
+                                    :rules="[v => !!v || 'Tên đường không được để trống']"
+                                />
                             </VCol>
 
                             <VCol cols="12" md="4">
@@ -66,6 +90,9 @@
                                     label="Tỉnh / Thành phố"
                                     :loading="isLoadingProvinces"
                                     :disabled="isLoadingProvinces"
+                                    :error="!!formErrors.dropdowns"
+                                    :error-messages="formErrors.dropdowns ? [formErrors.dropdowns] : []"
+                                    :rules="[v => !!v || 'Tỉnh / Thành phố không được để trống']"
                                     variant="outlined"
                                     @update:model-value="onProvinceChange"
                                 />
@@ -80,6 +107,7 @@
                                     label="Quận / Huyện"
                                     :loading="isLoadingDistricts"
                                     :disabled="!form.provinceId || isLoadingDistricts"
+                                    :rules="[v => !!v || 'Quận / Huyện không được để trống']"
                                     variant="outlined"
                                     @update:model-value="onDistrictChange"
                                 />
@@ -94,13 +122,19 @@
                                     label="Phường / Xã"
                                     :loading="isLoadingWards"
                                     :disabled="!form.districtId || isLoadingWards"
+                                    :rules="[v => !!v || 'Phường / Xã không được để trống']"
                                     variant="outlined"
                                     @update:model-value="onWardChange"
                                 />
                             </VCol>
 
                             <VCol cols="12" md="6">
-                                <VTextField label="Mã bưu chính / Ghi chú khu vực(Không bắt buộc)" v-model="form.postalCode" />
+                                <VTextField 
+                                    label="Mã bưu chính / Ghi chú khu vực(Không bắt buộc)" 
+                                    v-model="form.postalCode"
+                                    :error="!!formErrors.postalCode"
+                                    :error-messages="formErrors.postalCode ? [formErrors.postalCode] : []"
+                                />
                             </VCol>
 
                             
@@ -119,16 +153,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import accountApi from '@/api/accountApi'
 import paymentApi from '@/api/paymentApi'
+import { validateAccountAddress, getFirstErrorMessage } from '@/utils/addressValidation'
 
 const router = useRouter()
 
 const account = ref({})
 const address = ref({})
 const refInputEl = ref(null)
+const form_ref = ref(null)
 const displayEmail = ref('')
 const isLoadingProvinces = ref(false)
 const isLoadingDistricts = ref(false)
@@ -153,6 +189,8 @@ const form = ref({
     districtId: null,
     wardCode: ''
 })
+
+const formErrors = ref({})
 
 const normalizeText = value => String(value || '').trim().toLowerCase()
 
@@ -302,11 +340,53 @@ const saveChanges = async () => {
             return
         }
 
+        // Validate form using Vuetify VForm
+        if (form_ref.value) {
+            const { valid } = await form_ref.value.validate()
+            if (!valid) {
+                return
+            }
+        }
+
+        // Get the selected city/region/ward names from the selected IDs
+        const selectedProvinceName = ghnProvinces.value.find(item => item.provinceId === form.value.provinceId)?.provinceName || ''
+        const selectedDistrictName = ghnDistricts.value.find(item => item.districtId === form.value.districtId)?.districtName || ''
+        const selectedWardName = ghnWards.value.find(item => item.wardCode === form.value.wardCode)?.wardName || ''
+
+        console.log('Form values:', {
+            phoneNumber: form.value.phoneNumber,
+            unitNumber: form.value.unitNumber,
+            streetNumber: form.value.streetNumber,
+            addressLine1: form.value.addressLine1,
+            provinceName: selectedProvinceName,
+            districtName: selectedDistrictName,
+            wardName: selectedWardName
+        })
+
+        // Validate the form before saving
+        const validationResult = validateAccountAddress(form.value, {
+            province: selectedProvinceName,
+            district: selectedDistrictName,
+            ward: selectedWardName
+        })
+        
+        console.log('Validation result:', validationResult)
+        
+        if (!validationResult.valid) {
+            formErrors.value = validationResult.errors
+            const errorMsg = getFirstErrorMessage(validationResult.errors)
+            console.log('Errors found:', validationResult.errors, 'Message:', errorMsg)
+            alert(errorMsg)
+            return
+        }
+        
+        formErrors.value = {}
+
         const payload = {
             ...form.value,
-            city: ghnProvinces.value.find(item => item.provinceId === form.value.provinceId)?.provinceName || form.value.city,
-            region: ghnDistricts.value.find(item => item.districtId === form.value.districtId)?.districtName || form.value.region,
-            addressLine2: ghnWards.value.find(item => item.wardCode === form.value.wardCode)?.wardName || form.value.addressLine2,
+            city: selectedProvinceName || form.value.city,
+            region: selectedDistrictName || form.value.region,
+            addressLine2: selectedWardName || form.value.addressLine2,
             postalCode: form.value.postalCode,
         }
 
@@ -377,6 +457,31 @@ const resetAvatar = () => {
         refInputEl.value.value = ''
     }
 }
+
+// Auto-clear errors when fields change
+watch(() => form.value.phoneNumber, () => {
+    if (formErrors.value.phoneNumber) formErrors.value.phoneNumber = ''
+})
+
+watch(() => form.value.unitNumber, () => {
+    if (formErrors.value.unitNumber) formErrors.value.unitNumber = ''
+})
+
+watch(() => form.value.streetNumber, () => {
+    if (formErrors.value.streetNumber) formErrors.value.streetNumber = ''
+})
+
+watch(() => form.value.addressLine1, () => {
+    if (formErrors.value.addressLine1) formErrors.value.addressLine1 = ''
+})
+
+watch(() => form.value.postalCode, () => {
+    if (formErrors.value.postalCode) formErrors.value.postalCode = ''
+})
+
+watch(() => [form.value.provinceId, form.value.districtId, form.value.wardCode], () => {
+    if (formErrors.value.dropdowns) formErrors.value.dropdowns = ''
+})
 
 onMounted(async () => {
     await loadGhnProvinces()
