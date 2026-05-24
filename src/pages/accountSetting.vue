@@ -179,7 +179,6 @@ const validationRules = {
         if (!val || !val.trim()) return 'Tên đăng nhập không được để trống.'
         if (val.trim().length < 3) return 'Tên đăng nhập phải có ít nhất 3 ký tự.'
         if (val.trim().length > 50) return 'Tên đăng nhập không được vượt quá 50 ký tự.'
-        if (!USERNAME_REGEX.test(val.trim())) return 'Tên đăng nhập chỉ chứa chữ cái, số, dấu gạch dưới (_) hoặc dấu chấm (.).'
         return ''
     },
     phoneNumber: (val) => {
