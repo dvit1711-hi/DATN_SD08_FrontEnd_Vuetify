@@ -142,12 +142,14 @@
                                     </div>
                                 </div>
                                 <div class="product-footer">
-                                    <input v-model.number="product.tempQty" type="number" min="1"
-                                        class="qty-input-sm" />
+                                    <input v-model.number="product.tempQty" type="number" min="1" class="qty-input-sm"
+                                        :disabled="isBankingPending" />
                                     <button
-                                        :class="['sc-btn sc-btn-primary', (product.stockQuantity ?? 0) <= 0 && 'sc-btn-disabled']"
+                                        :class="['sc-btn sc-btn-primary', ((product.stockQuantity ?? 0) <= 0 || isBankingPending) && 'sc-btn-disabled']"
                                         style="flex:1;justify-content:center"
-                                        :disabled="(product.stockQuantity ?? 0) <= 0" @click="handleAddItem(product)">+
+                                        :disabled="(product.stockQuantity ?? 0) <= 0 || isBankingPending"
+                                        :title="isBankingPending ? 'Đơn đang chờ xác nhận chuyển khoản' : ''"
+                                        @click="handleAddItem(product)">+
                                         Thêm</button>
                                 </div>
                             </div>
@@ -819,6 +821,7 @@ async function ensureOrderCreated() {
 }
 
 async function handleAddItem(product) {
+    if (isBankingPending.value) { showMessage("Không thể thêm sản phẩm khi đơn đang chờ xác nhận chuyển khoản", "warning"); return }
     try {
         loading.value = true; const orderId = await ensureOrderCreated()
         await posApi.addItem(orderId, { productColorId: getProductColorId(product), quantity: Number(product.tempQty || 1) })

@@ -180,10 +180,8 @@
                             <div class="divider-line my-3"></div>
                             <div class="d-flex flex-wrap gap-2 mt-1">
                                 <v-chip v-for="(count, status) in stats.paymentStatusCounts || {}" :key="status"
-                                    size="small"
-                                    :color="status === 'PAID' || status === 'Đã thanh toán' ? 'success' : status === 'PENDING' || status === 'Chờ thanh toán' ? 'warning' : 'error'"
-                                    variant="tonal">
-                                    {{ status }}: {{ count }}
+                                    size="small" :color="paymentStatusColor(status)" variant="tonal">
+                                    {{ translatePaymentStatus(status) }}: {{ count }}
                                 </v-chip>
                             </div>
                         </div>
@@ -363,17 +361,96 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import ApexCharts from 'vue3-apexcharts'
 import statisticsApi from '@/api/statisticsApi'
+
+// ─── Label maps ─────────────────────────────────────────────────────────────
+
+// Trạng thái đơn hàng
+const ORDER_STATUS_LABELS = {
+    PENDING: 'Chờ xác nhận',
+    PENDING_PAYMENT: 'Chờ thanh toán',
+    CONFIRMED: 'Đã xác nhận',
+    PROCESSING: 'Đang xử lý',
+    SHIPPING: 'Đang giao hàng',
+    SHIPPED: 'Đã giao hàng',
+    DELIVERED: 'Đã nhận hàng',
+    COMPLETED: 'Hoàn thành',
+    CANCELLED: 'Đã hủy',
+    RETURNED: 'Đã trả hàng',
+    REFUNDED: 'Đã hoàn tiền',
+    FAILED: 'Thất bại',
+    OFFLINE: 'Tại quầy',
+}
+
+// Trạng thái thanh toán
+const PAYMENT_STATUS_LABELS = {
+    PAID: 'Đã thanh toán',
+    UNPAID: 'Chưa thanh toán',
+    PENDING: 'Chờ thanh toán',
+    PENDING_PAYMENT: 'Chờ thanh toán',
+    FAILED: 'Thất bại',
+    REFUNDED: 'Đã hoàn tiền',
+    CANCELLED: 'Đã hủy',
+    // Trường hợp API đã trả về tiếng Việt — giữ nguyên
+    'Đã thanh toán': 'Đã thanh toán',
+    'Chờ thanh toán': 'Chờ thanh toán',
+    'Chưa thanh toán': 'Chưa thanh toán',
+}
+
+// Trạng thái tài khoản
+const ACCOUNT_STATUS_LABELS = {
+    ACTIVE: 'Đang hoạt động',
+    INACTIVE: 'Không hoạt động',
+    BANNED: 'Bị cấm',
+    LOCKED: 'Bị khóa',
+    PENDING: 'Chờ xác minh',
+    UNVERIFIED: 'Chưa xác minh',
+}
+
+// Phương thức thanh toán
+const PAYMENT_METHOD_LABELS = {
+    CASH: 'Tiền mặt',
+    BANKING: 'Chuyển khoản',
+    CARD: 'Thẻ',
+    MOMO: 'MoMo',
+    VNPAY: 'VNPay',
+    ZALOPAY: 'ZaloPay',
+    COD: 'Thanh toán khi nhận',
+}
+
+const translateOrderStatus = (key) => ORDER_STATUS_LABELS[key] || key
+const translatePaymentStatus = (key) => PAYMENT_STATUS_LABELS[key] || key
+const translateAccountStatus = (key) => ACCOUNT_STATUS_LABELS[key] || key
+const translatePaymentMethod = (key) => PAYMENT_METHOD_LABELS[key] || key
+
+// Map object keys sang tiếng Việt, giữ nguyên value
+const translateKeys = (obj, labelMap) => {
+    if (!obj) return {}
+    return Object.fromEntries(
+        Object.entries(obj).map(([k, v]) => [labelMap[k] || k, v])
+    )
+}
+
+// Color cho payment status chips
+const paymentStatusColor = (status) => {
+    const normalized = String(status).toUpperCase()
+    if (['PAID', 'ĐÃ THANH TOÁN'].includes(normalized)) return 'success'
+    if (['PENDING', 'PENDING_PAYMENT', 'CHỜ THANH TOÁN'].includes(normalized)) return 'warning'
+    if (['UNPAID', 'CHƯA THANH TOÁN'].includes(normalized)) return 'orange'
+    if (['FAILED', 'THẤT BẠI', 'CANCELLED', 'ĐÃ HỦY'].includes(normalized)) return 'error'
+    if (['REFUNDED', 'ĐÃ HOÀN TIỀN'].includes(normalized)) return 'info'
+    return 'grey'
+}
 
 // ─── State ─────────────────────────────────────────────────────────────────
 const loading = ref(true)
 const exporting = ref(false)
-const chartGranularity = ref('month')   // 'day' | 'month'
+const chartGranularity = ref('month')
 
 // ─── Time filter ────────────────────────────────────────────────────────────
-const activeTab = ref('month')          // 'today' | 'month' | 'year' | 'all' | 'custom'
+const activeTab = ref('month')
 const customFrom = ref('')
 const customTo = ref('')
 const today = new Date().toISOString().slice(0, 10)
@@ -386,32 +463,23 @@ const timeTabs = [
     { value: 'custom', label: 'Tùy chọn', icon: 'mdi-calendar-range-outline' },
 ]
 
-// Tính dateFrom / dateTo từ tab active
 const getDateRange = (tab) => {
     const now = new Date()
     const pad = (n) => String(n).padStart(2, '0')
     const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
-    if (tab === 'today') {
-        const t = fmt(now)
-        return { dateFrom: t, dateTo: t }
-    }
+    if (tab === 'today') { const t = fmt(now); return { dateFrom: t, dateTo: t } }
     if (tab === 'month') {
         return {
             dateFrom: fmt(new Date(now.getFullYear(), now.getMonth(), 1)),
             dateTo: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
         }
     }
-    if (tab === 'year') {
-        return { dateFrom: `${now.getFullYear()}-01-01`, dateTo: `${now.getFullYear()}-12-31` }
-    }
-    if (tab === 'custom') {
-        return { dateFrom: customFrom.value, dateTo: customTo.value }
-    }
-    return { dateFrom: null, dateTo: null }   // 'all'
+    if (tab === 'year') return { dateFrom: `${now.getFullYear()}-01-01`, dateTo: `${now.getFullYear()}-12-31` }
+    if (tab === 'custom') return { dateFrom: customFrom.value, dateTo: customTo.value }
+    return { dateFrom: null, dateTo: null }
 }
 
-// Label hiển thị kỳ đang xem
 const periodLabel = computed(() => {
     const now = new Date()
     if (activeTab.value === 'today') return `Hôm nay, ${now.toLocaleDateString('vi-VN')}`
@@ -422,14 +490,8 @@ const periodLabel = computed(() => {
     return 'Toàn bộ thời gian'
 })
 
-const selectTab = (val) => {
-    activeTab.value = val
-    if (val !== 'custom') loadStatistics()
-}
-
-const applyCustomRange = () => {
-    if (customFrom.value && customTo.value) loadStatistics()
-}
+const selectTab = (val) => { activeTab.value = val; if (val !== 'custom') loadStatistics() }
+const applyCustomRange = () => { if (customFrom.value && customTo.value) loadStatistics() }
 
 // ─── Stats data ─────────────────────────────────────────────────────────────
 const stats = ref({
@@ -455,6 +517,11 @@ const stats = ref({
     topRatedProduct: null,
     starDistribution: {},
 })
+
+// ─── Translated computed (dùng cho charts & chips) ───────────────────────────
+const ordersByStatusVN = computed(() => translateKeys(stats.value.ordersByStatus, ORDER_STATUS_LABELS))
+const accountStatusCountsVN = computed(() => translateKeys(stats.value.accountStatusCounts, ACCOUNT_STATUS_LABELS))
+const paymentMethodCountsVN = computed(() => translateKeys(stats.value.paymentMethodCounts, PAYMENT_METHOD_LABELS))
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
 const formatCurrency = (value) =>
@@ -497,11 +564,8 @@ const overviewCards = computed(() => [
 ])
 
 // ─── Trend chart ─────────────────────────────────────────────────────────────
-// Chọn nguồn data theo granularity (ngày / tháng)
 const trendData = computed(() => {
-    const src = chartGranularity.value === 'day'
-        ? stats.value.ordersByDay
-        : stats.value.ordersByMonth
+    const src = chartGranularity.value === 'day' ? stats.value.ordersByDay : stats.value.ordersByMonth
     return src || {}
 })
 
@@ -511,13 +575,10 @@ const trendKeys = computed(() =>
 
 const trendSeries = computed(() => {
     const values = trendKeys.value.map(k => Number(trendData.value[k] || 0))
-
-    // Moving average 3 kỳ (fix bug: không dùng cùng data với bar)
     const movingAvg = values.map((_, i) => {
         const slice = values.slice(Math.max(0, i - 2), i + 1)
         return Math.round(slice.reduce((s, v) => s + v, 0) / slice.length)
     })
-
     return [
         { name: 'Đơn hàng', type: 'column', data: values },
         { name: 'TB 3 kỳ trước', type: 'line', data: movingAvg },
@@ -555,33 +616,34 @@ const trendOptions = computed(() => {
 
 // ─── Order status donut ─────────────────────────────────────────────────────
 const orderStatusSeries = computed(() =>
-    Object.values(stats.value.ordersByStatus || {}).map(Number)
+    Object.values(ordersByStatusVN.value).map(Number)
 )
 const orderStatusChartOptions = computed(() => ({
     chart: { type: 'donut', fontFamily: 'inherit' },
-    labels: Object.keys(stats.value.ordersByStatus || {}),
-    colors: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+    labels: Object.keys(ordersByStatusVN.value),
+    colors: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'],
     legend: { position: 'bottom', fontSize: '12px' },
     dataLabels: { enabled: false },
     plotOptions: { pie: { donut: { size: '65%' } } },
     tooltip: { y: { formatter: (v) => `${v} đơn` } },
 }))
 
-// Chỉ lấy 5 ngày gần nhất
 const recentOrdersByDay = computed(() => {
     const entries = Object.entries(stats.value.ordersByDay || {})
-    return Object.fromEntries(entries.slice(-5))
+    return Object.fromEntries(
+        entries.sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5)
+    )
 })
 
 // ─── Payment method bar ─────────────────────────────────────────────────────
 const paymentMethodSeries = computed(() => [{
     name: 'Số lượng',
-    data: Object.values(stats.value.paymentMethodCounts || {}).map(Number),
+    data: Object.values(paymentMethodCountsVN.value).map(Number),
 }])
 const paymentMethodChartOptions = computed(() => ({
     chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
     xaxis: {
-        categories: Object.keys(stats.value.paymentMethodCounts || {}),
+        categories: Object.keys(paymentMethodCountsVN.value),
         labels: { style: { colors: '#94a3b8', fontSize: '11px' } },
         axisBorder: { show: false }, axisTicks: { show: false },
     },
@@ -618,11 +680,11 @@ const topProductsChartOptions = computed(() => ({
 
 // ─── Account status donut ────────────────────────────────────────────────────
 const accountStatusSeries = computed(() =>
-    Object.values(stats.value.accountStatusCounts || {}).map(Number)
+    Object.values(accountStatusCountsVN.value).map(Number)
 )
 const accountStatusChartOptions = computed(() => ({
     chart: { type: 'donut', fontFamily: 'inherit' },
-    labels: Object.keys(stats.value.accountStatusCounts || {}),
+    labels: Object.keys(accountStatusCountsVN.value),
     colors: ['#10b981', '#f59e0b', '#ef4444', '#6366f1'],
     legend: { position: 'bottom', fontSize: '11px' },
     dataLabels: { enabled: false },
@@ -654,16 +716,12 @@ const colorHex = (name) => COLOR_MAP[(name || '').toLowerCase()] || '#94a3b8'
 const loadStatistics = async () => {
     loading.value = true
     try {
-        // Truyền dateFrom / dateTo để API lọc theo kỳ
         const { dateFrom, dateTo } = getDateRange(activeTab.value)
         const params = {}
         if (dateFrom) params.dateFrom = dateFrom
         if (dateTo) params.dateTo = dateTo
-
         const res = await statisticsApi.getDashboard(params)
-        if (res?.data) {
-            stats.value = { ...stats.value, ...res.data }
-        }
+        if (res?.data) stats.value = { ...stats.value, ...res.data }
     } catch (error) {
         console.error('Lỗi tải dữ liệu thống kê:', error)
     } finally {
@@ -691,7 +749,7 @@ const exportStats = async () => {
         `  Giá trị đơn TB    : ${formatCurrency(stats.value.averageOrderValue)}`,
         '',
         '📦 ĐƠN HÀNG THEO TRẠNG THÁI',
-        ...Object.entries(stats.value.ordersByStatus || {}).map(([s, c]) => `  ${s}: ${c}`),
+        ...Object.entries(ordersByStatusVN.value).map(([s, c]) => `  ${s}: ${c}`),
         '',
         '🏆 TOP SẢN PHẨM BÁN CHẠY',
         ...(stats.value.topProducts || []).map((p, i) =>
@@ -699,7 +757,9 @@ const exportStats = async () => {
         '',
         '💳 THANH TOÁN',
         `  Tổng đã thu       : ${formatCurrency(stats.value.totalPaidAmount)}`,
-        ...Object.entries(stats.value.paymentMethodCounts || {}).map(([m, c]) => `  ${m}: ${c} lần`),
+        ...Object.entries(paymentMethodCountsVN.value).map(([m, c]) => `  ${m}: ${c} lần`),
+        ...Object.entries(stats.value.paymentStatusCounts || {}).map(([s, c]) =>
+            `  ${translatePaymentStatus(s)}: ${c}`),
         '',
         '⭐ ĐÁNH GIÁ',
         `  Rating trung bình : ${stats.value.averageRating}`,
@@ -729,7 +789,6 @@ onMounted(loadStatistics)
         linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
 }
 
-/* ── Header ── */
 .page-header {
     display: flex;
     justify-content: space-between;
@@ -768,7 +827,6 @@ onMounted(loadStatistics)
     letter-spacing: 0;
 }
 
-/* ── Filter bar ── */
 .filter-bar {
     background: rgba(255, 255, 255, 0.98) !important;
     border: 1px solid rgba(148, 163, 184, 0.18) !important;
@@ -850,7 +908,6 @@ onMounted(loadStatistics)
     white-space: nowrap;
 }
 
-/* ── Slide-fade transition ── */
 .slide-fade-enter-active {
     transition: all 0.2s ease;
 }
@@ -865,7 +922,6 @@ onMounted(loadStatistics)
     transform: translateY(-6px);
 }
 
-/* ── Cards ── */
 .dashboard-card {
     background: rgba(255, 255, 255, 0.97);
     border: 1px solid rgba(148, 163, 184, 0.15);
@@ -882,7 +938,6 @@ onMounted(loadStatistics)
     height: 100%;
 }
 
-/* ── Summary cards ── */
 .summary-card {
     min-height: 140px;
     display: flex;
@@ -923,7 +978,6 @@ onMounted(loadStatistics)
     align-items: center;
 }
 
-/* ── Sections ── */
 .section-title {
     margin: 0;
     font-size: 17px;
@@ -950,7 +1004,6 @@ onMounted(loadStatistics)
     border-radius: 10px !important;
 }
 
-/* ── Inner boxes ── */
 .inner-box {
     background: #f1f1f1;
     border: 1px solid #e8edf5;
@@ -983,7 +1036,6 @@ onMounted(loadStatistics)
     letter-spacing: -0.5px;
 }
 
-/* ── Table ── */
 .table-wrap {
     overflow-x: auto;
     border-radius: 12px;
@@ -1010,13 +1062,11 @@ onMounted(loadStatistics)
     white-space: nowrap;
 }
 
-/* ── Clean list ── */
 .clean-list {
     background: transparent;
     padding: 0;
 }
 
-/* ── Customer ── */
 .customer-highlight-item {
     display: flex;
     align-items: center;
@@ -1042,7 +1092,6 @@ onMounted(loadStatistics)
     background: rgba(245, 158, 11, 0.1);
 }
 
-/* ── Star distribution ── */
 .rating-score {
     font-size: 52px;
     font-weight: 900;
@@ -1080,7 +1129,6 @@ onMounted(loadStatistics)
     flex-shrink: 0;
 }
 
-/* ── Color dot ── */
 .color-dot {
     width: 12px;
     height: 12px;
@@ -1089,7 +1137,6 @@ onMounted(loadStatistics)
     flex-shrink: 0;
 }
 
-/* ── Chart ── */
 .chart-wrap {
     margin-top: 4px;
 }
@@ -1103,7 +1150,6 @@ onMounted(loadStatistics)
     box-shadow: 0 4px 20px rgba(15, 23, 42, 0.12) !important;
 }
 
-/* ── Responsive ── */
 @media (max-width: 960px) {
     .page-title {
         font-size: 24px;
