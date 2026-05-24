@@ -1,20 +1,10 @@
 <template>
   <v-app :theme="appTheme" :class="['admin-layout', appTheme]">
-    <v-app-bar
-      :color="appTheme === 'dark' ? '#1e1e1e' : 'white'"
-      elevation="1"
-      height="70"
-      class="px-6"
-    >
+    <v-app-bar :color="appTheme === 'dark' ? '#1e1e1e' : 'white'" elevation="1" height="70" class="px-6">
       <div class="d-flex align-center w-100 justify-space-between">
-        <router-link
-          :to="{ name: 'AdminDashboard' }"
-          class="d-flex align-center gap-3 text-decoration-none"
-        >
+        <router-link :to="{ name: 'AdminDashboard' }" class="d-flex align-center gap-3 text-decoration-none">
           <img src="/images/logo1.jpg" alt="DTVD" class="logo-image" />
-          <span class="text-h6 font-weight-bold text-title"
-            >Baseball Cap Shop</span
-          >
+          <span class="text-h6 font-weight-bold text-title">Baseball Cap Shop</span>
         </router-link>
 
         <div class="d-flex align-center gap-4">
@@ -44,19 +34,11 @@
               <!-- Header -->
               <div class="notif-panel-header">
                 <div class="d-flex align-center gap-2">
-                  <v-icon size="16" class="header-icon"
-                    >mdi-bell-ring-outline</v-icon
-                  >
+                  <v-icon size="16" class="header-icon">mdi-bell-ring-outline</v-icon>
                   <span class="header-title">Thông báo</span>
-                  <span v-if="totalUnread > 0" class="unread-chip"
-                    >{{ totalUnread }} mới</span
-                  >
+                  <span v-if="totalUnread > 0" class="unread-chip">{{ totalUnread }} mới</span>
                 </div>
-                <button
-                  class="mark-all-btn"
-                  :disabled="totalUnread === 0"
-                  @click="markAllRead"
-                >
+                <button class="mark-all-btn" :disabled="totalUnread === 0" @click="markAllRead">
                   <v-icon size="12">mdi-check-all</v-icon>
                   Đánh dấu đã đọc
                 </button>
@@ -64,23 +46,16 @@
 
               <!-- Tabs -->
               <div class="notif-tab-bar">
-                <button
-                  v-for="tab in notifTabs"
-                  :key="tab.value"
-                  :class="['notif-tab', notifTab === tab.value && 'active']"
-                  @click="notifTab = tab.value"
-                >
+                <button v-for="tab in notifTabs" :key="tab.value"
+                  :class="['notif-tab', notifTab === tab.value && 'active']" @click="notifTab = tab.value">
                   <v-icon v-if="tab.icon" size="12">{{ tab.icon }}</v-icon>
                   {{ tab.label }}
-                  <span
-                    v-if="tab.count > 0"
-                    :class="[
-                      'tab-badge',
-                      tab.value === 'stock'
-                        ? 'tab-badge--warn'
-                        : 'tab-badge--danger',
-                    ]"
-                  >
+                  <span v-if="tab.count > 0" :class="[
+                    'tab-badge',
+                    tab.value === 'stock'
+                      ? 'tab-badge--warn'
+                      : 'tab-badge--danger',
+                  ]">
                     {{ tab.count }}
                   </span>
                 </button>
@@ -89,12 +64,8 @@
               <!-- List -->
               <div class="notif-list">
                 <template v-if="filteredNotifs.length">
-                  <div
-                    v-for="n in filteredNotifs"
-                    :key="n.id"
-                    :class="['notif-item', isUnread(n) && 'notif-item--unread']"
-                    @click="handleNotifClick(n)"
-                  >
+                  <div v-for="n in filteredNotifs" :key="n.id"
+                    :class="['notif-item', isUnread(n) && 'notif-item--unread']" @click="handleNotifClick(n)">
                     <div :class="['notif-icon-wrap', `notif-icon--${n.type}`]">
                       <v-icon size="16">{{ n.icon }}</v-icon>
                     </div>
@@ -107,11 +78,8 @@
                   </div>
                 </template>
                 <div v-else class="notif-empty">
-                  <v-icon
-                    size="32"
-                    style="color: rgba(201, 169, 130, 0.2); margin-bottom: 8px"
-                    >mdi-bell-sleep-outline</v-icon
-                  >
+                  <v-icon size="32"
+                    style="color: rgba(201, 169, 130, 0.2); margin-bottom: 8px">mdi-bell-sleep-outline</v-icon>
                   <p>Không có thông báo</p>
                 </div>
               </div>
@@ -131,17 +99,12 @@
             <template #activator="{ props }">
               <v-btn v-bind="props" icon size="large">
                 <v-avatar v-if="userAvatar" size="40" :image="userAvatar" />
-                <v-icon v-else size="40" color="primary"
-                  >mdi-account-circle</v-icon
-                >
+                <v-icon v-else size="40" color="primary">mdi-account-circle</v-icon>
               </v-btn>
             </template>
 
             <v-list density="compact">
-              <v-list-item
-                :title="`${t('common.hello')}, ${username || t('common.admin')}`"
-                disabled
-              />
+              <v-list-item :title="`${t('common.hello')}, ${username || t('common.admin')}`" disabled />
               <v-divider />
               <v-list-item :title="t('common.setting')" />
               <v-divider />
@@ -154,125 +117,56 @@
 
     <v-main class="layout-main">
       <v-container fluid class="d-flex pa-0">
-        <v-navigation-drawer
-          v-model="drawer"
-          :permanent="true"
-          width="250"
-          class="layout-drawer"
-          elevation="1"
-        >
+        <v-navigation-drawer v-model="drawer" :permanent="true" width="250" class="layout-drawer" elevation="1">
           <v-list density="compact" nav>
-            <v-list-item
-              :to="{ name: 'AdminDashboard' }"
-              :title="t('common.adminHome')"
-              prepend-icon="mdi-home"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'AdminDashboard' }" :title="t('common.adminHome')" prepend-icon="mdi-home"
+              active-color="primary" />
 
             <v-list-group value="products">
               <template #activator="{ props }">
-                <v-list-item
-                  v-bind="props"
-                  :title="t('common.productList')"
-                  prepend-icon="mdi-format-list-bulleted"
-                />
+                <v-list-item v-bind="props" :title="t('common.productList')" prepend-icon="mdi-format-list-bulleted" />
               </template>
 
-              <v-list-item
-                :to="{ name: 'AdminProducts' }"
-                title="Sản phẩm"
-                prepend-icon="mdi-package-variant"
-                active-color="primary"
-              />
+              <v-list-item :to="{ name: 'AdminProducts' }" title="Sản phẩm" prepend-icon="mdi-package-variant"
+                active-color="primary" />
 
-              <v-list-item
-                :to="{ name: 'AdminBrand' }"
-                :title="t('common.brand')"
-                prepend-icon="mdi-tag"
-              />
+              <v-list-item :to="{ name: 'AdminBrand' }" :title="t('common.brand')" prepend-icon="mdi-tag" />
 
-              <v-list-item
-                :to="{ name: 'AdminMaterial' }"
-                :title="t('common.material')"
-                prepend-icon="mdi-texture"
-              />
+              <v-list-item :to="{ name: 'AdminMaterial' }" :title="t('common.material')" prepend-icon="mdi-texture" />
 
-              <v-list-item
-                :to="{ name: 'AdminColor' }"
-                :title="t('common.color')"
-                prepend-icon="mdi-palette"
-              />
+              <v-list-item :to="{ name: 'AdminColor' }" :title="t('common.color')" prepend-icon="mdi-palette" />
 
-              <v-list-item
-                :to="{ name: 'AdminSize' }"
-                :title="t('common.size')"
-                prepend-icon="mdi-resize"
-              />
+              <v-list-item :to="{ name: 'AdminSize' }" :title="t('common.size')" prepend-icon="mdi-resize" />
             </v-list-group>
 
-            <v-list-item
-              :to="{ name: 'AdminAccounts' }"
-              :title="t('common.accountList')"
-              prepend-icon="mdi-account-multiple"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'AdminAccounts' }" :title="t('common.accountList')"
+              prepend-icon="mdi-account-multiple" active-color="primary" />
 
-            <v-list-item
-              :to="{ name: 'DiscountManager' }"
-              :title="t('common.discountManager')"
-              prepend-icon="mdi-percent"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'DiscountManager' }" :title="t('common.discountManager')"
+              prepend-icon="mdi-percent" active-color="primary" />
 
-            <v-list-item
-              :to="{ name: 'DiscountProduct' }"
-              :title="t('common.discountProduct')"
-              prepend-icon="mdi-sale"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'DiscountProduct' }" :title="t('common.discountProduct')" prepend-icon="mdi-sale"
+              active-color="primary" />
 
-            <v-list-item
-              :to="{ name: 'Statistics' }"
-              :title="t('common.statistics')"
-              prepend-icon="mdi-chart-box"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'Statistics' }" :title="t('common.statistics')" prepend-icon="mdi-chart-box"
+              active-color="primary" />
 
-            <v-list-item
-              :to="{ name: 'AdminPayments' }"
-              :title="t('common.paymentConfirm')"
-              prepend-icon="mdi-cash-check"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'AdminPayments' }" :title="t('common.paymentConfirm')"
+              prepend-icon="mdi-cash-check" active-color="primary" />
 
-            <v-list-item
-              :to="{ name: 'AdminReturnOrder' }"
-              title="Trả hàng"
-              prepend-icon="mdi-keyboard-return"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'AdminReturnOrder' }" title="Trả hàng" prepend-icon="mdi-keyboard-return"
+              active-color="primary" />
 
-            <v-list-item
-              :to="{ name: 'AdminPosSale' }"
-              :title="t('common.posSale')"
-              prepend-icon="mdi-cash-register"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'AdminPosSale' }" :title="t('common.posSale')" prepend-icon="mdi-cash-register"
+              active-color="primary" />
 
-            <v-list-item
-              :to="{ name: 'AdminStaffReport' }"
-              :title="t('common.staffReport')"
-              prepend-icon="mdi-account-group"
-            />
+            <v-list-item :to="{ name: 'AdminStaffReport' }" :title="t('common.staffReport')"
+              prepend-icon="mdi-account-group" />
 
             <v-divider class="my-2" />
 
-            <v-list-item
-              :to="{ name: 'Home' }"
-              :title="t('common.backToStore')"
-              prepend-icon="mdi-store"
-              active-color="primary"
-            />
+            <v-list-item :to="{ name: 'Home' }" :title="t('common.backToStore')" prepend-icon="mdi-store"
+              active-color="primary" />
           </v-list>
         </v-navigation-drawer>
 
@@ -312,6 +206,7 @@ interface NotifItem {
   title: string;
   subtitle: string;
   time: string;
+  timestamp: number; // ✅ Thêm field timestamp để sort chính xác
   route: string;
   icon: string;
   unread: boolean;
@@ -396,6 +291,13 @@ const formatTimeAgo = (dateStr: string): string => {
   return `${Math.floor(hours / 24)} ngày trước`;
 };
 
+// ✅ Chuyển dateStr thành timestamp số để sort
+const toTimestamp = (dateStr: string): number => {
+  if (!dateStr) return Date.now();
+  const t = new Date(dateStr).getTime();
+  return isNaN(t) ? Date.now() : t;
+};
+
 // ─── Load user info ───────────────────────────────────────────────────────────
 const loadUserInfo = async () => {
   try {
@@ -453,27 +355,35 @@ const loadNotifications = async () => {
       const ordersRes = await paymentApi.getAllOrders(token);
       const orders: any[] = ordersRes.data || [];
 
-      // ✅ Log để xem status thực tế — xóa sau khi fix xong
       console.log("[DEBUG] Order statuses:", [
         ...new Set(orders.map((o: any) => o.status)),
       ]);
 
       // Lọc đơn mới đặt trong 7 ngày gần đây
       const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      const newOrders = orders.filter((o: any) => {
-        const created = new Date(o.createdAt || o.orderDate || 0).getTime();
-        return created > sevenDaysAgo;
-      });
+      const newOrders = orders
+        .filter((o: any) => {
+          const created = new Date(o.createdAt || o.orderDate || 0).getTime();
+          return created > sevenDaysAgo;
+        })
+        // ✅ Sắp xếp đơn mới nhất lên đầu
+        .sort((a: any, b: any) => {
+          const ta = new Date(a.createdAt || a.orderDate || 0).getTime();
+          const tb = new Date(b.createdAt || b.orderDate || 0).getTime();
+          return tb - ta;
+        });
 
       newOrderCount.value = newOrders.length;
 
       newOrders.slice(0, 5).forEach((o: any) => {
+        const dateStr = o.createdAt || o.orderDate || "";
         items.push({
           id: `order-${o.id || o.orderId}`,
           type: "order",
           title: `Đơn hàng mới #${o.id || o.orderId}`,
           subtitle: `${o.customerName || o.receiverName || o.accountName || "Khách hàng"} — ${Number(o.totalAmount || o.total || 0).toLocaleString("vi-VN")} ₫`,
-          time: formatTimeAgo(o.createdAt || o.orderDate),
+          time: formatTimeAgo(dateStr),
+          timestamp: toTimestamp(dateStr), // ✅
           route: "AdminPayments",
           icon: "mdi-cart-plus",
           unread: true,
@@ -481,23 +391,32 @@ const loadNotifications = async () => {
       });
 
       // Đơn trả hàng
-      const returnOrders = orders.filter((o: any) => {
-        const s = (o.status || "").toUpperCase();
-        return (
-          s.includes("RETURN") ||
-          s.includes("TRẢ") ||
-          s.includes("HOÀN") ||
-          s === "REFUND"
-        );
-      });
+      const returnOrders = orders
+        .filter((o: any) => {
+          const s = (o.status || "").toUpperCase();
+          return (
+            s.includes("RETURN") ||
+            s.includes("TRẢ") ||
+            s.includes("HOÀN") ||
+            s === "REFUND"
+          );
+        })
+        .sort((a: any, b: any) => {
+          const ta = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const tb = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return tb - ta;
+        });
+
       returnOrderCount.value = returnOrders.length;
       returnOrders.slice(0, 3).forEach((o: any) => {
+        const dateStr = o.updatedAt || o.createdAt || "";
         items.push({
           id: `return-${o.id || o.orderId}`,
           type: "return",
           title: `Yêu cầu trả hàng #${o.id || o.orderId}`,
           subtitle: o.returnReason || o.note || "Khách yêu cầu trả hàng",
-          time: formatTimeAgo(o.updatedAt || o.createdAt),
+          time: formatTimeAgo(dateStr),
+          timestamp: toTimestamp(dateStr), // ✅
           route: "AdminReturnOrder",
           icon: "mdi-keyboard-return",
           unread: true,
@@ -515,10 +434,8 @@ const loadNotifications = async () => {
         ? raw
         : raw?.content || raw?.data || [];
 
-      // ✅ Log để xem structure thực tế
       console.log("[DEBUG] Product sample:", products[0]);
 
-      // Tính tổng tồn kho: ưu tiên mảng productColors, fallback field trực tiếp
       const getQty = (p: any): number => {
         if (Array.isArray(p.productColors) && p.productColors.length > 0) {
           return p.productColors.reduce(
@@ -539,7 +456,7 @@ const loadNotifications = async () => {
         );
       };
 
-      const LOW_THRESHOLD = 10; // ✅ ngưỡng cảnh báo, chỉnh tùy ý
+      const LOW_THRESHOLD = 10;
       const outOfStock = products.filter((p) => getQty(p) === 0);
       const lowStock = products.filter(
         (p) => getQty(p) > 0 && getQty(p) <= LOW_THRESHOLD,
@@ -547,6 +464,8 @@ const loadNotifications = async () => {
 
       outOfStockCount.value = outOfStock.length;
       lowStockCount.value = lowStock.length;
+
+      // ✅ Hết hàng (ưu tiên hơn) rồi đến sắp hết, mỗi nhóm lấy tối đa
       [...outOfStock.slice(0, 3), ...lowStock.slice(0, 4)].forEach((p: any) => {
         const qty = getQty(p);
         const isOut = qty === 0;
@@ -559,6 +478,7 @@ const loadNotifications = async () => {
             ? "Còn 0 sản phẩm — cần nhập hàng ngay"
             : `Còn ${qty} sản phẩm — cần nhập thêm`,
           time: "Vừa cập nhật",
+          timestamp: Date.now(), // ✅ stock luôn là "mới nhất"
           route: "AdminProducts",
           icon: isOut
             ? "mdi-package-variant-closed"
@@ -573,7 +493,6 @@ const loadNotifications = async () => {
     // ── 3. Đánh giá MỚI (trong 7 ngày) ──────────────────────────────────
     try {
       let reviews: any[] = [];
-      // Thử lần lượt các endpoint
       for (const url of [
         "http://localhost:8080/api/review",
         "http://localhost:8080/api/reviews",
@@ -595,12 +514,18 @@ const loadNotifications = async () => {
         }
       }
 
-      // Chỉ lấy đánh giá trong 7 ngày gần đây
       const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      const newReviews = reviews.filter((r: any) => {
-        const created = new Date(r.createdAt || r.ngayTao || 0).getTime();
-        return created > sevenDaysAgo;
-      });
+      const newReviews = reviews
+        .filter((r: any) => {
+          const created = new Date(r.createdAt || r.ngayTao || 0).getTime();
+          return created > sevenDaysAgo;
+        })
+        // ✅ Mới nhất lên đầu
+        .sort((a: any, b: any) => {
+          const ta = new Date(a.createdAt || a.ngayTao || 0).getTime();
+          const tb = new Date(b.createdAt || b.ngayTao || 0).getTime();
+          return tb - ta;
+        });
 
       reviewCount.value = newReviews.length;
 
@@ -612,12 +537,14 @@ const loadNotifications = async () => {
         const snippet = comment.slice(0, 45);
         const productName =
           r.productName || r.product?.name || r.tenSanPham || "Sản phẩm";
+        const dateStr = r.createdAt || r.ngayTao || "";
         items.push({
           id: `review-${r.id || r.reviewId}`,
           type: "review",
           title: `Đánh giá mới: ${productName}`,
           subtitle: `${stars}  "${snippet}${snippet.length === 45 ? "…" : ""}"`,
-          time: formatTimeAgo(r.createdAt || r.ngayTao),
+          time: formatTimeAgo(dateStr),
+          timestamp: toTimestamp(dateStr), // ✅
           route: "AdminProducts",
           icon: "mdi-star-outline",
           unread: true,
@@ -650,24 +577,32 @@ const loadNotifications = async () => {
         }
       }
 
-      // Lấy tài khoản đăng ký trong 24h
       const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-      const newAccounts = allAccounts.filter((a: any) => {
-        const created = new Date(
-          a.createdAt || a.ngayTao || a.registeredAt || 0,
-        ).getTime();
-        return created > oneDayAgo;
-      });
+      const newAccounts = allAccounts
+        .filter((a: any) => {
+          const created = new Date(
+            a.createdAt || a.ngayTao || a.registeredAt || 0,
+          ).getTime();
+          return created > oneDayAgo;
+        })
+        // ✅ Mới nhất lên đầu
+        .sort((a: any, b: any) => {
+          const ta = new Date(a.createdAt || a.ngayTao || a.registeredAt || 0).getTime();
+          const tb = new Date(b.createdAt || b.ngayTao || b.registeredAt || 0).getTime();
+          return tb - ta;
+        });
 
       newAccountCount.value = newAccounts.length;
 
       newAccounts.slice(0, 3).forEach((a: any) => {
+        const dateStr = a.createdAt || a.ngayTao || a.registeredAt || "";
         items.push({
           id: `account-${a.id || a.accountId}`,
           type: "account",
           title: "Tài khoản mới đăng ký",
           subtitle: `${a.email || a.username || "Người dùng"} — vừa đăng ký`,
-          time: formatTimeAgo(a.createdAt || a.ngayTao),
+          time: formatTimeAgo(dateStr),
+          timestamp: toTimestamp(dateStr), // ✅
           route: "AdminAccounts",
           icon: "mdi-account-plus-outline",
           unread: true,
@@ -679,10 +614,14 @@ const loadNotifications = async () => {
       newAccountCount.value = 0;
     }
 
-    // ── Sắp xếp: unread lên đầu, sau đó theo thời gian ───────────────────
+    // ── ✅ Sắp xếp: unread lên đầu, cùng trạng thái thì mới nhất lên đầu ─
     notifItems.value = items.sort((a, b) => {
-      if (isUnread(a) !== isUnread(b)) return isUnread(b) ? 1 : -1;
-      return 0;
+      const aUnread = isUnread(a);
+      const bUnread = isUnread(b);
+      // Unread luôn lên trên đã đọc
+      if (aUnread !== bUnread) return aUnread ? -1 : 1;
+      // Cùng trạng thái → timestamp lớn hơn (mới hơn) lên đầu
+      return b.timestamp - a.timestamp;
     });
 
     console.log(
@@ -907,11 +846,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px 12px;
-  background: linear-gradient(
-    180deg,
-    rgba(201, 169, 130, 0.06) 0%,
-    transparent 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(201, 169, 130, 0.06) 0%,
+      transparent 100%);
   border-bottom: 1px solid var(--gold-border);
 }
 
