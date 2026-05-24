@@ -286,7 +286,9 @@ const validationRules = {
   discountValue: [
     (v) => {
       if (v === null || v === undefined || v === '') return 'Giá trị giảm không được để trống'
-      if (Number(v) <= 0) return 'Giá trị giảm phải lớn hơn 0'
+      const numVal = Number(v)
+      if (numVal <= 0) return 'Giá trị giảm phải lớn hơn 0'
+      if (form.value.discountType === 'percent' && numVal > 100) return 'Phần trăm giảm không được vượt quá 100%'
       return true
     },
   ],
@@ -526,9 +528,15 @@ const saveDiscount = async () => {
   }
 
   // Validate maxDiscountValue for percent type
-  if (form.value.discountType === 'percent' && Number(form.value.maxDiscountValue) < Number(form.value.discountValue)) {
-    showMessage('Giảm tối đa phải >= giá trị giảm cho loại phần trăm', 'warning')
-    return
+  if (form.value.discountType === 'percent') {
+    if (Number(form.value.discountValue) > 100) {
+      showMessage('Phần trăm giảm không được vượt quá 100%', 'warning')
+      return
+    }
+    if (Number(form.value.maxDiscountValue) < Number(form.value.discountValue)) {
+      showMessage('Giảm tối đa phải >= giá trị giảm cho loại phần trăm', 'warning')
+      return
+    }
   }
 
   // Check for duplicate coupon code (only when creating new)
