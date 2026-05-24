@@ -14,8 +14,7 @@
           <v-row>
             <v-col cols="12">
               <v-text-field v-model="form.username" label="Tên đăng nhập" placeholder="your_username"
-                prepend-inner-icon="mdi-account" variant="outlined" hide-details="auto" required
-                class="glass-field" />
+                prepend-inner-icon="mdi-account" variant="outlined" hide-details="auto" required class="glass-field" />
             </v-col>
 
             <v-col cols="12" class="pt-4">
