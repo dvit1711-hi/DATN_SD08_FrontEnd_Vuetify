@@ -129,7 +129,7 @@
                                     </div>
                                     <div class="product-price-row">
                                         <span class="price-main">{{ formatCurrency(product.finalPrice || product.price)
-                                        }}</span>
+                                            }}</span>
                                         <span v-if="product.discounted" class="price-old">{{
                                             formatCurrency(product.originalPrice) }}</span>
                                     </div>
@@ -171,7 +171,7 @@
                         <div class="sc-card-icon">🕐</div>
                         <span class="sc-card-title">Đơn chờ</span>
                         <span class="sc-chip sc-chip-primary" style="margin-left:6px">{{ pendingOrders.length
-                        }}/10</span>
+                            }}/10</span>
                         <button class="sc-btn sc-btn-primary sc-btn-xs ml-auto" :disabled="pendingOrders.length >= 10"
                             @click="createPendingOrder">+ Tạo đơn</button>
                     </div>
@@ -227,7 +227,7 @@
                             <div class="meta-pill">
                                 <span class="meta-pill-label">Thanh toán</span>
                                 <span class="meta-pill-value">{{ getPaymentMethodLabel(currentOrder?.paymentMethod)
-                                }}</span>
+                                    }}</span>
                             </div>
                         </div>
 
@@ -243,7 +243,7 @@
                                 <div class="order-item-info">
                                     <div class="order-item-name">{{ getItemProductName(item) }}</div>
                                     <div class="order-item-sub">{{ getItemColorName(item) }} / {{ getItemSizeName(item)
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="qty-ctrl">
                                     <button class="qty-btn"
@@ -334,6 +334,19 @@
                             </div>
                         </div>
 
+                        <!-- ── Banking pending callout (NEW) ── -->
+                        <div v-if="isBankingPending" class="banking-pending-callout">
+                            <div class="banking-pending-left">
+                                <v-icon size="16" color="warning">mdi-clock-outline</v-icon>
+                                <span>Đơn đang chờ xác nhận chuyển khoản</span>
+                            </div>
+                            <button class="sc-btn sc-btn-primary sc-btn-xs" :disabled="loading"
+                                @click="reopenBankingDialog">
+                                <v-icon size="13">mdi-bank-transfer</v-icon>
+                                Xem & Xác nhận
+                            </button>
+                        </div>
+
                         <div v-if="checkoutForm.method === 'CASH'" class="sc-field mb-2">
                             <label class="sc-label">Tiền khách đưa</label>
                             <v-text-field v-model.number="checkoutForm.cashReceived" type="number"
@@ -370,9 +383,9 @@
                     <div class="banking-info-box">
                         <div class="banking-row"><span>Ngân hàng</span><strong>{{ bankingInfo.bankName }}</strong></div>
                         <div class="banking-row"><span>Số tài khoản</span><strong>{{ bankingInfo.accountNumber
-                        }}</strong></div>
+                                }}</strong></div>
                         <div class="banking-row"><span>Chủ tài khoản</span><strong>{{ bankingInfo.accountName
-                        }}</strong></div>
+                                }}</strong></div>
                         <div class="banking-row"><span>Số tiền</span><strong style="color:#6172f3">{{
                             formatCurrency(bankingInfo.amount) }}</strong></div>
                         <div class="banking-row"><span>Nội dung</span><strong>{{ bankingInfo.transferContent }}</strong>
@@ -540,8 +553,22 @@ const changeAmount = computed(() => {
     const change = Number(checkoutForm.value.cashReceived || 0) - Number(totalAmount.value || 0)
     return change > 0 ? change : 0
 })
+
+// ── NEW: detect đơn đang chờ xác nhận banking ──────────────────────────────
+const isBankingPending = computed(() => {
+    const order = currentOrder.value
+    if (!order || !getCurrentOrderId(order)) return false
+    const status = String(order.status || "").toUpperCase()
+    const method = String(order.paymentMethod || "").toUpperCase()
+    // Hiển thị callout khi đơn đã checkout bằng banking nhưng chưa xác nhận
+    // (status vẫn là PENDING_PAYMENT hoặc UNPAID, method là BANKING)
+    return method === "BANKING" && (status === "PENDING_PAYMENT" || status === "UNPAID")
+})
+
 const canCheckout = computed(() => {
     if (!getCurrentOrderId(currentOrder.value) || !orderItems.value.length) return false
+    // Nếu đang pending banking thì không cho checkout lại
+    if (isBankingPending.value) return false
     if (checkoutForm.value.method === "CASH") return Number(checkoutForm.value.cashReceived || 0) >= Number(totalAmount.value || 0)
     return true
 })
@@ -690,7 +717,6 @@ function openQRScanner() {
 const startScanner = async () => {
     scannerVisible.value = true
     scannerLoading.value = true
-    // Chờ DOM render xong rồi mới truy cập video element
     setTimeout(async () => {
         try {
             const videoElement = document.getElementById("barcode-video")
@@ -708,7 +734,6 @@ const startScanner = async () => {
         } catch (error) {
             console.error(error)
             scannerLoading.value = false
-            // Bỏ qua lỗi khi người dùng chủ động đóng dialog (NotFoundException khi reset)
             if (qrScannerDialog.value) {
                 showMessage("Không nhận diện được mã QR", "error")
             }
@@ -862,10 +887,31 @@ async function handleCheckout() {
         })
         if (checkoutForm.value.method === "CASH") { currentOrder.value = data; printReceipt(data); await loadPendingOrders(); showMessage("Thanh toán thành công"); return }
         if (checkoutForm.value.method === "BANKING") {
-            currentOrder.value = data; const bankRes = await posApi.getMBBankInfo(orderId); bankingInfo.value = bankRes.data; bankingDialog.value = true; showMessage("Đã tạo yêu cầu chuyển khoản"); return
+            currentOrder.value = data
+            const bankRes = await posApi.getMBBankInfo(orderId)
+            bankingInfo.value = bankRes.data
+            bankingDialog.value = true
+            showMessage("Đã tạo yêu cầu chuyển khoản")
+            return
         }
     } catch (e) { showMessage(e.response?.data?.message || "Thanh toán thất bại", "error") }
     finally { loading.value = false }
+}
+
+// ── NEW: Mở lại dialog banking khi đơn đang chờ xác nhận ──────────────────
+async function reopenBankingDialog() {
+    try {
+        const orderId = getCurrentOrderId(currentOrder.value)
+        if (!orderId) { showMessage("Không tìm thấy đơn", "warning"); return }
+        loading.value = true
+        const bankRes = await posApi.getMBBankInfo(orderId)
+        bankingInfo.value = bankRes.data
+        bankingDialog.value = true
+    } catch (e) {
+        showMessage(e.response?.data?.message || "Không lấy được thông tin chuyển khoản", "error")
+    } finally {
+        loading.value = false
+    }
 }
 
 async function confirmBankingPayment() {
@@ -1575,6 +1621,28 @@ onMounted(async () => { await loadProducts(); await loadPendingOrders() })
     background: var(--primary-bg);
     color: var(--primary);
     box-shadow: 0 0 0 3px rgba(97, 114, 243, .1);
+}
+
+/* ── Banking pending callout (NEW) ───────────────── */
+.banking-pending-callout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--amber-bg);
+    border: 1.5px solid #fec84b;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 12px;
+}
+
+.banking-pending-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--amber);
 }
 
 /* ── Change callout ───────────────────────────── */
