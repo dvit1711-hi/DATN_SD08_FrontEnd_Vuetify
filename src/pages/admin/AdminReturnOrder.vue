@@ -12,7 +12,7 @@
         <v-btn color="deep-orange" prepend-icon="mdi-magnify" :loading="searching" @click="searchOrder">
           Tìm kiếm
         </v-btn>
-        <v-btn color="indigo" prepend-icon="mdi-qrcode-scan" @click="startScanner">
+        <v-btn color="indigo" prepend-icon="mdi-qrcode-scan" @click="openScanner">
           Quét mã
         </v-btn>
       </div>
@@ -222,22 +222,49 @@
     </template>
   </v-container>
 
-  <v-dialog v-model="scannerVisible" max-width="700">
+  <!-- QR Scanner Dialog -->
+  <v-dialog v-model="qrScannerDialog" max-width="420" @update:model-value="v => { if (!v) stopScanner() }">
     <v-card rounded="xl">
-      <v-card-title class="d-flex justify-space-between align-center">
+      <v-card-title class="d-flex align-center ga-2 pb-2">
+        <v-icon color="primary" size="20">mdi-qrcode-scan</v-icon>
         <span>Quét mã hóa đơn</span>
-
-        <v-btn icon="mdi-close" variant="text" @click="stopScanner" />
+        <v-spacer />
+        <v-btn icon="mdi-close" variant="text" size="small" @click="stopScanner" />
       </v-card-title>
 
       <v-card-text>
-        <div class="scanner-wrapper">
+        <div v-if="scannerVisible" class="scanner-wrapper">
           <video id="barcode-video" class="scanner-video" autoplay muted playsinline></video>
           <div v-if="scannerLoading" class="scanner-loading">
-            Đang mở camera...
+            <div class="spinner"></div>
+            <p>Đang mở camera...</p>
           </div>
+          <div class="qr-scan-line" v-if="!scannerLoading"></div>
+        </div>
+
+        <p v-if="scannerVisible && !scannerLoading" class="mt-3 text-center text-caption text-grey-darken-1">
+          Hướng camera vào mã QR hoặc barcode hóa đơn
+        </p>
+
+        <div class="mt-4">
+          <v-divider class="my-2" />
+          <v-text-field 
+            v-model="qrInputValue" 
+            placeholder="Nhập mã hóa đơn..." 
+            density="compact"
+            variant="outlined"
+            prepend-inner-icon="mdi-barcode"
+            hide-details
+            @keyup.enter="handleQRScan" 
+          />
+          <v-btn color="primary" variant="flat" block class="mt-3" @click="handleQRScan">Tìm</v-btn>
         </div>
       </v-card-text>
+
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="stopScanner">Đóng</v-btn>
+      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
@@ -261,6 +288,8 @@ const messageType = ref("success");
 
 const scannerVisible = ref(false);
 const scannerLoading = ref(false);
+const qrScannerDialog = ref(false);
+const qrInputValue = ref("");
 
 const codeReader = new BrowserMultiFormatReader();
 let controls = null;
@@ -491,6 +520,13 @@ const submitReturn = async () => {
     submitting.value = false;
   }
 };
+function openScanner() {
+  qrInputValue.value = "";
+  qrScannerDialog.value = true;
+  scannerVisible.value = false;
+  startScanner();
+}
+
 const startScanner = async () => {
   scannerVisible.value = true;
   scannerLoading.value = true;
@@ -498,48 +534,41 @@ const startScanner = async () => {
   setTimeout(async () => {
     try {
       const videoElement = document.getElementById("barcode-video");
-
-      // camera đã mount xong
+      if (!videoElement) { scannerLoading.value = false; return }
       scannerLoading.value = false;
-
-      const result = await codeReader.decodeOnceFromVideoDevice(
-        undefined,
-        videoElement
-      );
-
+      const result = await codeReader.decodeOnceFromVideoDevice(undefined, videoElement);
       if (result) {
-        invoiceCode.value = result.getText();
-
-        showMessage(
-          `Đã quét: ${result.getText()}`,
-          "success"
-        );
-
+        const text = result.getText();
+        invoiceCode.value = text;
+        qrInputValue.value = text;
+        showMessage(`Đã quét: ${text}`, "success");
         stopScanner();
-
         searchOrder();
       }
     } catch (error) {
       console.error(error);
-
       scannerLoading.value = false;
-
-      showMessage(
-        "Không nhận diện được mã QR",
-        "error"
-      );
+      if (qrScannerDialog.value) {
+        showMessage("Không nhận diện được mã QR", "error");
+      }
     }
   }, 300);
 };
 const stopScanner = () => {
-  try {
-    codeReader.reset();
-  } catch (e) {
-    console.log(e);
-  }
-
+  try { codeReader.reset() } catch (_) { }
+  qrScannerDialog.value = false;
   scannerVisible.value = false;
-};
+  scannerLoading.value = false;
+}
+
+function handleQRScan() {
+  const qrValue = String(qrInputValue.value || "").trim();
+  if (!qrValue) { showMessage("Vui lòng nhập hoặc quét mã QR", "warning"); return }
+  invoiceCode.value = qrValue;
+  qrInputValue.value = "";
+  stopScanner();
+  searchOrder();
+}
 
 onBeforeUnmount(() => {
   stopScanner();
@@ -656,11 +685,43 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   color: white;
   font-size: 18px;
   background: rgba(0, 0, 0, 0.45);
+  gap: 12px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.qr-scan-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6172f3, transparent);
+  animation: qr-scan 2s infinite;
+}
+
+@keyframes qr-scan {
+  0% { top: 0; }
+  50% { top: 50%; }
+  100% { top: 100%; }
 }
 
 :deep(.custom-snackbar) {

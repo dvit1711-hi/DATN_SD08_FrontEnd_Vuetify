@@ -128,7 +128,7 @@ const router = createRouter({
         { path: '', redirect: { name: 'StaffPosSale' } },
         { path: 'pos', component: PosSale, name: 'StaffPosSale', meta: { requiresAuth: true, roles: ['ROLE_STAFF' , 'ROLE_ADMIN'] } },
         { path: 'reports', component: StaffReport, name: 'StaffReport', meta: { requiresAuth: true, roles: ['ROLE_STAFF'] } },
-        { path: 'returns', component: AdminReturnOrder, name: 'AdminReturnOrder', meta: { requiresAuth: true, roles: ['ROLE_STAFF' , 'ROLE_ADMIN'] } },
+        { path: 'returns', component: AdminReturnOrder, name: 'StaffReturnOrder', meta: { requiresAuth: true, roles: ['ROLE_STAFF' , 'ROLE_ADMIN'] } },
 
       ],
     },
