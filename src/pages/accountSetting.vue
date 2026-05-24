@@ -48,7 +48,7 @@
                             <VCol cols="12" md="6">
                                 <VTextField label="Số điện thoại" v-model="form.phoneNumber"
                                     :error-messages="errors.phoneNumber" @blur="validateField('phoneNumber')"
-                                    @input="clearError('phoneNumber')" maxlength="11" placeholder="0xxxxxxxxx" />
+                                    @input="clearError('phoneNumber')" maxlength="10" placeholder="0xxxxxxxxx" />
                             </VCol>
 
                             <!-- Số căn / số nhà -->
@@ -170,7 +170,7 @@ const errors = ref({
 })
 
 // ─── Validation rules ────────────────────────────────────────────────────────
-const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[06-9]|8[0-9]|9[0-9])[0-9]{7}$/
+const PHONE_REGEX = /^(0[0-9]{9}|\+84[0-9]{9})$/;
 const POSTAL_REGEX = /^[0-9]{5,6}$/
 const USERNAME_REGEX = /^[a-zA-Z0-9_\.]{3,50}$/
 
@@ -214,11 +214,7 @@ const validationRules = {
         if (!val) return 'Vui lòng chọn Phường / Xã.'
         return ''
     },
-    postalCode: (val) => {
-        if (!val || !val.trim()) return '' // Không bắt buộc
-        if (!POSTAL_REGEX.test(val.trim())) return 'Mã bưu chính phải gồm 5–6 chữ số.'
-        return ''
-    }
+
 }
 
 const validateField = (field) => {
