@@ -1,12 +1,21 @@
 <template>
   <v-container fluid class="py-8 product-create-page">
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      timeout="2500"
-      location="top right"
-    >
-      {{ snackbar.text }}
+    <v-snackbar v-model="snackbar" location="top right" :timeout="2500" content-class="custom-snackbar">
+      <div class="toast-wrapper">
+        <div class="toast-content">
+          <v-icon :color="snackbarColor" size="22">
+            {{ snackbarIcon }}
+          </v-icon>
+
+          <span class="toast-text">
+            {{ message }}
+          </span>
+        </div>
+
+        <v-btn icon="mdi-close" size="x-small" variant="text" @click="snackbar = false" />
+      </div>
+
+      <div class="toast-progress" :class="snackbarColor"></div>
     </v-snackbar>
 
     <!-- Header -->
@@ -35,6 +44,21 @@
       </div>
     </div>
 
+    <!-- ✅ Banner lỗi validate tổng hợp -->
+    <v-alert
+      v-if="validationErrors.length"
+      type="error"
+      variant="tonal"
+      class="mb-4 rounded-xl"
+      closable
+      @click:close="validationErrors = []"
+    >
+      <div class="font-weight-bold mb-1">Vui lòng kiểm tra lại thông tin:</div>
+      <ul class="ps-4">
+        <li v-for="err in validationErrors" :key="err">{{ err }}</li>
+      </ul>
+    </v-alert>
+
     <v-row>
       <!-- LEFT -->
       <v-col cols="12" lg="4">
@@ -47,6 +71,7 @@
           </v-card-title>
           <v-divider />
           <v-card-text class="pa-5">
+            <!-- ✅ Tên sản phẩm với trạng thái lỗi và kiểm tra trùng -->
             <v-text-field
               v-model="form.productName"
               label="Tên sản phẩm *"
@@ -54,8 +79,19 @@
               density="comfortable"
               class="mb-3"
               hide-details="auto"
-              :rules="[(v) => !!v || 'Bắt buộc']"
-            />
+              :error="fieldErrors.productName"
+              :error-messages="
+                fieldErrors.productName ? fieldErrors.productNameMsg : ''
+              "
+              :loading="checkingName"
+              :hint="nameAvailable === true ? '' : ''"
+              @blur="onProductNameBlur"
+              @input="onProductNameInput"
+            >
+              <template v-if="nameAvailable === true" #append-inner>
+                <v-icon color="success" size="18">mdi-check-circle</v-icon>
+              </template>
+            </v-text-field>
             <v-textarea
               v-model="form.description"
               label="Mô tả"
@@ -75,6 +111,11 @@
               density="comfortable"
               class="mb-3"
               hide-details="auto"
+              :error="fieldErrors.brandID"
+              :error-messages="
+                fieldErrors.brandID ? 'Vui lòng chọn thương hiệu' : ''
+              "
+              @update:model-value="fieldErrors.brandID = false"
             />
             <v-autocomplete
               v-model="form.materialID"
@@ -86,11 +127,20 @@
               variant="outlined"
               density="comfortable"
               class="mb-3"
-              hide-details
+              hide-details="auto"
               clearable
               no-filter
               :menu-props="{ maxHeight: 240 }"
-              @update:model-value="handleMaterialChange"
+              :error="fieldErrors.materialID"
+              :error-messages="
+                fieldErrors.materialID ? 'Vui lòng chọn chất liệu' : ''
+              "
+              @update:model-value="
+                (v) => {
+                  handleMaterialChange(v);
+                  fieldErrors.materialID = false;
+                }
+              "
               @click:clear="clearMaterial"
               @keydown.enter.prevent="handleMaterialEnter"
             >
@@ -108,11 +158,9 @@
                     >Thêm mới "{{ materialSearch?.trim() }}"</v-list-item-title
                   >
                 </v-list-item>
-                <v-list-item v-else
-                  ><v-list-item-title
-                    >Không có chất liệu</v-list-item-title
-                  ></v-list-item
-                >
+                <v-list-item v-else>
+                  <v-list-item-title>Không có chất liệu</v-list-item-title>
+                </v-list-item>
               </template>
             </v-autocomplete>
             <v-select
@@ -139,7 +187,16 @@
 
       <!-- RIGHT -->
       <v-col cols="12" lg="8">
-        <v-card class="rounded-xl mb-4" elevation="0" border>
+        <v-card
+          class="rounded-xl mb-4"
+          elevation="0"
+          border
+          :style="
+            fieldErrors.colors || fieldErrors.sizes
+              ? 'border-color: rgb(var(--v-theme-error)) !important'
+              : ''
+          "
+        >
           <v-card-title class="pa-5 pb-3 text-subtitle-1 font-weight-bold">
             <v-icon size="18" class="me-2 text-primary">mdi-palette</v-icon>
             Màu sắc &amp; kích cỡ
@@ -147,7 +204,7 @@
           <v-divider />
           <v-card-text class="pa-5">
             <!-- Colors -->
-            <div class="d-flex align-center gap-2 mb-4 flex-wrap">
+            <div class="d-flex align-center gap-2 mb-2 flex-wrap">
               <span
                 class="text-body-2 font-weight-medium text-red"
                 style="min-width: 80px"
@@ -180,8 +237,9 @@
                       text-overflow: ellipsis;
                       white-space: nowrap;
                     "
-                    >{{ color.colorName }}</span
                   >
+                    {{ color.colorName }}
+                  </span>
                 </div>
                 <v-btn
                   icon
@@ -195,6 +253,15 @@
                 </v-btn>
               </div>
             </div>
+            <!-- ✅ Error hint cho màu -->
+            <div
+              v-if="fieldErrors.colors"
+              class="text-caption text-error mb-3 ms-1"
+            >
+              <v-icon size="12" color="error">mdi-alert-circle</v-icon>
+              Vui lòng chọn ít nhất một màu sắc
+            </div>
+
             <!-- Sizes -->
             <div class="d-flex align-center gap-2 flex-wrap">
               <span
@@ -232,11 +299,32 @@
                 </v-btn>
               </div>
             </div>
+            <!-- ✅ Error hint cho kích cỡ -->
+            <div
+              v-if="fieldErrors.sizes"
+              class="text-caption text-error mt-2 ms-1"
+            >
+              <v-icon size="12" color="error">mdi-alert-circle</v-icon>
+              Vui lòng chọn ít nhất một kích cỡ
+            </div>
           </v-card-text>
         </v-card>
 
         <!-- Variant tables -->
         <div v-if="variantMatrix.length">
+          <!-- ✅ Summary lỗi biến thể -->
+          <v-alert
+            v-if="fieldErrors.variantRows"
+            type="warning"
+            variant="tonal"
+            class="mb-3 rounded-xl"
+            density="compact"
+          >
+            <v-icon size="16" class="me-1">mdi-table-alert</v-icon>
+            Một số biến thể có giá hoặc số lượng không hợp lệ (ô được tô đỏ).
+            Vui lòng kiểm tra lại.
+          </v-alert>
+
           <div
             v-for="colorGroup in variantMatrix"
             :key="colorGroup.colorID"
@@ -249,9 +337,19 @@
                     class="color-dot"
                     :style="{ backgroundColor: colorGroup.colorCode || '#ccc' }"
                   />
-                  <span class="text-subtitle-2 font-weight-bold"
-                    >Danh sách sản phẩm màu {{ colorGroup.colorName }}</span
+                  <span class="text-subtitle-2 font-weight-bold">
+                    Danh sách sản phẩm màu {{ colorGroup.colorName }}
+                  </span>
+                  <!-- ✅ Badge lỗi theo nhóm màu -->
+                  <v-chip
+                    v-if="groupHasError(colorGroup)"
+                    size="x-small"
+                    color="error"
+                    variant="flat"
                   >
+                    <v-icon start size="10">mdi-alert</v-icon>
+                    Có lỗi nhập liệu
+                  </v-chip>
                 </div>
                 <v-btn
                   size="small"
@@ -283,13 +381,14 @@
                       :class="{ 'row-deleted': row.deleted }"
                     >
                       <td>
-                        <span class="text-body-2 font-weight-medium">{{
-                          form.productName || "Sản phẩm"
-                        }}</span>
+                        <span class="text-body-2 font-weight-medium">
+                          {{ form.productName || "Sản phẩm" }}
+                        </span>
                       </td>
                       <td class="text-center">
                         <span class="text-body-2">{{ row.sizeName }}</span>
                       </td>
+                      <!-- ✅ Số lượng với highlight lỗi -->
                       <td>
                         <v-text-field
                           v-model.number="row.stockQuantity"
@@ -299,8 +398,16 @@
                           hide-details
                           style="width: 90px"
                           :disabled="row.deleted"
+                          :error="!row.deleted && row.quantityError"
+                          min="0"
+                          @keypress="onlyNumber"
+                          @input="
+                            row.quantityError = false;
+                            fieldErrors.variantRows = hasAnyRowError();
+                          "
                         />
                       </td>
+                      <!-- ✅ Giá với highlight lỗi -->
                       <td>
                         <v-text-field
                           v-model.number="row.price"
@@ -311,6 +418,13 @@
                           style="width: 170px"
                           suffix="đ"
                           :disabled="row.deleted"
+                          :error="!row.deleted && row.priceError"
+                          min="1"
+                          @keypress="onlyNumber"
+                          @input="
+                            row.priceError = false;
+                            fieldErrors.variantRows = hasAnyRowError();
+                          "
                         />
                       </td>
                       <td class="text-center">
@@ -326,13 +440,12 @@
                           }}</v-icon>
                         </v-btn>
                       </td>
-                      <!-- ── Image cell ── -->
+                      <!-- Image cell -->
                       <td>
                         <div
                           class="image-upload-cell"
                           @click="!row.deleted && openImagePicker(row)"
                         >
-                          <!-- Có ảnh: hiển thị ảnh chính + badge số lượng -->
                           <div
                             v-if="row.imagePreview"
                             class="image-preview-wrapper"
@@ -341,14 +454,12 @@
                               :src="row.imagePreview"
                               class="image-preview-thumb"
                             />
-                            <!-- Badge số lượng ảnh -->
                             <div
                               v-if="row.imageFiles.length > 1"
                               class="img-count-badge"
                             >
                               +{{ row.imageFiles.length - 1 }}
                             </div>
-                            <!-- Nút xóa tất cả -->
                             <v-btn
                               icon
                               size="x-small"
@@ -360,7 +471,6 @@
                               <v-icon size="12">mdi-close</v-icon>
                             </v-btn>
                           </div>
-                          <!-- Chưa có ảnh -->
                           <div
                             v-else
                             class="upload-placeholder"
@@ -477,7 +587,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- ✅ Image Picker Dialog -->
+    <!-- Image Picker Dialog -->
     <ImagePickerDialog
       v-model:open="imagePickerOpen"
       :initial-files="currentRow?.imageFiles ?? []"
@@ -504,16 +614,38 @@ const SIZE_API = `${BASE_URL}/size`;
 
 // ─── State ────────────────────────────────────────────────
 const saving = ref(false);
-const snackbar = ref({ show: false, text: "", color: "success" });
+const snackbar = ref(false);
+const message = ref("");
+const snackbarColor = ref("success");
+const snackbarIcon = ref("mdi-check-circle");
 const brands = ref([]);
 const allColors = ref([]);
 const allSizes = ref([]);
 const materials = ref([]);
 const materialSearch = ref("");
 
+// ✅ Kiểm tra tên trùng
+const checkingName = ref(false);
+const nameAvailable = ref(null); // null = chưa check, true = ok, false = trùng
+let nameCheckTimer = null;
+
+// ✅ Lỗi từng trường (inline highlight)
+const fieldErrors = ref({
+  productName: false,
+  productNameMsg: "",
+  brandID: false,
+  materialID: false,
+  colors: false,
+  sizes: false,
+  variantRows: false, // có ít nhất 1 row lỗi giá/số lượng
+});
+
+// ✅ Danh sách lỗi tổng hợp hiển thị ở banner
+const validationErrors = ref([]);
+
 // Image picker
 const imagePickerOpen = ref(false);
-const currentRow = ref(null); // row đang được chọn ảnh
+const currentRow = ref(null);
 
 const form = ref({
   productName: "",
@@ -530,6 +662,15 @@ const sizePickerOpen = ref(false);
 const colorSearch = ref("");
 const variantMatrix = ref([]);
 
+const onlyNumber = (event) => {
+  const charCode = event.which || event.keyCode;
+
+  // chỉ cho phép 0-9
+  if (charCode < 48 || charCode > 57) {
+    event.preventDefault();
+  }
+};
+
 // ─── Lifecycle ────────────────────────────────────────────
 onMounted(() => {
   loadBrands();
@@ -538,11 +679,25 @@ onMounted(() => {
   loadSizes();
 });
 
-// ─── Loaders ──────────────────────────────────────────────
-const showMessage = (text, color = "success") => {
-  snackbar.value = { show: true, text, color };
+// ─── Helpers ──────────────────────────────────────────────
+const showMessage = (text, type = "success") => {
+  message.value = text;
+  snackbarColor.value =
+    type === "error"
+      ? "error"
+      : type === "warning"
+        ? "warning"
+        : "success";
+  snackbarIcon.value =
+    type === "error"
+      ? "mdi-close-circle"
+      : type === "warning"
+        ? "mdi-alert-circle"
+        : "mdi-check-circle";
+  snackbar.value = true;
 };
 
+// ─── Loaders ──────────────────────────────────────────────
 const loadBrands = async () => {
   try {
     const res = await axios.get(`${BASE_URL}/brands/active`);
@@ -593,6 +748,72 @@ const loadSizes = async () => {
     }));
   } catch {
     showMessage("Không thể tải kích cỡ", "error");
+  }
+};
+
+// ─── ✅ Kiểm tra tên trùng ────────────────────────────────
+/**
+ * Gọi API kiểm tra tên sản phẩm đã tồn tại chưa.
+ * Endpoint gợi ý: GET /api/products/check-name?name=xxx
+ * Trả về { exists: true/false } hoặc status 200/409
+ * Nếu backend chưa có endpoint này → bỏ qua (catch → nameAvailable = null)
+ */
+const checkProductNameDuplicate = async (name) => {
+  if (!name?.trim()) return;
+  checkingName.value = true;
+  nameAvailable.value = null;
+  try {
+    const res = await axios.get(`${BASE_URL}/products/check-name`, {
+      params: { name: name.trim() },
+    });
+    // Backend trả về { exists: boolean } hoặc { available: boolean }
+    const data = res.data;
+    const exists =
+      data?.exists === true ||
+      data?.available === false ||
+      data?.duplicate === true;
+    nameAvailable.value = !exists;
+    if (exists) {
+      fieldErrors.value.productName = true;
+      fieldErrors.value.productNameMsg = `Tên sản phẩm "${name.trim()}" đã tồn tại`;
+    } else {
+      fieldErrors.value.productName = false;
+      fieldErrors.value.productNameMsg = "";
+    }
+  } catch (err) {
+    // Nếu backend trả 409 Conflict → coi là đã tồn tại
+    if (err?.response?.status === 409) {
+      nameAvailable.value = false;
+      fieldErrors.value.productName = true;
+      fieldErrors.value.productNameMsg = `Tên sản phẩm "${name.trim()}" đã tồn tại`;
+    } else {
+      // Endpoint không tồn tại hoặc lỗi khác → bỏ qua, không block
+      nameAvailable.value = null;
+      fieldErrors.value.productName = false;
+    }
+  } finally {
+    checkingName.value = false;
+  }
+};
+
+const onProductNameInput = () => {
+  // Reset lỗi tức thì khi user gõ
+  nameAvailable.value = null;
+  fieldErrors.value.productName = false;
+  fieldErrors.value.productNameMsg = "";
+  // Debounce check tên trùng (gọi sau 600ms không gõ tiếp)
+  clearTimeout(nameCheckTimer);
+  nameCheckTimer = setTimeout(() => {
+    if (form.value.productName?.trim().length >= 2) {
+      checkProductNameDuplicate(form.value.productName);
+    }
+  }, 600);
+};
+
+const onProductNameBlur = () => {
+  clearTimeout(nameCheckTimer);
+  if (form.value.productName?.trim().length >= 2) {
+    checkProductNameDuplicate(form.value.productName);
   }
 };
 
@@ -690,6 +911,7 @@ const toggleColor = (color) => {
   else {
     selectedColors.value.push(color);
     addColorToMatrix(color);
+    fieldErrors.value.colors = false;
   }
 };
 
@@ -711,6 +933,7 @@ const toggleSize = (size) => {
   else {
     selectedSizes.value.push(size);
     addSizeToMatrix(size);
+    fieldErrors.value.sizes = false;
   }
 };
 
@@ -730,10 +953,13 @@ const makeRow = (colorID, size) => ({
   sizeName: size.sizeName,
   stockQuantity: 100,
   price: 100000,
-  imageFiles: [], // ✅ [{ file, preview, isMain }] – tối đa 5
-  imagePreview: null, // thumbnail ảnh chính để hiển thị trong bảng
+  imageFiles: [],
+  imagePreview: null,
   deleted: false,
   selected: false,
+  // ✅ Trạng thái lỗi validate từng ô
+  priceError: false,
+  quantityError: false,
 });
 
 const addColorToMatrix = (color) => {
@@ -755,6 +981,12 @@ const addSizeToMatrix = (size) => {
 
 const toggleRowDelete = (row) => {
   row.deleted = !row.deleted;
+  // Xóa lỗi của row khi bị ẩn
+  if (row.deleted) {
+    row.priceError = false;
+    row.quantityError = false;
+    fieldErrors.value.variantRows = hasAnyRowError();
+  }
 };
 
 const resetColorGroup = (colorID) => {
@@ -764,13 +996,25 @@ const resetColorGroup = (colorID) => {
     r.deleted = false;
     r.stockQuantity = 100;
     r.price = 100000;
-    // revoke previews trước khi clear
+    r.priceError = false;
+    r.quantityError = false;
     r.imageFiles.forEach((img) => URL.revokeObjectURL(img.preview));
     r.imageFiles = [];
     r.imagePreview = null;
     r.selected = false;
   });
+  fieldErrors.value.variantRows = hasAnyRowError();
 };
+
+// ✅ Helper: kiểm tra nhóm màu có row nào lỗi không
+const groupHasError = (colorGroup) =>
+  colorGroup.rows.some((r) => !r.deleted && (r.priceError || r.quantityError));
+
+// ✅ Helper: toàn bộ matrix có lỗi không
+const hasAnyRowError = () =>
+  variantMatrix.value.some((g) =>
+    g.rows.some((r) => !r.deleted && (r.priceError || r.quantityError)),
+  );
 
 // ─── Image picker ─────────────────────────────────────────
 const openImagePicker = (row) => {
@@ -778,24 +1022,16 @@ const openImagePicker = (row) => {
   imagePickerOpen.value = true;
 };
 
-// ✅ Đúng event name khớp với ImagePickerDialog emit('confirm')
 const handleImageConfirm = (selectedImages) => {
   const row = currentRow.value;
   if (!row) return;
-
-  // Revoke các preview cũ không còn dùng
   row.imageFiles.forEach((old) => {
     if (!selectedImages.find((s) => s.preview === old.preview))
       URL.revokeObjectURL(old.preview);
   });
-
-  // Lưu mảng ảnh mới vào row
-  row.imageFiles = selectedImages; // [{ file, preview, isMain }]
-
-  // Thumbnail bảng = ảnh isMain hoặc ảnh đầu tiên
+  row.imageFiles = selectedImages;
   const mainImg = selectedImages.find((i) => i.isMain) ?? selectedImages[0];
   row.imagePreview = mainImg?.preview ?? null;
-
   currentRow.value = null;
 };
 
@@ -805,18 +1041,123 @@ const removeAllImages = (row) => {
   row.imagePreview = null;
 };
 
+// ─── ✅ Validate toàn bộ TRƯỚC khi gọi bất kỳ API nào ────
+/**
+ * Trả về true nếu hợp lệ, false nếu có lỗi.
+ * Đồng thời cập nhật fieldErrors và validationErrors để UI phản hồi.
+ */
+const validateAll = () => {
+  const errors = [];
+
+  // Reset
+  Object.keys(fieldErrors.value).forEach((k) => {
+    if (k !== "productNameMsg") fieldErrors.value[k] = false;
+  });
+  // Giữ lại lỗi tên trùng nếu đang có
+  const keepNameError = nameAvailable.value === false;
+
+  // 1. Tên sản phẩm
+  if (!form.value.productName?.trim()) {
+    fieldErrors.value.productName = true;
+    fieldErrors.value.productNameMsg = "Vui lòng nhập tên sản phẩm";
+    errors.push("Chưa nhập tên sản phẩm");
+  } else if (keepNameError) {
+    fieldErrors.value.productName = true;
+    errors.push(fieldErrors.value.productNameMsg);
+  }
+
+  // 2. Thương hiệu
+  if (!form.value.brandID) {
+    fieldErrors.value.brandID = true;
+    errors.push("Chưa chọn thương hiệu");
+  }
+
+  // 3. Chất liệu
+  if (!form.value.materialID) {
+    fieldErrors.value.materialID = true;
+    errors.push("Chưa chọn chất liệu");
+  }
+
+  // 4. Màu sắc
+  if (selectedColors.value.length === 0) {
+    fieldErrors.value.colors = true;
+    errors.push("Chưa chọn màu sắc nào");
+  }
+
+  // 5. Kích cỡ
+  if (selectedSizes.value.length === 0) {
+    fieldErrors.value.sizes = true;
+    errors.push("Chưa chọn kích cỡ nào");
+  }
+
+  // 6. Phải có ít nhất 1 biến thể active
+  const activeGroups = variantMatrix.value
+    .map((g) => ({ ...g, rows: g.rows.filter((r) => !r.deleted) }))
+    .filter((g) => g.rows.length > 0);
+
+  if (
+    selectedColors.value.length > 0 &&
+    selectedSizes.value.length > 0 &&
+    activeGroups.length === 0
+  ) {
+    errors.push(
+      "Tất cả biến thể đã bị xóa. Vui lòng giữ lại ít nhất một biến thể",
+    );
+  }
+
+  // 7. Validate từng row: giá > 0, số lượng >= 0
+  let rowErrorCount = 0;
+  variantMatrix.value.forEach((group) => {
+    group.rows.forEach((row) => {
+      if (row.deleted) return;
+
+      let rowHasError = false;
+
+      // Giá phải > 0
+      if (!row.price || row.price <= 0 || isNaN(row.price)) {
+        row.priceError = true;
+        rowHasError = true;
+      }
+
+      // Số lượng phải >= 0 và là số hợp lệ
+      if (
+        row.stockQuantity === null ||
+        row.stockQuantity === undefined ||
+        row.stockQuantity < 0 ||
+        isNaN(row.stockQuantity)
+      ) {
+        row.quantityError = true;
+        rowHasError = true;
+      }
+
+      if (rowHasError) rowErrorCount++;
+    });
+  });
+
+  if (rowErrorCount > 0) {
+    fieldErrors.value.variantRows = true;
+    errors.push(
+      `${rowErrorCount} biến thể có giá hoặc số lượng không hợp lệ (giá phải > 0, số lượng phải ≥ 0)`,
+    );
+  }
+
+  validationErrors.value = errors;
+  return errors.length === 0;
+};
+
 // ─── Save ─────────────────────────────────────────────────
 const handleSave = async () => {
-  if (!form.value.productName?.trim()) {
-    showMessage("Vui lòng nhập tên sản phẩm", "warning");
+  // ✅ BƯỚC 1: Validate TOÀN BỘ trước — không gọi API nếu còn lỗi
+  const isValid = validateAll();
+  if (!isValid) {
+    // Cuộn lên banner lỗi
+    window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
-  if (!form.value.brandID) {
-    showMessage("Vui lòng chọn thương hiệu", "warning");
-    return;
-  }
-  if (!form.value.materialID) {
-    showMessage("Vui lòng chọn chất liệu", "warning");
+
+  // ✅ BƯỚC 2 (tuỳ chọn): Nếu chưa check tên hoặc đang check → đợi
+  if (checkingName.value) {
+    showMessage("Đang kiểm tra tên sản phẩm, vui lòng chờ...", "info");
     return;
   }
 
@@ -826,7 +1167,7 @@ const handleSave = async () => {
 
   saving.value = true;
   try {
-    // ① Tạo sản phẩm
+    // ✅ BƯỚC 3: Tạo sản phẩm — chỉ gọi khi đã validate xong
     const productRes = await productApi.create({
       productName: form.value.productName.trim(),
       description: form.value.description,
@@ -835,14 +1176,13 @@ const handleSave = async () => {
       status: form.value.status,
     });
     const _raw = productRes.data;
-    console.log("[ProductCreate] create response:", _raw);
     const productID = Number(
       _raw?.id ?? _raw?.productID ?? _raw?.productId ?? _raw?.product_id,
     );
     if (!productID || isNaN(productID))
       throw new Error("Không thể lấy ID sản phẩm");
 
-    // ② Thử batch trước, fallback từng cái
+    // ✅ BƯỚC 4: Tạo biến thể — batch trước, fallback từng cái
     let usedBatch = false;
     if (activeGroups.length > 0) {
       const batchPayload = activeGroups.flatMap((group, gi) =>
@@ -866,7 +1206,6 @@ const handleSave = async () => {
       }
     }
 
-    // ③ Fallback loop
     if (!usedBatch) {
       let isFirst = true;
       for (const group of activeGroups) {
@@ -884,25 +1223,19 @@ const handleSave = async () => {
       }
     }
 
-    // ④ Reload detail để lấy productColorID thực tế
+    // ✅ BƯỚC 5: Reload detail để lấy productColorID thực tế
     const detailRes = await productApi.getDetail(productID);
     const serverColors = detailRes.data?.colors ?? [];
 
-    // ⑤ Upload ảnh từng biến thể (nhiều ảnh)
+    // ✅ BƯỚC 6: Upload ảnh
     for (const group of activeGroups) {
       for (const row of group.rows) {
         if (!row.imageFiles?.length) continue;
-
         const matched = serverColors.find(
           (c) => c.colorID === group.colorID && c.sizeID === row.sizeID,
         );
         if (!matched?.productColorID) continue;
-
-        // Upload lần lượt mỗi ảnh; ảnh isMain lên đầu (đã sort trong ImagePickerDialog)
         for (const imgItem of row.imageFiles) {
-          const fd = new FormData();
-          fd.append("file", imgItem.file);
-          fd.append("isMain", String(!!imgItem.isMain));
           await axios
             .post(`${BASE_URL}/image/color/${matched.productColorID}/image`, {
               imageUrl: `/images/${imgItem.file.name}`,
@@ -917,12 +1250,22 @@ const handleSave = async () => {
     setTimeout(() => router.push({ name: "AdminProducts" }), 1000);
   } catch (err) {
     console.error(err);
-    showMessage(
-      err?.response?.data?.message ||
-        err?.response?.data ||
-        "Không thể lưu sản phẩm",
-      "error",
-    );
+    // ✅ Xử lý lỗi tên trùng từ server (fallback)
+    const msg = err?.response?.data?.message || err?.response?.data || "";
+    if (
+      err?.response?.status === 409 ||
+      String(msg).toLowerCase().includes("trùng") ||
+      String(msg).toLowerCase().includes("duplicate") ||
+      String(msg).toLowerCase().includes("exist")
+    ) {
+      nameAvailable.value = false;
+      fieldErrors.value.productName = true;
+      fieldErrors.value.productNameMsg = `Tên sản phẩm "${form.value.productName}" đã tồn tại`;
+      validationErrors.value = [fieldErrors.value.productNameMsg];
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      showMessage(msg || "Không thể lưu sản phẩm", "error");
+    }
   } finally {
     saving.value = false;
   }
@@ -980,7 +1323,7 @@ const handleSave = async () => {
   position: relative;
 }
 
-/* Remove btn on chips */
+/* Remove btn */
 .chip-remove {
   position: absolute !important;
   top: -8px;
@@ -1045,6 +1388,14 @@ const handleSave = async () => {
   text-decoration: line-through;
 }
 
+/* ✅ Ô lỗi — deepened tô nền nhẹ để không bị che bởi Vuetify error state */
+.field-error :deep(.v-field__outline) {
+  --v-field-border-opacity: 1;
+}
+.field-error :deep(.v-field) {
+  background: rgba(244, 67, 54, 0.04) !important;
+}
+
 /* Image cell */
 .image-upload-cell {
   width: 160px;
@@ -1052,7 +1403,6 @@ const handleSave = async () => {
   cursor: pointer;
   position: relative;
 }
-
 .upload-placeholder {
   width: 160px;
   height: 80px;
@@ -1076,7 +1426,6 @@ const handleSave = async () => {
   pointer-events: none;
   opacity: 0.4;
 }
-
 .image-preview-wrapper {
   position: relative;
   width: 160px;
@@ -1089,8 +1438,6 @@ const handleSave = async () => {
   border-radius: 8px;
   border: 1px solid #e0e0e0;
 }
-
-/* Badge số ảnh */
 .img-count-badge {
   position: absolute;
   bottom: 5px;
@@ -1102,7 +1449,6 @@ const handleSave = async () => {
   padding: 1px 6px;
   border-radius: 20px;
 }
-
 .remove-img-btn {
   position: absolute !important;
   top: -6px;
@@ -1178,5 +1524,77 @@ const handleSave = async () => {
   padding-top: 6px;
   font-size: 12px;
   color: #666;
+}
+
+/* ✅ Toast styling */
+:deep(.custom-snackbar) {
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 12px !important;
+  background: white !important;
+  min-width: 320px;
+}
+
+.toast-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 14px 12px;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toast-text {
+  color: #444;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.toast-progress {
+  height: 4px;
+  width: 100%;
+  animation: progress-animation 2.5s linear forwards;
+}
+
+.toast-progress.success {
+  background: #1db954;
+}
+
+.toast-progress.error {
+  background: #ef5350;
+}
+
+.toast-progress.warning {
+  background: #ff9800;
+}
+
+@keyframes progress-animation {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
+
+:deep(.v-snackbar__wrapper) {
+  animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
