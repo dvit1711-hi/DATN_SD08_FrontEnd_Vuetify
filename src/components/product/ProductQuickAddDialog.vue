@@ -114,7 +114,7 @@
               :class="{ out: maxQuantity <= 0 }"
             >
               <template v-if="maxQuantity > 0">
-                Còn {{ maxQuantity }} sản phẩm
+                Còn {{ Math.min(10, maxQuantity) }} sản phẩm
               </template>
               <template v-else>
                 Biến thể này đã hết hàng

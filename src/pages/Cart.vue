@@ -120,11 +120,12 @@
                     type="number"
                     class="qty-input"
                     min="1"
+                    :max="Math.min(MAX_QUANTITY, item.stockQuantity ?? MAX_QUANTITY)"
                     @change="onQuantityInput(item, $event.target.value)"
                   />
                   <button
                     class="qty-btn"
-                    :disabled="item.isUpdating || item.quantity >= (item.stockQuantity ?? 0)"
+                    :disabled="item.isUpdating || item.quantity >= Math.min(MAX_QUANTITY, item.stockQuantity ?? 0)"
                     @click="changeQuantity(item, item.quantity + 1)"
                   >
                     <v-icon icon="mdi-plus" size="14" />
@@ -215,6 +216,7 @@ import cartApi from '@/api/cartApi'
 
 const router = useRouter()
 const userStore = useUserStore()
+const MAX_QUANTITY = 10
 
 const isLoading = ref(false)
 const cartItems = ref([])
@@ -293,8 +295,9 @@ const loadCart = async () => {
 const changeQuantity = async (item, nextQuantity) => {
   const quantity = Math.max(1, Number.parseInt(nextQuantity, 10) || 1)
   const maxStock = Number.parseInt(item.stockQuantity, 10) || 0
+  const maxAllowed = Math.min(MAX_QUANTITY, maxStock)
   if (maxStock <= 0) return notify('Sản phẩm đã hết hàng', 'warning')
-  if (quantity > maxStock) return notify(`Tối đa ${maxStock} sản phẩm`, 'warning')
+  if (quantity > maxAllowed) return notify(`Tối đa ${maxAllowed} sản phẩm`, 'warning')
   if (quantity === item.quantity) return
   item.isUpdating = true
   try {

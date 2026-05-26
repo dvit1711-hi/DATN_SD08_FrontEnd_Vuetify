@@ -163,7 +163,7 @@
               v-model.number="quantity"
               type="number"
               min="1"
-              :max="selectedVariantStock > 0 ? selectedVariantStock : 1"
+              :max="Math.min(MAX_QUANTITY, selectedVariantStock > 0 ? selectedVariantStock : 1)"
               variant="outlined"
               density="comfortable"
               hide-details
@@ -299,6 +299,7 @@ const SELECTED_CART_ITEM_IDS_KEY = "selectedCartItemIds";
 const sizeDialog = ref(false);
 const sizes = ref([]);
 const loadingSizes = ref(false);
+const MAX_QUANTITY = 10;
 
 const formatSizeValue = (description) => {
   return description || "-";
@@ -379,11 +380,9 @@ function applySelectedVariant(variant) {
 
   if (quantity.value < 1) quantity.value = 1;
 
-  if (
-    selectedVariantStock.value > 0 &&
-    quantity.value > selectedVariantStock.value
-  ) {
-    quantity.value = selectedVariantStock.value;
+  const maxAllowed = Math.min(MAX_QUANTITY, selectedVariantStock.value);
+  if (quantity.value > maxAllowed) {
+    quantity.value = maxAllowed;
   }
 }
 
@@ -637,8 +636,9 @@ async function handleAddToCart() {
     return;
   }
 
-  if (quantity.value < 1 || quantity.value > selectedVariantStock.value) {
-    snackbarMessage.value = "Số lượng không hợp lệ";
+  const maxAllowedQty = Math.min(MAX_QUANTITY, selectedVariantStock.value);
+  if (quantity.value < 1 || quantity.value > maxAllowedQty) {
+    snackbarMessage.value = `Số lượng phải từ 1 đến ${maxAllowedQty}`;
     snackbarColor.value = "error";
     showSnackbar.value = true;
     return;
@@ -690,8 +690,9 @@ async function handleBuyNow() {
     return;
   }
 
-  if (quantity.value < 1 || quantity.value > selectedVariantStock.value) {
-    snackbarMessage.value = "Số lượng không hợp lệ";
+  const maxAllowedQty = Math.min(MAX_QUANTITY, selectedVariantStock.value);
+  if (quantity.value < 1 || quantity.value > maxAllowedQty) {
+    snackbarMessage.value = `Số lượng phải từ 1 đến ${maxAllowedQty}`;
     snackbarColor.value = "error";
     showSnackbar.value = true;
     return;
